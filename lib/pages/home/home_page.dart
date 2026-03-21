@@ -47,7 +47,6 @@ class HomePage extends StatelessWidget {
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 8),
-              Text('${t['帳號'] ?? '帳號'}：${user.email}'),
               const SizedBox(height: 16),
               const SizedBox(height: 12),
               OutlinedButton.icon(
