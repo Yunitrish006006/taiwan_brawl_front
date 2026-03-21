@@ -61,6 +61,7 @@ class SettingsPanel extends StatelessWidget {
               items: [
                 DropdownMenuItem(value: 'zh-Hant', child: Text(t['繁體中文'] ?? '繁體中文')),
                 DropdownMenuItem(value: 'en', child: Text(t['English'] ?? 'English')),
+                DropdownMenuItem(value: 'ja', child: Text(t['日本語'] ?? '日本語')),
               ],
               onChanged: (value) async {
                 if (value == null) return;
