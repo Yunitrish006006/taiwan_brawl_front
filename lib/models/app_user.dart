@@ -7,6 +7,7 @@ class AppUser {
     this.bio,
     required this.themeMode,
     required this.fontSizeScale,
+    required this.locale,
   });
 
   final int id;
@@ -16,6 +17,7 @@ class AppUser {
   final String? bio;
   final String themeMode;
   final double fontSizeScale;
+  final String locale;
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
     return AppUser(
@@ -26,6 +28,7 @@ class AppUser {
       bio: json['bio'] as String?,
       themeMode: (json['theme_mode'] as String?) ?? 'system',
       fontSizeScale: (json['font_size_scale'] as num?)?.toDouble() ?? 1.0,
+      locale: (json['locale'] as String?) ?? 'zh-Hant',
     );
   }
 }

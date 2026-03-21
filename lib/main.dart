@@ -11,29 +11,31 @@ import 'services/api_client.dart';
 import 'services/auth_service.dart';
 import 'services/theme_provider.dart';
 import 'services/ui_settings_provider.dart';
+import 'services/locale_provider.dart';
 
 void main() {
   final apiClient = ApiClient();
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthService(apiClient)),
-        ChangeNotifierProxyProvider<AuthService, ThemeProvider>(
-          create: (_) => ThemeProvider(),
-          update: (_, auth, themeProvider) {
-            final provider = themeProvider ?? ThemeProvider();
-            provider.syncFromUser(auth.user);
-            return provider;
-          },
-        ),
-        ChangeNotifierProxyProvider<AuthService, UiSettingsProvider>(
-          create: (_) => UiSettingsProvider(),
-          update: (_, auth, uiSettingsProvider) {
-            final provider = uiSettingsProvider ?? UiSettingsProvider();
-            provider.syncFromUser(auth.user);
-            return provider;
-          },
-        ),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthService(apiClient)),
+          ChangeNotifierProxyProvider<AuthService, ThemeProvider>(
+            create: (_) => ThemeProvider(),
+            update: (_, auth, themeProvider) {
+              final provider = themeProvider ?? ThemeProvider();
+              provider.syncFromUser(auth.user);
+              return provider;
+            },
+          ),
+          ChangeNotifierProxyProvider<AuthService, UiSettingsProvider>(
+            create: (_) => UiSettingsProvider(),
+            update: (_, auth, uiSettingsProvider) {
+              final provider = uiSettingsProvider ?? UiSettingsProvider();
+              provider.syncFromUser(auth.user);
+              return provider;
+            },
+          ),
+          ChangeNotifierProvider(create: (_) => LocaleProvider()),
       ],
       child: const MainApp(),
     ),

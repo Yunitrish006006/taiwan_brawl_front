@@ -6,6 +6,7 @@ import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import '../services/theme_provider.dart';
 import '../services/ui_settings_provider.dart';
+import '../services/locale_provider.dart';
 import '../utils/snackbar.dart';
 
 class SettingsPanel extends StatelessWidget {
@@ -16,6 +17,7 @@ class SettingsPanel extends StatelessWidget {
     final user = context.watch<AuthService>().user;
     final themeProvider = context.watch<ThemeProvider>();
     final uiSettings = context.watch<UiSettingsProvider>();
+    final localeProvider = context.watch<LocaleProvider>();
     if (user == null) {
       return const SizedBox.shrink();
     }
@@ -46,6 +48,29 @@ class SettingsPanel extends StatelessWidget {
                   await auth.updateThemeMode(value);
                 } on ApiException catch (e) {
                   themeProvider.restoreRemembered();
+                  if (!context.mounted) return;
+                  showAppSnackBar(context, e.message);
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+            const Text('介面語言'),
+            DropdownButton<String>(
+              value: localeProvider.locale,
+              items: const [
+                DropdownMenuItem(value: 'zh-Hant', child: Text('繁體中文')),
+                DropdownMenuItem(value: 'en', child: Text('English')),
+              ],
+              onChanged: (value) async {
+                if (value == null) return;
+                final localeProvider = context.read<LocaleProvider>();
+                localeProvider.rememberCurrent();
+                localeProvider.setLocale(value);
+                final auth = context.read<AuthService>();
+                try {
+                  await auth.updateLocale(value);
+                } on ApiException catch (e) {
+                  localeProvider.restoreRemembered();
                   if (!context.mounted) return;
                   showAppSnackBar(context, e.message);
                 }
