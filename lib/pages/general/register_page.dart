@@ -1,3 +1,4 @@
+import '../../services/locale_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -44,27 +45,28 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.watch<LocaleProvider>().translation;
     return Scaffold(
-      appBar: AppBar(title: const Text('建立帳號')),
+      appBar: AppBar(title: Text(t['建立帳號'] ?? '建立帳號')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             TextField(
               controller: _nameController,
-              decoration: const InputDecoration(labelText: '名稱'),
+              decoration: InputDecoration(labelText: t['名稱'] ?? '名稱'),
             ),
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
+              decoration: InputDecoration(labelText: t['Email'] ?? 'Email'),
             ),
             TextField(
               controller: _passwordController,
-              decoration: const InputDecoration(labelText: '密碼'),
+              decoration: InputDecoration(labelText: t['密碼'] ?? '密碼'),
               obscureText: true,
             ),
             const SizedBox(height: 16),
-            FilledButton(onPressed: _submit, child: const Text('註冊')),
+            FilledButton(onPressed: _submit, child: Text(t['註冊'] ?? '註冊')),
           ],
         ),
       ),
