@@ -1,3 +1,5 @@
+import 'package:front/widgets/settings_panel.dart';
+
 import '../../services/locale_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -78,6 +80,9 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               const SizedBox(height: 16),
               FilledButton(onPressed: _save, child: Text(t['儲存'] ?? '儲存')),
+              const SizedBox(height: 24),
+              // 顯示設定面板
+              const SettingsPanel(),
             ],
           ),
         ),

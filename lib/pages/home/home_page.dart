@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/auth_service.dart';
-import '../../widgets/settings_panel.dart';
 import '../../widgets/app_version_text.dart';
 import '../../services/locale_provider.dart';
 
@@ -50,7 +49,6 @@ class HomePage extends StatelessWidget {
               const SizedBox(height: 8),
               Text('${t['帳號'] ?? '帳號'}：${user.email}'),
               const SizedBox(height: 16),
-              const SettingsPanel(),
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: () => Navigator.of(context).pushNamed('/profile'),
