@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../services/auth_service.dart';
 import '../../widgets/settings_panel.dart';
+import '../../widgets/app_version_text.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -54,6 +55,7 @@ class HomePage extends StatelessWidget {
                 icon: const Icon(Icons.edit),
                 label: const Text('編輯個人資料'),
               ),
+              const AppVersionText(),
             ],
           ),
         ),

@@ -22,21 +22,22 @@ class SettingsPanel extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final t = localeProvider.translation;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('顯示設定', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(t['顯示設定'] ?? '顯示設定', style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text('主題模式'),
+            Text(t['主題模式'] ?? '主題模式'),
             DropdownButton<String>(
               value: themeProvider.themeModeText,
-              items: const [
-                DropdownMenuItem(value: 'system', child: Text('跟隨系統')),
-                DropdownMenuItem(value: 'light', child: Text('亮色')),
-                DropdownMenuItem(value: 'dark', child: Text('暗色')),
+              items: [
+                DropdownMenuItem(value: 'system', child: Text(t['跟隨系統'] ?? '跟隨系統')),
+                DropdownMenuItem(value: 'light', child: Text(t['亮色'] ?? '亮色')),
+                DropdownMenuItem(value: 'dark', child: Text(t['暗色'] ?? '暗色')),
               ],
               onChanged: (value) async {
                 if (value == null) return;
@@ -54,12 +55,12 @@ class SettingsPanel extends StatelessWidget {
               },
             ),
             const SizedBox(height: 8),
-            const Text('介面語言'),
+            Text(t['介面語言'] ?? '介面語言'),
             DropdownButton<String>(
               value: localeProvider.locale,
-              items: const [
-                DropdownMenuItem(value: 'zh-Hant', child: Text('繁體中文')),
-                DropdownMenuItem(value: 'en', child: Text('English')),
+              items: [
+                DropdownMenuItem(value: 'zh-Hant', child: Text(t['繁體中文'] ?? '繁體中文')),
+                DropdownMenuItem(value: 'en', child: Text(t['English'] ?? 'English')),
               ],
               onChanged: (value) async {
                 if (value == null) return;
@@ -77,7 +78,7 @@ class SettingsPanel extends StatelessWidget {
               },
             ),
             const SizedBox(height: 8),
-            Text('字體大小 ${uiSettings.fontScale.toStringAsFixed(1)}x'),
+            Text('${t['字體大小'] ?? '字體大小'} ${uiSettings.fontScale.toStringAsFixed(1)}x'),
             Slider(
               value: uiSettings.fontScale,
               min: 0.8,
