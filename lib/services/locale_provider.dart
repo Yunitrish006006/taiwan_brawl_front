@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/app_user.dart';
 import '../constants/locale_en.dart';
 import '../constants/locale_zh_Hant.dart';
+import '../constants/locale_ja.dart';
 
 class LocaleProvider extends ChangeNotifier {
   String _locale = 'zh-Hant';
@@ -13,6 +14,8 @@ class LocaleProvider extends ChangeNotifier {
     switch (_locale) {
       case 'en':
         return enUS;
+      case 'ja':
+        return jaJP;
       case 'zh-Hant':
       default:
         return zhHant;
