@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -37,9 +38,14 @@ class SettingsPanel extends StatelessWidget {
               ],
               onChanged: (value) async {
                 if (value == null) return;
+                final themeProvider = context.read<ThemeProvider>();
+                themeProvider.rememberCurrent();
+                themeProvider.setThemeModeText(value);
+                final auth = context.read<AuthService>();
                 try {
-                  await context.read<AuthService>().updateThemeMode(value);
+                  await auth.updateThemeMode(value);
                 } on ApiException catch (e) {
+                  themeProvider.restoreRemembered();
                   if (!context.mounted) return;
                   showAppSnackBar(context, e.message);
                 }
@@ -53,11 +59,19 @@ class SettingsPanel extends StatelessWidget {
               max: 1.6,
               divisions: 8,
               label: uiSettings.fontScale.toStringAsFixed(1),
-              onChanged: (_) {},
+              onChanged: (value) {
+                context.read<UiSettingsProvider>().setFontScale(value);
+              },
+              onChangeStart: (value) {
+                context.read<UiSettingsProvider>().rememberCurrent();
+              },
               onChangeEnd: (value) async {
+                final auth = context.read<AuthService>();
+                final uiSettings = context.read<UiSettingsProvider>();
                 try {
-                  await context.read<AuthService>().updateFontSizeScale(value);
+                  await auth.updateFontSizeScale(value);
                 } on ApiException catch (e) {
+                  uiSettings.restoreRemembered();
                   if (!context.mounted) return;
                   showAppSnackBar(context, e.message);
                 }
