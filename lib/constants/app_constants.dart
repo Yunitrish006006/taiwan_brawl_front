@@ -5,7 +5,7 @@ class AppConstants {
   // flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:8787
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://127.0.0.1:8787',
+    defaultValue: 'https://taiwan-brawl-api.yunitrish0419.workers.dev',
   );
 
   // 上線時請替換成自己的 Google OAuth Web Client ID。
