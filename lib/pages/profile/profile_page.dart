@@ -1,3 +1,4 @@
+import '../../services/locale_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -50,12 +51,13 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthService>().user;
+    final t = context.watch<LocaleProvider>().translation;
     if (user == null) {
-      return const Scaffold(body: Center(child: Text('請先登入')));
+      return Scaffold(body: Center(child: Text(t['請先登入'] ?? '請先登入')));
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('個人資料')),
+      appBar: AppBar(title: Text(t['個人資料'] ?? '個人資料')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
@@ -66,16 +68,16 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: 12),
               TextField(
                 controller: _nameController,
-                decoration: const InputDecoration(labelText: '名稱'),
+                decoration: InputDecoration(labelText: t['名稱'] ?? '名稱'),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _bioController,
                 maxLines: 4,
-                decoration: const InputDecoration(labelText: '自我介紹'),
+                decoration: InputDecoration(labelText: t['自我介紹'] ?? '自我介紹'),
               ),
               const SizedBox(height: 16),
-              FilledButton(onPressed: _save, child: const Text('儲存')),
+              FilledButton(onPressed: _save, child: Text(t['儲存'] ?? '儲存')),
             ],
           ),
         ),

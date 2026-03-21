@@ -1,3 +1,4 @@
+import '../../services/locale_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -53,8 +54,9 @@ class _AuthPageState extends State<AuthPage> {
   @override
   Widget build(BuildContext context) {
     final loading = context.watch<AuthService>().isLoading;
+    final t = context.watch<LocaleProvider>().translation;
     return Scaffold(
-      appBar: AppBar(title: const Text('Taiwan Brawl 登入')),
+      appBar: AppBar(title: Text(t['Taiwan Brawl 登入'] ?? 'Taiwan Brawl 登入')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
@@ -65,28 +67,28 @@ class _AuthPageState extends State<AuthPage> {
               children: [
                 TextField(
                   controller: _emailController,
-                  decoration: const InputDecoration(labelText: 'Email'),
+                  decoration: InputDecoration(labelText: t['Email'] ?? 'Email'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _passwordController,
-                  decoration: const InputDecoration(labelText: '密碼'),
+                  decoration: InputDecoration(labelText: t['密碼'] ?? '密碼'),
                   obscureText: true,
                 ),
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: loading ? null : _login,
-                  child: const Text('一般登入'),
+                  child: Text(t['一般登入'] ?? '一般登入'),
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton(
                   onPressed: loading ? null : _googleLogin,
-                  child: const Text('Google 登入'),
+                  child: Text(t['Google 登入'] ?? 'Google 登入'),
                 ),
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: () => Navigator.of(context).pushNamed('/register'),
-                  child: const Text('還沒有帳號？先註冊'),
+                  child: Text(t['還沒有帳號？先註冊'] ?? '還沒有帳號？先註冊'),
                 ),
               ],
             ),

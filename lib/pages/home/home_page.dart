@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/settings_panel.dart';
 import '../../widgets/app_version_text.dart';
+import '../../services/locale_provider.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -11,18 +12,19 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthService>().user;
+    final t = context.watch<LocaleProvider>().translation;
     if (user == null) {
-      return const Scaffold(body: Center(child: Text('請先登入')));
+      return Scaffold(body: Center(child: Text(t['請先登入'] ?? '請先登入')));
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Taiwan Brawl Portal'),
+        title: Text(t['Taiwan Brawl Portal'] ?? 'Taiwan Brawl Portal'),
         actions: [
           IconButton(
             onPressed: () => Navigator.of(context).pushNamed('/profile'),
             icon: const Icon(Icons.person),
-            tooltip: '個人資料',
+            tooltip: t['個人資料'] ?? '個人資料',
           ),
           IconButton(
             onPressed: () async {
@@ -31,7 +33,7 @@ class HomePage extends StatelessWidget {
               Navigator.of(context).pushReplacementNamed('/login');
             },
             icon: const Icon(Icons.logout),
-            tooltip: '登出',
+            tooltip: t['登出'] ?? '登出',
           ),
         ],
       ),
@@ -42,18 +44,18 @@ class HomePage extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             children: [
               Text(
-                '歡迎回來，${user.name}',
+                '${t['歡迎回來'] ?? '歡迎回來'}，${user.name}',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 8),
-              Text('帳號：${user.email}'),
+              Text('${t['帳號'] ?? '帳號'}：${user.email}'),
               const SizedBox(height: 16),
               const SettingsPanel(),
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: () => Navigator.of(context).pushNamed('/profile'),
                 icon: const Icon(Icons.edit),
-                label: const Text('編輯個人資料'),
+                label: Text(t['編輯個人資料'] ?? '編輯個人資料'),
               ),
               const AppVersionText(),
             ],
