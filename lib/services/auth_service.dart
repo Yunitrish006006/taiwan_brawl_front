@@ -12,6 +12,13 @@ class AuthService extends ChangeNotifier {
   final ApiClient _apiClient;
   bool _googleInitialized = false;
   AppUser? _user;
+
+  Future<void> updateLocale(String locale) async {
+    await _apiClient.putJson('/api/users/locale', {
+      'locale': locale,
+    });
+    await refreshMe(silent: true);
+  }
   bool _isLoading = false;
 
   AppUser? get user => _user;
