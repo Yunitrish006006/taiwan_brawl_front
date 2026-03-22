@@ -7,6 +7,7 @@ import 'pages/general/register_page.dart';
 import 'pages/general/splash_page.dart';
 import 'pages/home/home_page.dart';
 import 'pages/profile/profile_page.dart';
+import 'pages/game/archery_game_page.dart';
 import 'services/api_client.dart';
 import 'services/auth_service.dart';
 import 'services/theme_provider.dart';
@@ -16,26 +17,26 @@ import 'services/locale_provider.dart';
 void main() {
   final apiClient = ApiClient();
   runApp(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => AuthService(apiClient)),
-          ChangeNotifierProxyProvider<AuthService, ThemeProvider>(
-            create: (_) => ThemeProvider(),
-            update: (_, auth, themeProvider) {
-              final provider = themeProvider ?? ThemeProvider();
-              provider.syncFromUser(auth.user);
-              return provider;
-            },
-          ),
-          ChangeNotifierProxyProvider<AuthService, UiSettingsProvider>(
-            create: (_) => UiSettingsProvider(),
-            update: (_, auth, uiSettingsProvider) {
-              final provider = uiSettingsProvider ?? UiSettingsProvider();
-              provider.syncFromUser(auth.user);
-              return provider;
-            },
-          ),
-          ChangeNotifierProvider(create: (_) => LocaleProvider()),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthService(apiClient)),
+        ChangeNotifierProxyProvider<AuthService, ThemeProvider>(
+          create: (_) => ThemeProvider(),
+          update: (_, auth, themeProvider) {
+            final provider = themeProvider ?? ThemeProvider();
+            provider.syncFromUser(auth.user);
+            return provider;
+          },
+        ),
+        ChangeNotifierProxyProvider<AuthService, UiSettingsProvider>(
+          create: (_) => UiSettingsProvider(),
+          update: (_, auth, uiSettingsProvider) {
+            final provider = uiSettingsProvider ?? UiSettingsProvider();
+            provider.syncFromUser(auth.user);
+            return provider;
+          },
+        ),
+        ChangeNotifierProvider(create: (_) => LocaleProvider()),
       ],
       child: const MainApp(),
     ),
@@ -82,6 +83,7 @@ class MainApp extends StatelessWidget {
             '/register': (_) => const RegisterPage(),
             '/home': (_) => const HomePage(),
             '/profile': (_) => const ProfilePage(),
+            '/archery': (_) => const ArcheryGamePage(),
           },
         );
       },
