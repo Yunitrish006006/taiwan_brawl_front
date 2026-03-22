@@ -54,6 +54,13 @@ class HomePage extends StatelessWidget {
                 icon: const Icon(Icons.edit),
                 label: Text(t['編輯個人資料'] ?? '編輯個人資料'),
               ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.of(context).pushNamed('/archery'),
+                icon: const Icon(Icons.architecture), // 用現有圖示
+                label: const Text('弓箭射擊遊戲'),
+              ),
+              const SizedBox(height: 24),
               const AppVersionText(),
             ],
           ),
