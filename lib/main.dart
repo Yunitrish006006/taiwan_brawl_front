@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import 'constants/app_constants.dart';
 import 'pages/general/auth_page.dart';
-import 'pages/general/register_page.dart';
 import 'pages/general/splash_page.dart';
 import 'pages/home/home_page.dart';
 import 'pages/profile/profile_page.dart';
@@ -80,7 +79,6 @@ class MainApp extends StatelessWidget {
           routes: {
             '/': (_) => const SplashPage(),
             '/login': (_) => const AuthPage(),
-            '/register': (_) => const RegisterPage(),
             '/home': (_) => const HomePage(),
             '/profile': (_) => const ProfilePage(),
             '/archery': (_) => const ArcheryGamePage(),
