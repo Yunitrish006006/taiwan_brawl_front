@@ -11,6 +11,7 @@ class AppConstants {
   // 上線時請替換成自己的 Google OAuth Web Client ID。
   static const String googleWebClientId = String.fromEnvironment(
     'GOOGLE_WEB_CLIENT_ID',
-    defaultValue: '',
+    defaultValue:
+        '310421071956-1ctfspu1f772ehkatigsgd2vq1ui4bks.apps.googleusercontent.com',
   );
 }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../constants/app_constants.dart';
+import 'http_client_factory.dart';
 
 class ApiException implements Exception {
   ApiException(this.message, {this.statusCode});
@@ -16,25 +17,16 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
-  ApiClient({http.Client? client}) : _client = client ?? http.Client();
+  ApiClient({http.Client? client}) : _client = client ?? createHttpClient();
 
   final http.Client _client;
-  String? _sessionId;
-
-  void updateSessionId(String? sessionId) {
-    _sessionId = sessionId;
-  }
 
   Uri _buildUri(String path) {
     return Uri.parse('${AppConstants.apiBaseUrl}$path');
   }
 
   Map<String, String> _headers() {
-    final headers = <String, String>{'Content-Type': 'application/json'};
-    if (_sessionId != null && _sessionId!.isNotEmpty) {
-      headers['Authorization'] = 'Bearer $_sessionId';
-    }
-    return headers;
+    return <String, String>{'Content-Type': 'application/json'};
   }
 
   Future<Map<String, dynamic>> getJson(String path) async {
