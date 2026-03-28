@@ -60,6 +60,20 @@ class HomePage extends StatelessWidget {
                 icon: const Icon(Icons.architecture), // 用現有圖示
                 label: const Text('弓箭射擊遊戲'),
               ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: () =>
+                    Navigator.of(context).pushNamed('/royale-deck'),
+                icon: const Icon(Icons.style_outlined),
+                label: const Text('Mini Royale 牌組編輯'),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: () =>
+                    Navigator.of(context).pushNamed('/royale-lobby'),
+                icon: const Icon(Icons.sports_esports_outlined),
+                label: const Text('Mini Royale 房間對戰'),
+              ),
               const SizedBox(height: 24),
               const AppVersionText(),
             ],

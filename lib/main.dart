@@ -7,6 +7,8 @@ import 'pages/general/splash_page.dart';
 import 'pages/home/home_page.dart';
 import 'pages/profile/profile_page.dart';
 import 'pages/game/archery_game_page.dart';
+import 'pages/game/royale_deck_page.dart';
+import 'pages/game/royale_lobby_page.dart';
 import 'services/api_client.dart';
 import 'services/auth_service.dart';
 import 'services/theme_provider.dart';
@@ -82,6 +84,8 @@ class MainApp extends StatelessWidget {
             '/home': (_) => const HomePage(),
             '/profile': (_) => const ProfilePage(),
             '/archery': (_) => const ArcheryGamePage(),
+            '/royale-deck': (_) => const RoyaleDeckPage(),
+            '/royale-lobby': (_) => const RoyaleLobbyPage(),
           },
         );
       },
