@@ -2265,7 +2265,10 @@ class _UnitToken extends StatelessWidget {
               ),
               alignment: Alignment.center,
               child: Text(
-                unit.name.characters.first,
+                unit
+                    .localizedName(context.watch<LocaleProvider>().locale)
+                    .characters
+                    .first,
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -2493,7 +2496,13 @@ class _ComboLauncher extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  cards.map((card) => card.name).join(' + '),
+                  cards
+                      .map(
+                        (card) => card.localizedName(
+                          context.watch<LocaleProvider>().locale,
+                        ),
+                      )
+                      .join(' + '),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -2622,7 +2631,7 @@ class _HandCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  card.name,
+                  card.localizedName(context.watch<LocaleProvider>().locale),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
