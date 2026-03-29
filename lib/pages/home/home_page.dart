@@ -28,6 +28,10 @@ class _HomePageState extends State<HomePage> {
     _friendsService = FriendsService(ApiClient());
   }
 
+  bool _canManageCards(AppUser user) {
+    return user.role == 'admin' || user.role == 'card_manager';
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -194,6 +198,16 @@ class _HomePageState extends State<HomePage> {
                 Navigator.of(context).pushNamed('/friends');
               },
             ),
+            if (_canManageCards(user))
+              ListTile(
+                leading: const Icon(Icons.style_outlined),
+                title: Text(t.text('Card Management')),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pushNamed('/admin/cards');
+                },
+              ),
             if (user.role == 'admin')
               ListTile(
                 leading: const Icon(Icons.admin_panel_settings_outlined),
@@ -312,6 +326,15 @@ class _HomePageState extends State<HomePage> {
                 icon: const Icon(Icons.group_outlined),
                 label: Text(t.text('Friends')),
               ),
+              if (_canManageCards(user)) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () =>
+                      Navigator.of(context).pushNamed('/admin/cards'),
+                  icon: const Icon(Icons.style_outlined),
+                  label: Text(t.text('Card Management')),
+                ),
+              ],
               if (user.role == 'admin') ...[
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
