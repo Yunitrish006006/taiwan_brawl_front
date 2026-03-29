@@ -6,6 +6,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../models/royale_models.dart';
 import '../../services/api_client.dart';
+import '../../services/friends_service.dart';
 import '../../services/royale_service.dart';
 
 class RoyaleArenaPage extends StatefulWidget {
@@ -19,8 +20,11 @@ class RoyaleArenaPage extends StatefulWidget {
 
 class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   late final RoyaleService _service;
+  late final FriendsService _friendsService;
   final GlobalKey _arenaKey = GlobalKey();
   final List<String> _selectedCardIds = [];
+  final Set<int> _friendUserIds = <int>{};
+  final Set<int> _sentFriendRequestUserIds = <int>{};
   WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _socketSubscription;
   Timer? _pingTimer;
@@ -34,7 +38,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   @override
   void initState() {
     super.initState();
-    _service = RoyaleService(ApiClient());
+    final apiClient = ApiClient();
+    _service = RoyaleService(apiClient);
+    _friendsService = FriendsService(apiClient);
     _bootstrap();
   }
 
@@ -49,6 +55,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   Future<void> _bootstrap() async {
     try {
       final room = await _service.fetchRoomState(widget.roomCode);
+      await _refreshFriendState();
       if (!mounted) {
         return;
       }
@@ -74,6 +81,27 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         _error = '載入房間失敗: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _refreshFriendState() async {
+    try {
+      final overview = await _friendsService.fetchOverview();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _friendUserIds
+          ..clear()
+          ..addAll(overview.friends.map((friend) => friend.userId));
+        _sentFriendRequestUserIds
+          ..clear()
+          ..addAll(
+            overview.outgoingRequests.map((request) => request.user.userId),
+          );
+      });
+    } on ApiException {
+      // Ignore friend sync failures inside battle room.
     }
   }
 
@@ -364,7 +392,49 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     }
   }
 
+  Future<void> _sendFriendRequestToPlayer(RoyalePlayerView player) async {
+    final userId = player.userId;
+    if (_sentFriendRequestUserIds.contains(userId) ||
+        _friendUserIds.contains(userId)) {
+      return;
+    }
+
+    try {
+      await _friendsService.sendFriendRequest(userId);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _sentFriendRequestUserIds.add(userId);
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('已向 ${player.name} 送出好友邀請')));
+    } on ApiException catch (e) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  bool _shouldShowAddFriendButton(RoyalePlayerView player, int? myUserId) {
+    if (myUserId == null || player.userId == myUserId) {
+      return false;
+    }
+    if (_friendUserIds.contains(player.userId)) {
+      return false;
+    }
+    if (_sentFriendRequestUserIds.contains(player.userId)) {
+      return false;
+    }
+    return true;
+  }
+
   Widget _buildLobby(RoyaleRoomSnapshot room) {
+    final myUserId = room.me?.userId;
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 860),
@@ -474,6 +544,18 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                                 ? const Color(0xFF48C7F4)
                                 : const Color(0xFF7B8794),
                           ),
+                          if (_shouldShowAddFriendButton(player, myUserId)) ...[
+                            const SizedBox(width: 8),
+                            TextButton.icon(
+                              onPressed: () =>
+                                  _sendFriendRequestToPlayer(player),
+                              icon: const Icon(
+                                Icons.person_add_alt_1,
+                                size: 18,
+                              ),
+                              label: const Text('加好友'),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -1021,6 +1103,13 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                 color: const Color(0xFFFFB703),
               ),
               _ArenaLegendChip(label: '裝備可疊加', color: const Color(0xFF9B5DE5)),
+              if (opponent != null &&
+                  _shouldShowAddFriendButton(opponent, me?.userId))
+                ActionChip(
+                  avatar: const Icon(Icons.person_add_alt_1, size: 18),
+                  label: Text('加 ${opponent.name} 為好友'),
+                  onPressed: () => _sendFriendRequestToPlayer(opponent),
+                ),
             ],
           ),
         ],

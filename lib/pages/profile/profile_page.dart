@@ -67,6 +67,14 @@ class _ProfilePageState extends State<ProfilePage> {
             padding: const EdgeInsets.all(16),
             children: [
               Text('Email: ${user.email}'),
+              const SizedBox(height: 8),
+              Text('玩家 ID: ${user.id}'),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).pushNamed('/friends'),
+                icon: const Icon(Icons.group_outlined),
+                label: const Text('打開好友系統'),
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: _nameController,

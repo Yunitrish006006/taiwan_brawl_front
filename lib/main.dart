@@ -9,6 +9,7 @@ import 'pages/profile/profile_page.dart';
 import 'pages/game/archery_game_page.dart';
 import 'pages/game/royale_deck_page.dart';
 import 'pages/game/royale_lobby_page.dart';
+import 'pages/social/friends_page.dart';
 import 'services/api_client.dart';
 import 'services/auth_service.dart';
 import 'services/theme_provider.dart';
@@ -83,6 +84,7 @@ class MainApp extends StatelessWidget {
             '/login': (_) => const AuthPage(),
             '/home': (_) => const HomePage(),
             '/profile': (_) => const ProfilePage(),
+            '/friends': (_) => const FriendsPage(),
             '/archery': (_) => const ArcheryGamePage(),
             '/royale-deck': (_) => const RoyaleDeckPage(),
             '/royale-lobby': (_) => const RoyaleLobbyPage(),

@@ -6,7 +6,9 @@ import '../../services/royale_service.dart';
 import 'royale_arena_page.dart';
 
 class RoyaleLobbyPage extends StatefulWidget {
-  const RoyaleLobbyPage({super.key});
+  const RoyaleLobbyPage({super.key, this.initialRoomCode});
+
+  final String? initialRoomCode;
 
   @override
   State<RoyaleLobbyPage> createState() => _RoyaleLobbyPageState();
@@ -24,6 +26,8 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
   void initState() {
     super.initState();
     _service = RoyaleService(ApiClient());
+    _roomCodeController.text =
+        widget.initialRoomCode?.trim().toUpperCase() ?? '';
     _loadDecks();
   }
 
