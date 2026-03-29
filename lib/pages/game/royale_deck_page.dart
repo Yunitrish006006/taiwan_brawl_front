@@ -307,6 +307,16 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                               Text(
                                 card.type == 'spell'
                                     ? '法術傷害 ${card.spellDamage}'
+                                    : card.type == 'equipment'
+                                    ? switch (card.effectKind) {
+                                        'damage_boost' =>
+                                          '裝備: +${card.effectValue.toInt()} 傷害',
+                                        'health_boost' =>
+                                          '裝備: +${card.effectValue.toInt()} 生命',
+                                        'speed_boost' =>
+                                          '裝備: +${(card.effectValue * 100).toInt()}% 速度',
+                                        _ => '裝備卡',
+                                      }
                                     : '生命 ${card.hp} / 傷害 ${card.damage}',
                                 style: const TextStyle(color: Colors.white70),
                               ),
