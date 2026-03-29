@@ -992,13 +992,10 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Draggable<_ComboDragPayload>(
                       data: _ComboDragPayload(cards: selectedCards),
+                      dragAnchorStrategy: pointerDragAnchorStrategy,
                       feedback: Material(
                         color: Colors.transparent,
-                        child: _ComboLauncher(
-                          cards: selectedCards,
-                          totalCost: selectedCost,
-                          elevated: true,
-                        ),
+                        child: const _DragCursorFeedback(),
                       ),
                       childWhenDragging: Opacity(
                         opacity: 0.38,
@@ -1176,17 +1173,10 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                     child: Draggable<_ComboDragPayload>(
                       data: _ComboDragPayload(cards: [card]),
                       maxSimultaneousDrags: playable ? 1 : 0,
+                      dragAnchorStrategy: pointerDragAnchorStrategy,
                       feedback: Material(
                         color: Colors.transparent,
-                        child: _HandCard(
-                          card: card,
-                          playable: playable,
-                          elevated: true,
-                          selectedOrder: selectionOrder,
-                          cardColor: _cardColor(card.type),
-                          cardStats: _cardStats(card),
-                          typeLabel: _cardTypeLabel(card),
-                        ),
+                        child: const _DragCursorFeedback(),
                       ),
                       childWhenDragging: Opacity(
                         opacity: 0.3,
@@ -1952,10 +1942,15 @@ class _UnitToken extends StatelessWidget {
 }
 
 class _AimMarker extends StatelessWidget {
-  const _AimMarker({required this.point, required this.active});
+  const _AimMarker({
+    required this.point,
+    required this.active,
+    this.showLabel = true,
+  });
 
   final Offset point;
   final bool active;
+  final bool showLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -1996,25 +1991,40 @@ class _AimMarker extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFF07111F).withValues(alpha: 0.74),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-            ),
-            child: Text(
-              'x ${(point.dx * 100).toStringAsFixed(0)} / y ${(point.dy * 100).toStringAsFixed(0)}',
-              style: TextStyle(
-                color: markerColor,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
+          if (showLabel) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF07111F).withValues(alpha: 0.74),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+              ),
+              child: Text(
+                'x ${(point.dx * 100).toStringAsFixed(0)} / y ${(point.dy * 100).toStringAsFixed(0)}',
+                style: TextStyle(
+                  color: markerColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
-          ),
+          ],
         ],
       ),
+    );
+  }
+}
+
+class _DragCursorFeedback extends StatelessWidget {
+  const _DragCursorFeedback();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _AimMarker(
+      point: Offset(0.5, 0.5),
+      active: true,
+      showLabel: false,
     );
   }
 }
@@ -2023,13 +2033,11 @@ class _ComboLauncher extends StatelessWidget {
   const _ComboLauncher({
     required this.cards,
     required this.totalCost,
-    this.elevated = false,
     this.onClear,
   });
 
   final List<RoyaleCard> cards;
   final int totalCost;
-  final bool elevated;
   final VoidCallback? onClear;
 
   @override
@@ -2045,15 +2053,13 @@ class _ComboLauncher extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-        boxShadow: elevated
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.24),
-                  blurRadius: 18,
-                  offset: const Offset(0, 10),
-                ),
-              ]
-            : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.24),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -2130,7 +2136,6 @@ class _HandCard extends StatelessWidget {
     required this.cardColor,
     required this.cardStats,
     required this.typeLabel,
-    this.elevated = false,
     this.selectedOrder = -1,
   });
 
@@ -2139,7 +2144,6 @@ class _HandCard extends StatelessWidget {
   final Color cardColor;
   final String cardStats;
   final String typeLabel;
-  final bool elevated;
   final int selectedOrder;
 
   @override
@@ -2167,9 +2171,9 @@ class _HandCard extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: cardColor.withValues(alpha: elevated ? 0.34 : 0.18),
-                  blurRadius: elevated ? 16 : 10,
-                  offset: Offset(0, elevated ? 10 : 6),
+                  color: cardColor.withValues(alpha: 0.18),
+                  blurRadius: 10,
+                  offset: const Offset(0, 6),
                 ),
               ],
             ),
