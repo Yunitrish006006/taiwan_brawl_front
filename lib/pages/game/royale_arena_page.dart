@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../models/royale_models.dart';
 import '../../services/api_client.dart';
 import '../../services/friends_service.dart';
+import '../../services/locale_provider.dart';
 import '../../services/royale_service.dart';
 
 class RoyaleArenaPage extends StatefulWidget {
@@ -34,6 +36,8 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   bool _rematchSubmitting = false;
   String? _error;
   Offset? _aimPoint;
+
+  Map<String, String> get _t => context.read<LocaleProvider>().translation;
 
   @override
   void initState() {
@@ -78,7 +82,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         return;
       }
       setState(() {
-        _error = '載入房間失敗: $e';
+        _error = '${_t.text('Failed to load room')}: $e';
         _isLoading = false;
       });
     }
@@ -127,7 +131,11 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         if (data['type'] == 'error') {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(data['message'] as String? ?? '未知錯誤')),
+              SnackBar(
+                content: Text(
+                  data['message'] as String? ?? _t.text('Unknown error'),
+                ),
+              ),
             );
           }
           return;
@@ -145,9 +153,13 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       },
       onError: (_) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('即時連線中斷，請重新整理頁面')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                _t.text('Live connection lost. Please refresh the page.'),
+              ),
+            ),
+          );
         }
       },
     );
@@ -196,9 +208,11 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     }
 
     if (_selectedCardIds.length >= 3) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('一次最多先選 3 張卡')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_t.text('You can preselect up to 3 cards at once')),
+        ),
+      );
       return;
     }
 
@@ -268,9 +282,15 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     );
 
     if (hasEquipment && !hasUnit) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('裝備卡需要和至少一張單位卡一起丟出去')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _t.text(
+              'Equipment cards must be played with at least one unit card',
+            ),
+          ),
+        ),
+      );
       return;
     }
 
@@ -322,18 +342,18 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
 
   String _cardStats(RoyaleCard card) {
     if (card.type == 'spell') {
-      return '法術 ${card.spellDamage}';
+      return '${_t.text('Spell')} ${card.spellDamage}';
     }
     if (card.type == 'equipment') {
       switch (card.effectKind) {
         case 'damage_boost':
-          return '裝備: +${card.effectValue.toInt()} 傷害';
+          return '${_t.text('Equipment: +Damage')} ${card.effectValue.toInt()}';
         case 'health_boost':
-          return '裝備: +${card.effectValue.toInt()} 生命';
+          return '${_t.text('Equipment: +Health')} ${card.effectValue.toInt()}';
         case 'speed_boost':
-          return '裝備: +${(card.effectValue * 100).toInt()}% 速度';
+          return '${_t.text('Equipment: +Speed')} ${(card.effectValue * 100).toInt()}%';
       }
-      return '裝備卡';
+      return _t.text('Equipment Card');
     }
     return 'HP ${card.hp} / DMG ${card.damage}';
   }
@@ -341,25 +361,27 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   String _cardTypeLabel(RoyaleCard card) {
     switch (card.type) {
       case 'tank':
-        return '坦克';
+        return _t.text('Tank');
       case 'ranged':
-        return '遠程';
+        return _t.text('Ranged');
       case 'swarm':
-        return '群體';
+        return _t.text('Swarm');
       case 'spell':
-        return '法術';
+        return _t.text('Spell');
       case 'equipment':
-        return '裝備';
+        return _t.text('Equipment');
       default:
-        return '近戰';
+        return _t.text('Melee');
     }
   }
 
   String _resultLabel(RoyaleBattleResult result, String mySide) {
     if (result.winnerSide == null) {
-      return '平手';
+      return _t.text('Draw');
     }
-    return result.winnerSide == mySide ? '你贏了' : '你輸了';
+    return result.winnerSide == mySide
+        ? _t.text('You won')
+        : _t.text('You lost');
   }
 
   Future<void> _playAgain() async {
@@ -407,9 +429,13 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       setState(() {
         _sentFriendRequestUserIds.add(userId);
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('已向 ${player.name} 送出好友邀請')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${_t.text('Sent a friend request to')} ${player.name}',
+          ),
+        ),
+      );
     } on ApiException catch (e) {
       if (!mounted) {
         return;
@@ -478,15 +504,19 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                           ),
                         ),
                       ),
-                      const Text(
-                        '雙方都按準備後就會立刻開打',
+                      Text(
+                        _t.text(
+                          'Battle starts as soon as both players are ready',
+                        ),
                         style: TextStyle(color: Colors.white70),
                       ),
                     ],
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    'Mini Royale Lobby',
+                    context.watch<LocaleProvider>().translation.text(
+                      'Mini Royale Lobby',
+                    ),
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
@@ -532,14 +562,18 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                             ),
                           ),
                           _StatusPill(
-                            label: player.ready ? '已準備' : '等待中',
+                            label: player.ready
+                                ? _t.text('Ready')
+                                : _t.text('Waiting'),
                             color: player.ready
                                 ? const Color(0xFF3ECF8E)
                                 : const Color(0xFFF8B64C),
                           ),
                           const SizedBox(width: 8),
                           _StatusPill(
-                            label: player.connected ? '在線' : '離線',
+                            label: player.connected
+                                ? _t.text('Online')
+                                : _t.text('Offline'),
                             color: player.connected
                                 ? const Color(0xFF48C7F4)
                                 : const Color(0xFF7B8794),
@@ -553,7 +587,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                                 Icons.person_add_alt_1,
                                 size: 18,
                               ),
-                              label: const Text('加好友'),
+                              label: Text(_t.text('Add Friend Button')),
                             ),
                           ],
                         ],
@@ -574,7 +608,11 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                         ),
                       ),
                       icon: const Icon(Icons.flash_on_rounded),
-                      label: Text(_readySubmitting ? '送出中...' : '準備開戰'),
+                      label: Text(
+                        _readySubmitting
+                            ? _t.text('Sending...')
+                            : _t.text('Ready to Battle'),
+                      ),
                     ),
                   ),
                 ],
@@ -644,10 +682,16 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                               Expanded(
                                 child: Text(
                                   highlightDropZone
-                                      ? '放開即可在指定位置一次出牌'
+                                      ? _t.text(
+                                          'Release to cast all selected cards here',
+                                        )
                                       : selectedCards.isNotEmpty
-                                      ? '已啟用精準投放，點擊場地即可指定座標'
-                                      : '拖曳單卡或組合包，或先選卡再點擊 2D 場地',
+                                      ? _t.text(
+                                          'Precision targeting enabled. Tap the battlefield to place cards.',
+                                        )
+                                      : _t.text(
+                                          'Drag a single card or combo, or select cards first then tap the 2D battlefield.',
+                                        ),
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w700,
@@ -655,7 +699,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                                 ),
                               ),
                               _ArenaLegendChip(
-                                label: mySide == 'left' ? '我方左側基地' : '我方右側基地',
+                                label: mySide == 'left'
+                                    ? _t.text('Your Left Base')
+                                    : _t.text('Your Right Base'),
                                 color: _sideColor(mySide),
                               ),
                             ],
@@ -750,9 +796,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                                             left: 18,
                                             top: 18,
                                             child: _FieldLabel(
-                                              label: mySide == 'left'
-                                                  ? '敵方基地'
-                                                  : '敵方基地',
+                                              label: _t.text('Enemy Base'),
                                               color: const Color(0xFFE25555),
                                             ),
                                           ),
@@ -760,7 +804,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                                             left: board.maxWidth * 0.5 - 42,
                                             top: 18,
                                             child: _FieldLabel(
-                                              label: '中央橋面',
+                                              label: _t.text('Central Bridge'),
                                               color: const Color(0xFF2F7D87),
                                             ),
                                           ),
@@ -768,7 +812,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                                             right: 18,
                                             bottom: 18,
                                             child: _FieldLabel(
-                                              label: '我方部署區',
+                                              label: _t.text(
+                                                'Your Deployment Zone',
+                                              ),
                                               color: const Color(0xFF136F63),
                                             ),
                                           ),
@@ -805,9 +851,11 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                                                   .firstWhere(
                                                     (p) => p.side == 'right',
                                                     orElse: () =>
-                                                        const RoyalePlayerView(
+                                                        RoyalePlayerView(
                                                           userId: 0,
-                                                          name: '等待玩家',
+                                                          name: _t.text(
+                                                            'Waiting for players',
+                                                          ),
                                                           side: 'right',
                                                           deckId: 0,
                                                           deckName: '',
@@ -823,9 +871,11 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                                                   .firstWhere(
                                                     (p) => p.side == 'right',
                                                     orElse: () =>
-                                                        const RoyalePlayerView(
+                                                        RoyalePlayerView(
                                                           userId: 0,
-                                                          name: '等待玩家',
+                                                          name: _t.text(
+                                                            'Waiting for players',
+                                                          ),
                                                           side: 'right',
                                                           deckId: 0,
                                                           deckName: '',
@@ -922,7 +972,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                                                       ),
                                                       const SizedBox(height: 6),
                                                       Text(
-                                                        '對戰已結束',
+                                                        _t.text(
+                                                          'Battle finished',
+                                                        ),
                                                         style: TextStyle(
                                                           color: Colors.white
                                                               .withValues(
@@ -964,8 +1016,12 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                                                         ),
                                                         label: Text(
                                                           _rematchSubmitting
-                                                              ? '返回房間中...'
-                                                              : '再玩一次',
+                                                              ? _t.text(
+                                                                  'Returning to room...',
+                                                                )
+                                                              : _t.text(
+                                                                  'Play Again',
+                                                                ),
                                                         ),
                                                       ),
                                                     ],
@@ -1038,7 +1094,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
             children: [
               Expanded(
                 child: _PlayerHudCard(
-                  title: me?.name ?? '你',
+                  title: me?.name ?? _t.text('You'),
                   subtitle: mySide == 'left' ? 'Blue Side' : 'Red Side',
                   towerHp: me?.towerHp ?? 0,
                   maxTowerHp: me?.maxTowerHp ?? 1,
@@ -1079,7 +1135,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
               ),
               Expanded(
                 child: _PlayerHudCard(
-                  title: opponent?.name ?? '對手',
+                  title: opponent?.name ?? _t.text('Opponent'),
                   subtitle: mySide == 'left' ? 'Red Side' : 'Blue Side',
                   towerHp: opponent?.towerHp ?? 0,
                   maxTowerHp: opponent?.maxTowerHp ?? 1,
@@ -1094,17 +1150,25 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
             spacing: 10,
             runSpacing: 10,
             children: [
-              _ArenaLegendChip(label: '單路對戰', color: const Color(0xFF46C2CB)),
               _ArenaLegendChip(
-                label: '可先選 3 張',
+                label: _t.text('Single Lane Battle'),
+                color: const Color(0xFF46C2CB),
+              ),
+              _ArenaLegendChip(
+                label: _t.text('Up to 3-card combo'),
                 color: const Color(0xFFFFB703),
               ),
-              _ArenaLegendChip(label: '裝備可疊加', color: const Color(0xFF9B5DE5)),
+              _ArenaLegendChip(
+                label: _t.text('Equipment can stack'),
+                color: const Color(0xFF9B5DE5),
+              ),
               if (opponent != null &&
                   _shouldShowAddFriendButton(opponent, me?.userId))
                 ActionChip(
                   avatar: const Icon(Icons.person_add_alt_1, size: 18),
-                  label: Text('加 ${opponent.name} 為好友'),
+                  label: Text(
+                    '${_t.text('Add')} ${opponent.name} ${_t.text('as a friend')}',
+                  ),
                   onPressed: () => _sendFriendRequestToPlayer(opponent),
                 ),
             ],
@@ -1143,19 +1207,20 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
               ),
               _InfoChip(
                 icon: Icons.bolt_rounded,
-                label: '目前聖水 ${battle.yourElixir.toStringAsFixed(1)}',
+                label:
+                    '${_t.text('Current Elixir')} ${battle.yourElixir.toStringAsFixed(1)}',
               ),
               _InfoChip(
                 icon: Icons.arrow_forward_rounded,
                 label: battle.nextCardId == null
-                    ? '下一張 未知'
-                    : '下一張 ${battle.nextCardId}',
+                    ? '${_t.text('Next Card')} ${_t.text('Unknown')}'
+                    : '${_t.text('Next Card')} ${battle.nextCardId}',
               ),
               if (selectedCards.isNotEmpty)
                 _InfoChip(
                   icon: Icons.layers_rounded,
                   label:
-                      '已選 ${selectedCards.length} 張 / ${selectedCards.fold<int>(0, (sum, card) => sum + card.elixirCost)} 費',
+                      '${_t.text('Selected Cards')} ${selectedCards.length} / ${selectedCards.fold<int>(0, (sum, card) => sum + card.elixirCost)}',
                 ),
             ],
           ),
@@ -1206,8 +1271,12 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
           const SizedBox(height: 14),
           Text(
             compact
-                ? '點卡片可選入組合，拖曳單卡或組合包到戰場部署'
-                : '點卡片可先加入組合包，裝備卡會套用到同次出牌的單位。拖曳單卡或組合包到你的部署區即可出牌。',
+                ? _t.text(
+                    'Tap cards to build a combo, then drag a single card or combo onto the battlefield.',
+                  )
+                : _t.text(
+                    'Tap cards to build a combo first. Equipment cards apply to units cast together. Drag a single card or combo into your deployment zone.',
+                  ),
             style: TextStyle(color: Colors.white.withValues(alpha: 0.72)),
           ),
         ],
@@ -1217,10 +1286,11 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.watch<LocaleProvider>().translation;
     return Scaffold(
       backgroundColor: const Color(0xFF07111F),
       appBar: AppBar(
-        title: Text('房間 ${widget.roomCode}'),
+        title: Text('${t.text('Room')} ${widget.roomCode}'),
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -1263,10 +1333,10 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                       ),
                     )
                   : _room == null
-                  ? const Center(
+                  ? Center(
                       child: Text(
-                        '找不到房間',
-                        style: TextStyle(color: Colors.white),
+                        t.text('Room not found'),
+                        style: const TextStyle(color: Colors.white),
                       ),
                     )
                   : (_room!.status == 'lobby'
@@ -2261,9 +2331,11 @@ class _HandCard extends StatelessWidget {
                   color: const Color(0xFF07111F),
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: const Text(
-                  '聖水不足',
-                  style: TextStyle(
+                child: Text(
+                  context.watch<LocaleProvider>().translation.text(
+                    'Not enough elixir',
+                  ),
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,

@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/app_user.dart';
 import '../constants/locale_en.dart';
-import '../constants/locale_zh_Hant.dart';
+import '../constants/locale_zh_hant.dart';
 import '../constants/locale_ja.dart';
 
 extension LocaleTranslationMap on Map<String, String> {

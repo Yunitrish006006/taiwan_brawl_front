@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/friends_models.dart';
 import '../../models/royale_models.dart';
 import '../../services/api_client.dart';
 import '../../services/friends_service.dart';
+import '../../services/locale_provider.dart';
 import '../../services/royale_service.dart';
 import '../game/royale_arena_page.dart';
 import '../game/royale_lobby_page.dart';
@@ -126,9 +128,10 @@ class _FriendsPageState extends State<FriendsPage> {
   }
 
   Future<RoyaleDeck?> _pickDeck() async {
+    final t = context.read<LocaleProvider>().translation;
     final decks = await _royaleService.fetchDecks();
     if (decks.isEmpty) {
-      throw ApiException('請先建立一組 Mini Royale 牌組');
+      throw ApiException(t.text('Please create a deck first'));
     }
     if (decks.length == 1) {
       return decks.first;
@@ -141,8 +144,9 @@ class _FriendsPageState extends State<FriendsPage> {
     return showDialog<RoyaleDeck>(
       context: context,
       builder: (context) {
+        final t = context.watch<LocaleProvider>().translation;
         return AlertDialog(
-          title: const Text('選擇要出戰的牌組'),
+          title: Text(t.text('Choose a deck to battle with')),
           content: StatefulBuilder(
             builder: (context, setState) {
               return DropdownButtonFormField<RoyaleDeck>(
@@ -169,11 +173,11 @@ class _FriendsPageState extends State<FriendsPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('取消'),
+              child: Text(t.text('Cancel')),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(selected),
-              child: const Text('確認'),
+              child: Text(t.text('Confirm')),
             ),
           ],
         );
@@ -182,23 +186,31 @@ class _FriendsPageState extends State<FriendsPage> {
   }
 
   Future<void> _inviteFriendToBattle(SocialUser friend) async {
-    await _runAction('invite-${friend.userId}', () async {
-      final deck = await _pickDeck();
-      if (deck == null) {
-        return;
-      }
-      final room = await _royaleService.createRoom(deckId: deck.id);
-      await _friendsService.sendRoomInvite(
-        roomCode: room.code,
-        inviteeUserId: friend.userId,
-      );
-      if (!mounted) {
-        return;
-      }
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => RoyaleArenaPage(roomCode: room.code)),
-      );
-    }, successMessage: '已送出對戰邀請');
+    await _runAction(
+      'invite-${friend.userId}',
+      () async {
+        final deck = await _pickDeck();
+        if (deck == null) {
+          return;
+        }
+        final room = await _royaleService.createRoom(deckId: deck.id);
+        await _friendsService.sendRoomInvite(
+          roomCode: room.code,
+          inviteeUserId: friend.userId,
+        );
+        if (!mounted) {
+          return;
+        }
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => RoyaleArenaPage(roomCode: room.code),
+          ),
+        );
+      },
+      successMessage: context.read<LocaleProvider>().translation.text(
+        'Battle invite sent',
+      ),
+    );
   }
 
   Future<void> _acceptRoomInvite(RoomInviteItem invite) async {
@@ -216,21 +228,22 @@ class _FriendsPageState extends State<FriendsPage> {
   }
 
   String _relationshipLabel(String status) {
+    final t = context.read<LocaleProvider>().translation;
     switch (status) {
       case 'friend':
-        return '已是好友';
+        return t.text('Already friends');
       case 'outgoing_pending':
-        return '已送出邀請';
+        return t.text('Invitation already sent');
       case 'incoming_pending':
-        return '對方已邀請你';
+        return t.text('They invited you');
       case 'blocked':
-        return '你已封鎖';
+        return t.text('You blocked them');
       case 'blocked_by_them':
-        return '無法加入';
+        return t.text('Unable to join');
       case 'self':
-        return '這是你自己';
+        return t.text('This is you');
       default:
-        return '尚未成為好友';
+        return t.text('Not friends yet');
     }
   }
 
@@ -249,11 +262,12 @@ class _FriendsPageState extends State<FriendsPage> {
     required List<Widget> actions,
     String? subtitle,
   }) {
+    final t = context.watch<LocaleProvider>().translation;
     final statusText = user.isOnline
-        ? '在線中'
+        ? t.text('Online')
         : user.lastActiveAt == null || user.lastActiveAt!.isEmpty
-        ? '離線'
-        : '最後上線 ${user.lastActiveAt}';
+        ? t.text('Offline')
+        : '${t.text('Last online')} ${user.lastActiveAt}';
 
     return Card(
       child: Padding(
@@ -276,7 +290,7 @@ class _FriendsPageState extends State<FriendsPage> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text('ID ${user.userId}'),
+                      Text('${t.text('Player ID')} ${user.userId}'),
                       const SizedBox(height: 2),
                       Text(
                         subtitle ?? statusText,
@@ -321,13 +335,14 @@ class _FriendsPageState extends State<FriendsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.watch<LocaleProvider>().translation;
     final overview = _overview;
     return Scaffold(
-      appBar: AppBar(title: const Text('好友系統')),
+      appBar: AppBar(title: Text(t.text('Friends'))),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : overview == null
-          ? const Center(child: Text('載入好友資料失敗'))
+          ? Center(child: Text(t.text('Failed to load friend data')))
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
@@ -337,8 +352,8 @@ class _FriendsPageState extends State<FriendsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          '搜尋玩家 ID',
+                        Text(
+                          t.text('Search Player ID'),
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -351,8 +366,8 @@ class _FriendsPageState extends State<FriendsPage> {
                               child: TextField(
                                 controller: _searchController,
                                 keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                  labelText: '輸入玩家 ID',
+                                decoration: InputDecoration(
+                                  labelText: t.text('Enter Player ID'),
                                   border: OutlineInputBorder(),
                                 ),
                                 onSubmitted: (_) => _searchById(),
@@ -364,7 +379,9 @@ class _FriendsPageState extends State<FriendsPage> {
                                   ? null
                                   : _searchById,
                               child: Text(
-                                _busyKey == 'search' ? '搜尋中...' : '搜尋',
+                                _busyKey == 'search'
+                                    ? t.text('Searching...')
+                                    : t.text('Search'),
                               ),
                             ),
                           ],
@@ -374,7 +391,7 @@ class _FriendsPageState extends State<FriendsPage> {
                           _buildUserTile(
                             user: _searchResult!.user,
                             subtitle:
-                                '關係狀態: ${_relationshipLabel(_searchResult!.relationshipStatus)}',
+                                '${t.text('Relationship Status')}: ${_relationshipLabel(_searchResult!.relationshipStatus)}',
                             actions: [
                               if (_searchResult!.relationshipStatus == 'none')
                                 FilledButton.icon(
@@ -388,10 +405,12 @@ class _FriendsPageState extends State<FriendsPage> {
                                               _friendsService.sendFriendRequest(
                                                 _searchResult!.user.userId,
                                               ),
-                                          successMessage: '好友邀請已送出',
+                                          successMessage: t.text(
+                                            'Friend request sent',
+                                          ),
                                         ),
                                   icon: const Icon(Icons.person_add_alt_1),
-                                  label: const Text('加好友'),
+                                  label: Text(t.text('Add Friend')),
                                 ),
                               if (_searchResult!.relationshipStatus == 'friend')
                                 OutlinedButton.icon(
@@ -405,7 +424,7 @@ class _FriendsPageState extends State<FriendsPage> {
                                   icon: const Icon(
                                     Icons.sports_esports_outlined,
                                   ),
-                                  label: const Text('邀請對戰'),
+                                  label: Text(t.text('Invite Battle')),
                                 ),
                               if (_searchResult!.relationshipStatus !=
                                   'blocked')
@@ -419,10 +438,12 @@ class _FriendsPageState extends State<FriendsPage> {
                                           () => _friendsService.blockUser(
                                             _searchResult!.user.userId,
                                           ),
-                                          successMessage: '已封鎖玩家',
+                                          successMessage: t.text(
+                                            'Player blocked',
+                                          ),
                                         ),
                                   icon: const Icon(Icons.block),
-                                  label: const Text('封鎖'),
+                                  label: Text(t.text('Block')),
                                 ),
                             ],
                           ),
@@ -433,22 +454,23 @@ class _FriendsPageState extends State<FriendsPage> {
                 ),
                 const SizedBox(height: 20),
                 _buildSection(
-                  '房間邀請',
+                  t.text('Room Invites'),
                   overview.roomInvites.isEmpty
-                      ? const Text('目前沒有新的房間邀請')
+                      ? Text(t.text('No new room invites'))
                       : Column(
                           children: overview.roomInvites
                               .map(
                                 (invite) => _buildUserTile(
                                   user: invite.inviter,
-                                  subtitle: '邀你加入房間 ${invite.roomCode}',
+                                  subtitle:
+                                      '${t.text('invites you to join room')} ${invite.roomCode}',
                                   actions: [
                                     FilledButton(
                                       onPressed:
                                           _busyKey == 'room-accept-${invite.id}'
                                           ? null
                                           : () => _acceptRoomInvite(invite),
-                                      child: const Text('前往房間'),
+                                      child: Text(t.text('Go to Room')),
                                     ),
                                     OutlinedButton(
                                       onPressed:
@@ -459,7 +481,7 @@ class _FriendsPageState extends State<FriendsPage> {
                                               () => _friendsService
                                                   .rejectRoomInvite(invite.id),
                                             ),
-                                      child: const Text('拒絕'),
+                                      child: Text(t.text('Reject')),
                                     ),
                                   ],
                                 ),
@@ -469,9 +491,9 @@ class _FriendsPageState extends State<FriendsPage> {
                 ),
                 const SizedBox(height: 20),
                 _buildSection(
-                  '好友邀請',
+                  t.text('Friend Requests'),
                   overview.incomingRequests.isEmpty
-                      ? const Text('目前沒有新的好友邀請')
+                      ? Text(t.text('No new friend requests'))
                       : Column(
                           children: overview.incomingRequests
                               .map(
@@ -485,9 +507,11 @@ class _FriendsPageState extends State<FriendsPage> {
                                               'accept-${item.id}',
                                               () => _friendsService
                                                   .acceptFriendRequest(item.id),
-                                              successMessage: '已成為好友',
+                                              successMessage: t.text(
+                                                'You are now friends',
+                                              ),
                                             ),
-                                      child: const Text('接受'),
+                                      child: Text(t.text('Accept')),
                                     ),
                                     OutlinedButton(
                                       onPressed: _busyKey == 'reject-${item.id}'
@@ -497,7 +521,7 @@ class _FriendsPageState extends State<FriendsPage> {
                                               () => _friendsService
                                                   .rejectFriendRequest(item.id),
                                             ),
-                                      child: const Text('拒絕'),
+                                      child: Text(t.text('Reject')),
                                     ),
                                     OutlinedButton(
                                       onPressed:
@@ -509,9 +533,11 @@ class _FriendsPageState extends State<FriendsPage> {
                                               () => _friendsService.blockUser(
                                                 item.user.userId,
                                               ),
-                                              successMessage: '已封鎖玩家',
+                                              successMessage: t.text(
+                                                'Player blocked',
+                                              ),
                                             ),
-                                      child: const Text('封鎖'),
+                                      child: Text(t.text('Block')),
                                     ),
                                   ],
                                 ),
@@ -521,15 +547,15 @@ class _FriendsPageState extends State<FriendsPage> {
                 ),
                 const SizedBox(height: 20),
                 _buildSection(
-                  '已送出的邀請',
+                  t.text('Sent Requests'),
                   overview.outgoingRequests.isEmpty
-                      ? const Text('目前沒有待確認的邀請')
+                      ? Text(t.text('No pending requests'))
                       : Column(
                           children: overview.outgoingRequests
                               .map(
                                 (item) => _buildUserTile(
                                   user: item.user,
-                                  subtitle: '等待對方確認中',
+                                  subtitle: t.text('Waiting for confirmation'),
                                   actions: [
                                     OutlinedButton(
                                       onPressed: _busyKey == 'cancel-${item.id}'
@@ -539,7 +565,7 @@ class _FriendsPageState extends State<FriendsPage> {
                                               () => _friendsService
                                                   .cancelFriendRequest(item.id),
                                             ),
-                                      child: const Text('取消邀請'),
+                                      child: Text(t.text('Cancel')),
                                     ),
                                   ],
                                 ),
@@ -549,9 +575,13 @@ class _FriendsPageState extends State<FriendsPage> {
                 ),
                 const SizedBox(height: 20),
                 _buildSection(
-                  '好友列表',
+                  t.text('Friend List'),
                   overview.friends.isEmpty
-                      ? const Text('你還沒有好友，先去加幾位吧')
+                      ? Text(
+                          t.text(
+                            'You do not have any friends yet. Go add a few.',
+                          ),
+                        )
                       : Column(
                           children: overview.friends
                               .map(
@@ -566,7 +596,7 @@ class _FriendsPageState extends State<FriendsPage> {
                                       icon: const Icon(
                                         Icons.sports_esports_outlined,
                                       ),
-                                      label: const Text('邀請對戰'),
+                                      label: Text(t.text('Invite Battle')),
                                     ),
                                     OutlinedButton.icon(
                                       onPressed:
@@ -576,12 +606,14 @@ class _FriendsPageState extends State<FriendsPage> {
                                               'remove-${friend.userId}',
                                               () => _friendsService
                                                   .removeFriend(friend.userId),
-                                              successMessage: '已移除好友',
+                                              successMessage: t.text(
+                                                'Friend removed',
+                                              ),
                                             ),
                                       icon: const Icon(
                                         Icons.person_remove_outlined,
                                       ),
-                                      label: const Text('移除好友'),
+                                      label: Text(t.text('Remove Friend')),
                                     ),
                                     OutlinedButton.icon(
                                       onPressed:
@@ -592,10 +624,12 @@ class _FriendsPageState extends State<FriendsPage> {
                                               () => _friendsService.blockUser(
                                                 friend.userId,
                                               ),
-                                              successMessage: '已封鎖玩家',
+                                              successMessage: t.text(
+                                                'Player blocked',
+                                              ),
                                             ),
                                       icon: const Icon(Icons.block),
-                                      label: const Text('封鎖'),
+                                      label: Text(t.text('Block')),
                                     ),
                                   ],
                                 ),
@@ -605,15 +639,15 @@ class _FriendsPageState extends State<FriendsPage> {
                 ),
                 const SizedBox(height: 20),
                 _buildSection(
-                  '封鎖名單',
+                  t.text('Blocked Users'),
                   overview.blockedUsers.isEmpty
-                      ? const Text('目前沒有封鎖任何玩家')
+                      ? Text(t.text('No blocked players'))
                       : Column(
                           children: overview.blockedUsers
                               .map(
                                 (user) => _buildUserTile(
                                   user: user,
-                                  subtitle: '已封鎖',
+                                  subtitle: t.text('Blocked'),
                                   actions: [
                                     OutlinedButton(
                                       onPressed:
@@ -624,9 +658,11 @@ class _FriendsPageState extends State<FriendsPage> {
                                               () => _friendsService.unblockUser(
                                                 user.userId,
                                               ),
-                                              successMessage: '已解除封鎖',
+                                              successMessage: t.text(
+                                                'Unblocked',
+                                              ),
                                             ),
-                                      child: const Text('解除封鎖'),
+                                      child: Text(t.text('Unblock')),
                                     ),
                                   ],
                                 ),

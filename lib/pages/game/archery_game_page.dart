@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../services/locale_provider.dart';
 
 class ArcheryGamePage extends StatefulWidget {
   const ArcheryGamePage({super.key});
@@ -121,13 +124,17 @@ class _ArcheryGamePageState extends State<ArcheryGamePage>
 
   @override
   Widget build(BuildContext context) {
+    final t = context.watch<LocaleProvider>().translation;
     return Scaffold(
-      appBar: AppBar(title: const Text('弓箭射擊遊戲')),
+      appBar: AppBar(title: Text(t.text('Archery Game'))),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('分數: $score', style: const TextStyle(fontSize: 24)),
+            Text(
+              '${t.text('Score')}: $score',
+              style: const TextStyle(fontSize: 24),
+            ),
             const SizedBox(height: 16),
 
             // 遊戲畫面
@@ -267,7 +274,9 @@ class _ArcheryGamePageState extends State<ArcheryGamePage>
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text('拉弦體力 $stamina%', style: const TextStyle(fontSize: 14),
+                  Text(
+                    '${t.text('Draw Strength')} $stamina%',
+                    style: const TextStyle(fontSize: 14),
                   ),
                 ],
               ),
@@ -295,16 +304,21 @@ class _ArcheryGamePageState extends State<ArcheryGamePage>
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  isPulling ? '拉弦中... ${(pullAmount * 100).toInt()}%' : '長按拉弦',
+                  isPulling
+                      ? '${t.text('Drawing...')} ${(pullAmount * 100).toInt()}%'
+                      : t.text('Long press to draw'),
                   style: const TextStyle(fontSize: 18, color: Colors.white),
                 ),
               ),
             ),
 
             const SizedBox(height: 12),
-            Text('等級: $level', style: const TextStyle(fontSize: 18)),
-            if (level == 1) const Text('靶不會動'),
-            if (level >= 2) const Text('靶會動'),
+            Text(
+              '${t.text('Level')}: $level',
+              style: const TextStyle(fontSize: 18),
+            ),
+            if (level == 1) Text(t.text('Target is stationary')),
+            if (level >= 2) Text(t.text('Target is moving')),
           ],
         ),
       ),
