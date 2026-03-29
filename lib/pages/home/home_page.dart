@@ -67,11 +67,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildDrawerFriendTile(SocialUser friend) {
+    final t = context.watch<LocaleProvider>().translation;
     final subtitle = friend.isOnline
-        ? '在線中'
+        ? t.text('Online')
         : friend.lastActiveAt == null || friend.lastActiveAt!.isEmpty
-        ? '目前離線'
-        : '最後上線 ${friend.lastActiveAt}';
+        ? t.text('Offline')
+        : '${t.text('Last online')} ${friend.lastActiveAt}';
 
     return ListTile(
       dense: true,
@@ -122,6 +123,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Drawer _buildDrawer(AppUser user) {
+    final t = context.watch<LocaleProvider>().translation;
     final overview = _friendsOverview;
     final friends = overview?.friends ?? const <SocialUser>[];
 
@@ -177,7 +179,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '玩家 ID ${user.id}',
+                    '${t.text('Player ID')} ${user.id}',
                     style: const TextStyle(color: Colors.white70),
                   ),
                 ],
@@ -185,7 +187,7 @@ class _HomePageState extends State<HomePage> {
             ),
             ListTile(
               leading: const Icon(Icons.group_outlined),
-              title: const Text('好友系統'),
+              title: Text(t.text('Friends')),
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
                 Navigator.of(context).pop();
@@ -195,7 +197,7 @@ class _HomePageState extends State<HomePage> {
             if (user.role == 'admin')
               ListTile(
                 leading: const Icon(Icons.admin_panel_settings_outlined),
-                title: const Text('身份組管理'),
+                title: Text(t.text('Role Management')),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.of(context).pop();
@@ -204,16 +206,16 @@ class _HomePageState extends State<HomePage> {
               ),
             ListTile(
               leading: const Icon(Icons.refresh_rounded),
-              title: const Text('重新整理好友列表'),
+              title: Text(t.text('Refresh Friends List')),
               onTap: _loadFriends,
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      '好友列表',
+                      t.text('Friend List'),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
@@ -230,7 +232,7 @@ class _HomePageState extends State<HomePage> {
                         color: const Color(0xFF16324F).withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: Text('${friends.length} 人'),
+                      child: Text('${friends.length} ${t.text('people')}'),
                     ),
                 ],
               ),
@@ -239,9 +241,9 @@ class _HomePageState extends State<HomePage> {
               child: _isLoadingFriends && overview == null
                   ? const Center(child: CircularProgressIndicator())
                   : overview == null
-                  ? const Center(child: Text('好友資料載入失敗'))
+                  ? Center(child: Text(t.text('Failed to load friend data')))
                   : friends.isEmpty
-                  ? const Center(child: Text('目前還沒有好友'))
+                  ? Center(child: Text(t.text('No friends yet')))
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       itemCount: friends.length,
@@ -262,18 +264,18 @@ class _HomePageState extends State<HomePage> {
     final user = context.watch<AuthService>().user;
     final t = context.watch<LocaleProvider>().translation;
     if (user == null) {
-      return Scaffold(body: Center(child: Text(t['請先登入'] ?? '請先登入')));
+      return Scaffold(body: Center(child: Text(t.text('Please log in first'))));
     }
 
     return Scaffold(
       drawer: _buildDrawer(user),
       appBar: AppBar(
-        title: Text(t['Taiwan Brawl Portal'] ?? 'Taiwan Brawl Portal'),
+        title: Text(t.text('Taiwan Brawl Portal')),
         actions: [
           IconButton(
             onPressed: () => Navigator.of(context).pushNamed('/profile'),
             icon: const Icon(Icons.person),
-            tooltip: t['個人資料'] ?? '個人資料',
+            tooltip: t.text('Profile'),
           ),
           IconButton(
             onPressed: () async {
@@ -282,7 +284,7 @@ class _HomePageState extends State<HomePage> {
               Navigator.of(context).pushReplacementNamed('/login');
             },
             icon: const Icon(Icons.logout),
-            tooltip: t['登出'] ?? '登出',
+            tooltip: t.text('Logout'),
           ),
         ],
       ),
@@ -293,7 +295,7 @@ class _HomePageState extends State<HomePage> {
             padding: const EdgeInsets.all(16),
             children: [
               Text(
-                '${t['歡迎回來'] ?? '歡迎回來'}，${user.name}',
+                '${t.text('Welcome back')}，${user.name}',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 8),
@@ -302,13 +304,13 @@ class _HomePageState extends State<HomePage> {
               OutlinedButton.icon(
                 onPressed: () => Navigator.of(context).pushNamed('/profile'),
                 icon: const Icon(Icons.edit),
-                label: Text(t['編輯個人資料'] ?? '編輯個人資料'),
+                label: Text(t.text('Edit Profile')),
               ),
               const SizedBox(height: 12),
               FilledButton.icon(
                 onPressed: () => Navigator.of(context).pushNamed('/friends'),
                 icon: const Icon(Icons.group_outlined),
-                label: const Text('好友系統'),
+                label: Text(t.text('Friends')),
               ),
               if (user.role == 'admin') ...[
                 const SizedBox(height: 12),
@@ -316,28 +318,28 @@ class _HomePageState extends State<HomePage> {
                   onPressed: () =>
                       Navigator.of(context).pushNamed('/admin/roles'),
                   icon: const Icon(Icons.admin_panel_settings_outlined),
-                  label: const Text('身份組管理'),
+                  label: Text(t.text('Role Management')),
                 ),
               ],
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: () => Navigator.of(context).pushNamed('/archery'),
                 icon: const Icon(Icons.architecture),
-                label: const Text('弓箭射擊遊戲'),
+                label: Text(t.text('Archery Game')),
               ),
               const SizedBox(height: 12),
               FilledButton.icon(
                 onPressed: () =>
                     Navigator.of(context).pushNamed('/royale-deck'),
                 icon: const Icon(Icons.style_outlined),
-                label: const Text('Mini Royale 牌組編輯'),
+                label: Text(t.text('Mini Royale Deck Builder')),
               ),
               const SizedBox(height: 12),
               ElevatedButton.icon(
                 onPressed: () =>
                     Navigator.of(context).pushNamed('/royale-lobby'),
                 icon: const Icon(Icons.sports_esports_outlined),
-                label: const Text('Mini Royale 房間對戰'),
+                label: Text(t.text('Mini Royale Lobby Battle')),
               ),
               const SizedBox(height: 24),
               const AppVersionText(),

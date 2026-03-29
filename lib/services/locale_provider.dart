@@ -5,6 +5,10 @@ import '../constants/locale_en.dart';
 import '../constants/locale_zh_Hant.dart';
 import '../constants/locale_ja.dart';
 
+extension LocaleTranslationMap on Map<String, String> {
+  String text(String key) => this[key] ?? key;
+}
+
 class LocaleProvider extends ChangeNotifier {
   String _locale = 'zh-Hant';
   int? _userId;

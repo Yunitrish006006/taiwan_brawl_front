@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -29,15 +28,21 @@ class SettingsPanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(t['顯示設定'] ?? '顯示設定', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              t.text('Display Settings'),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
-            Text(t['主題模式'] ?? '主題模式'),
+            Text(t.text('Theme Mode')),
             DropdownButton<String>(
               value: themeProvider.themeModeText,
               items: [
-                DropdownMenuItem(value: 'system', child: Text(t['跟隨系統'] ?? '跟隨系統')),
-                DropdownMenuItem(value: 'light', child: Text(t['亮色'] ?? '亮色')),
-                DropdownMenuItem(value: 'dark', child: Text(t['暗色'] ?? '暗色')),
+                DropdownMenuItem(
+                  value: 'system',
+                  child: Text(t.text('Follow System')),
+                ),
+                DropdownMenuItem(value: 'light', child: Text(t.text('Light'))),
+                DropdownMenuItem(value: 'dark', child: Text(t.text('Dark'))),
               ],
               onChanged: (value) async {
                 if (value == null) return;
@@ -55,13 +60,16 @@ class SettingsPanel extends StatelessWidget {
               },
             ),
             const SizedBox(height: 8),
-            Text(t['介面語言'] ?? '介面語言'),
+            Text(t.text('Language')),
             DropdownButton<String>(
               value: localeProvider.locale,
               items: [
-                DropdownMenuItem(value: 'zh-Hant', child: Text(t['繁體中文'] ?? '繁體中文')),
-                DropdownMenuItem(value: 'en', child: Text(t['English'] ?? 'English')),
-                DropdownMenuItem(value: 'ja', child: Text(t['日本語'] ?? '日本語')),
+                DropdownMenuItem(
+                  value: 'zh-Hant',
+                  child: Text(t.text('Traditional Chinese')),
+                ),
+                DropdownMenuItem(value: 'en', child: Text(t.text('English'))),
+                DropdownMenuItem(value: 'ja', child: Text(t.text('Japanese'))),
               ],
               onChanged: (value) async {
                 if (value == null) return;
@@ -79,7 +87,9 @@ class SettingsPanel extends StatelessWidget {
               },
             ),
             const SizedBox(height: 8),
-            Text('${t['字體大小'] ?? '字體大小'} ${uiSettings.fontScale.toStringAsFixed(1)}x'),
+            Text(
+              '${t.text('Font Size')} ${uiSettings.fontScale.toStringAsFixed(1)}x',
+            ),
             Slider(
               value: uiSettings.fontScale,
               min: 0.8,
