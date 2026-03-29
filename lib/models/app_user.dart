@@ -5,6 +5,8 @@ class AppUser {
     required this.email,
     required this.role,
     this.bio,
+    this.avatarUrl,
+    this.lastActiveAt,
     required this.themeMode,
     required this.fontSizeScale,
     required this.locale,
@@ -15,6 +17,8 @@ class AppUser {
   final String email;
   final String role;
   final String? bio;
+  final String? avatarUrl;
+  final String? lastActiveAt;
   final String themeMode;
   final double fontSizeScale;
   final String locale;
@@ -26,6 +30,8 @@ class AppUser {
       email: json['email'] as String,
       role: json['role'] as String? ?? 'user',
       bio: json['bio'] as String?,
+      avatarUrl: json['avatar_url'] as String?,
+      lastActiveAt: json['last_active_at'] as String?,
       themeMode: (json['theme_mode'] as String?) ?? 'system',
       fontSizeScale: (json['font_size_scale'] as num?)?.toDouble() ?? 1.0,
       locale: (json['locale'] as String?) ?? 'zh-Hant',

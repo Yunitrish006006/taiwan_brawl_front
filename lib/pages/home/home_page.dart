@@ -54,6 +54,12 @@ class HomePage extends StatelessWidget {
                 icon: const Icon(Icons.edit),
                 label: Text(t['編輯個人資料'] ?? '編輯個人資料'),
               ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: () => Navigator.of(context).pushNamed('/friends'),
+                icon: const Icon(Icons.group_outlined),
+                label: const Text('好友系統'),
+              ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: () => Navigator.of(context).pushNamed('/archery'),
