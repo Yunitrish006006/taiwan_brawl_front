@@ -6,6 +6,9 @@ class AppUser {
     required this.role,
     this.bio,
     this.avatarUrl,
+    this.googleAvatarUrl,
+    this.customAvatarUrl,
+    this.avatarSource,
     this.lastActiveAt,
     required this.themeMode,
     required this.fontSizeScale,
@@ -18,6 +21,9 @@ class AppUser {
   final String role;
   final String? bio;
   final String? avatarUrl;
+  final String? googleAvatarUrl;
+  final String? customAvatarUrl;
+  final String? avatarSource;
   final String? lastActiveAt;
   final String themeMode;
   final double fontSizeScale;
@@ -31,6 +37,9 @@ class AppUser {
       role: json['role'] as String? ?? 'user',
       bio: json['bio'] as String?,
       avatarUrl: json['avatar_url'] as String?,
+      googleAvatarUrl: json['google_avatar_url'] as String?,
+      customAvatarUrl: json['custom_avatar_url'] as String?,
+      avatarSource: json['avatar_source'] as String?,
       lastActiveAt: json['last_active_at'] as String?,
       themeMode: (json['theme_mode'] as String?) ?? 'system',
       fontSizeScale: (json['font_size_scale'] as num?)?.toDouble() ?? 1.0,

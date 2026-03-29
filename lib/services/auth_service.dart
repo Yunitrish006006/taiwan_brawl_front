@@ -55,8 +55,15 @@ class AuthService extends ChangeNotifier {
   Future<void> updateProfile({
     required String name,
     required String bio,
+    required String avatarSource,
+    required String customAvatarUrl,
   }) async {
-    await _apiClient.putJson('/api/users/me', {'name': name, 'bio': bio});
+    await _apiClient.putJson('/api/users/me', {
+      'name': name,
+      'bio': bio,
+      'avatar_source': avatarSource,
+      'custom_avatar_url': customAvatarUrl,
+    });
     await refreshMe(silent: true);
   }
 
