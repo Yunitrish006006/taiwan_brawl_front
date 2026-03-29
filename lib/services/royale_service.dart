@@ -36,8 +36,14 @@ class RoyaleService {
     return RoyaleDeck.fromJson(res['deck'] as Map<String, dynamic>);
   }
 
-  Future<RoyaleRoomSnapshot> createRoom({required int deckId}) async {
-    final res = await _apiClient.postJson('/api/rooms', {'deckId': deckId});
+  Future<RoyaleRoomSnapshot> createRoom({
+    required int deckId,
+    bool vsBot = false,
+  }) async {
+    final res = await _apiClient.postJson('/api/rooms', {
+      'deckId': deckId,
+      'vsBot': vsBot,
+    });
     return RoyaleRoomSnapshot.fromJson(res['room'] as Map<String, dynamic>);
   }
 
