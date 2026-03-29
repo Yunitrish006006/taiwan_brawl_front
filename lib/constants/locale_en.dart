@@ -18,6 +18,9 @@ const Map<String, String> enUS = {
   'Friends': 'Friends',
   'Role Management': 'Role Management',
   'Card Management': 'Card Management',
+  'Simulation Mode': 'Simulation Mode',
+  'Host Simulation (Experimental)': 'Host Simulation (Experimental)',
+  'Server Simulation': 'Server Simulation',
   'Refresh Friends List': 'Refresh Friends List',
   'Friend List': 'Friend List',
   'Failed to load friend data': 'Failed to load friend data',
@@ -77,10 +80,18 @@ const Map<String, String> enUS = {
   'Refresh': 'Refresh',
   'Manage player roles': 'Manage player roles',
   'Manage battle cards': 'Manage battle cards',
+  'Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.':
+      'Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.',
+  'Server simulation runs in the room server and is the default recommended mode.':
+      'Server simulation runs in the room server and is the default recommended mode.',
+  'Host simulation is currently available for bot matches only':
+      'Host simulation is currently available for bot matches only',
   'Available roles are Admin, Card Manager, and Player. This version only changes role assignments and does not attach role-specific features yet.':
       'Available roles are Admin, Card Manager, and Player. This version only changes role assignments and does not attach role-specific features yet.',
   'Create or edit card stats and effects. Changes are saved to the live cards table immediately.':
       'Create or edit card stats and effects. Changes are saved to the live cards table immediately.',
+  'World unit scale: the battlefield uses 1000-based integer coordinates. Example: Attack Range 280 means 28% of the map height, and Body Radius 18 means the unit body takes 1.8% of the map height.':
+      'World unit scale: the battlefield uses 1000-based integer coordinates. Example: Attack Range 280 means 28% of the map height, and Body Radius 18 means the unit body takes 1.8% of the map height.',
   'Cards are stored in the D1 cards table. Starter definitions live in src/royale_cards.js and seed the table when empty.':
       'Cards are stored in the D1 cards table. Starter definitions live in src/royale_cards.js and seed the table when empty.',
   'Search players': 'Search players',
@@ -124,6 +135,7 @@ const Map<String, String> enUS = {
   'No cards found': 'No cards found',
   'Elixir Cost': 'Elixir Cost',
   'Attack Range': 'Attack Range',
+  'Body Radius': 'Body Radius',
   'Move Speed': 'Move Speed',
   'Attack Speed': 'Attack Speed',
   'Spawn Count': 'Spawn Count',
@@ -140,6 +152,19 @@ const Map<String, String> enUS = {
   'Health Boost': 'Health Boost',
   'Speed Boost': 'Speed Boost',
   'Please enter a valid number for': 'Please enter a valid number for',
+  'Hit points. Uses normal game damage values.':
+      'Hit points. Uses normal game damage values.',
+  'Damage dealt on each successful attack.':
+      'Damage dealt on each successful attack.',
+  'Weapon reach in world units. This does not include the unit body radius.':
+      'Weapon reach in world units. This does not include the unit body radius.',
+  'Unit body size in world units. Final reach uses body radius plus attack range.':
+      'Unit body size in world units. Final reach uses body radius plus attack range.',
+  'Movement speed in world units per second before global battle multipliers.':
+      'Movement speed in world units per second before global battle multipliers.',
+  'Seconds between attacks. Smaller values attack faster.':
+      'Seconds between attacks. Smaller values attack faster.',
+  'Spell area radius in world units.': 'Spell area radius in world units.',
   'Editing existing card IDs is disabled. Create a new card if you need a different ID.':
       'Editing existing card IDs is disabled. Create a new card if you need a different ID.',
   'Spell Damage': 'Spell Damage',
