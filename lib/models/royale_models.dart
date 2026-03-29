@@ -129,8 +129,8 @@ class RoyaleUnitView {
     required this.name,
     required this.side,
     required this.type,
-    required this.x,
-    required this.yOffset,
+    required this.progress,
+    required this.lateralPosition,
     required this.hp,
     required this.maxHp,
     required this.effects,
@@ -141,8 +141,8 @@ class RoyaleUnitView {
   final String name;
   final String side;
   final String type;
-  final double x;
-  final double yOffset;
+  final double progress;
+  final double lateralPosition;
   final int hp;
   final int maxHp;
   final List<String> effects;
@@ -154,8 +154,10 @@ class RoyaleUnitView {
       name: json['name'] as String,
       side: json['side'] as String,
       type: json['type'] as String,
-      x: (json['x'] as num).toDouble(),
-      yOffset: (json['yOffset'] as num?)?.toDouble() ?? 0,
+      progress: ((json['progress'] ?? json['x']) as num).toDouble(),
+      lateralPosition:
+          ((json['lateralPosition'] ?? json['yOffset'] ?? 0.5) as num)
+              .toDouble(),
       hp: (json['hp'] as num?)?.toInt() ?? 0,
       maxHp: (json['maxHp'] as num?)?.toInt() ?? 0,
       effects: (json['effects'] as List<dynamic>? ?? const [])

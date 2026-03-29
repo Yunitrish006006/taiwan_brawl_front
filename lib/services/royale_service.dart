@@ -56,6 +56,11 @@ class RoyaleService {
     return RoyaleRoomSnapshot.fromJson(res['room'] as Map<String, dynamic>);
   }
 
+  Future<RoyaleRoomSnapshot> rematchRoom(String roomCode) async {
+    final res = await _apiClient.postJson('/api/rooms/$roomCode/rematch', {});
+    return RoyaleRoomSnapshot.fromJson(res['room'] as Map<String, dynamic>);
+  }
+
   Future<RoyaleRoomSnapshot> fetchRoomState(String roomCode) async {
     final res = await _apiClient.getJson('/api/rooms/$roomCode/state');
     return RoyaleRoomSnapshot.fromJson(res['room'] as Map<String, dynamic>);
