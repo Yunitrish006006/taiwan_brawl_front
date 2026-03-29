@@ -13,6 +13,8 @@ class RoyaleCard {
     required this.spellRadius,
     required this.spellDamage,
     required this.targetRule,
+    required this.effectKind,
+    required this.effectValue,
   });
 
   final String id;
@@ -28,6 +30,10 @@ class RoyaleCard {
   final double spellRadius;
   final int spellDamage;
   final String targetRule;
+  final String effectKind;
+  final double effectValue;
+
+  bool get isEquipment => type == 'equipment';
 
   factory RoyaleCard.fromJson(Map<String, dynamic> json) {
     return RoyaleCard(
@@ -44,6 +50,8 @@ class RoyaleCard {
       spellRadius: (json['spellRadius'] as num).toDouble(),
       spellDamage: (json['spellDamage'] as num).toInt(),
       targetRule: json['targetRule'] as String,
+      effectKind: (json['effectKind'] as String?) ?? 'none',
+      effectValue: (json['effectValue'] as num?)?.toDouble() ?? 0,
     );
   }
 }
@@ -125,6 +133,7 @@ class RoyaleUnitView {
     required this.yOffset,
     required this.hp,
     required this.maxHp,
+    required this.effects,
   });
 
   final String id;
@@ -136,6 +145,7 @@ class RoyaleUnitView {
   final double yOffset;
   final int hp;
   final int maxHp;
+  final List<String> effects;
 
   factory RoyaleUnitView.fromJson(Map<String, dynamic> json) {
     return RoyaleUnitView(
@@ -148,6 +158,9 @@ class RoyaleUnitView {
       yOffset: (json['yOffset'] as num?)?.toDouble() ?? 0,
       hp: (json['hp'] as num?)?.toInt() ?? 0,
       maxHp: (json['maxHp'] as num?)?.toInt() ?? 0,
+      effects: (json['effects'] as List<dynamic>? ?? const [])
+          .map((effect) => effect.toString())
+          .toList(),
     );
   }
 }

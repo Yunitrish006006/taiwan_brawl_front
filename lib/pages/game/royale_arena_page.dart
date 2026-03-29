@@ -20,6 +20,7 @@ class RoyaleArenaPage extends StatefulWidget {
 class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   late final RoyaleService _service;
   final GlobalKey _arenaKey = GlobalKey();
+  final List<String> _selectedCardIds = [];
   WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _socketSubscription;
   Timer? _pingTimer;
@@ -51,6 +52,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       }
       setState(() {
         _room = room;
+        _syncSelectionWithRoom(room);
         _isLoading = false;
       });
       _connectSocket();
@@ -71,6 +73,12 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         _isLoading = false;
       });
     }
+  }
+
+  void _syncSelectionWithRoom(RoyaleRoomSnapshot room) {
+    final handIds =
+        room.battle?.yourHand.map((card) => card.id).toSet() ?? <String>{};
+    _selectedCardIds.removeWhere((id) => !handIds.contains(id));
   }
 
   void _connectSocket() {
@@ -94,8 +102,10 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         if (roomJson == null || !mounted) {
           return;
         }
+        final room = RoyaleRoomSnapshot.fromJson(roomJson);
         setState(() {
-          _room = RoyaleRoomSnapshot.fromJson(roomJson);
+          _room = room;
+          _syncSelectionWithRoom(room);
         });
       },
       onError: (_) {
@@ -123,6 +133,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       }
       setState(() {
         _room = room;
+        _syncSelectionWithRoom(room);
       });
     } on ApiException catch (e) {
       if (!mounted) {
@@ -140,14 +151,66 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     }
   }
 
-  void _playCard(String cardId, double lanePosition) {
+  void _toggleCardSelection(RoyaleCard card) {
+    final alreadySelected = _selectedCardIds.contains(card.id);
+    if (alreadySelected) {
+      setState(() {
+        _selectedCardIds.remove(card.id);
+      });
+      return;
+    }
+
+    if (_selectedCardIds.length >= 3) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('一次最多先選 3 張卡')));
+      return;
+    }
+
+    setState(() {
+      _selectedCardIds.add(card.id);
+    });
+  }
+
+  List<RoyaleCard> _selectedCards(RoyaleBattleView battle) {
+    final handMap = {for (final card in battle.yourHand) card.id: card};
+    return _selectedCardIds
+        .map((id) => handMap[id])
+        .whereType<RoyaleCard>()
+        .toList();
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _selectedCardIds.clear();
+    });
+  }
+
+  void _castCards(List<RoyaleCard> cards, double lanePosition) {
+    if (cards.isEmpty) {
+      return;
+    }
+
+    final hasEquipment = cards.any((card) => card.isEquipment);
+    final hasUnit = cards.any(
+      (card) => card.type != 'equipment' && card.type != 'spell',
+    );
+
+    if (hasEquipment && !hasUnit) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('裝備卡需要和至少一張單位卡一起丟出去')));
+      return;
+    }
+
     _channel?.sink.add(
       jsonEncode({
-        'type': 'play_card',
-        'cardId': cardId,
+        'type': 'play_combo',
+        'cardIds': cards.map((card) => card.id).toList(),
         'lanePosition': lanePosition,
       }),
     );
+    _clearSelection();
   }
 
   String _formatTime(int ms) {
@@ -159,6 +222,41 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
 
   Color _sideColor(String side) {
     return side == 'left' ? const Color(0xFF00ACC1) : const Color(0xFFE53935);
+  }
+
+  Color _cardColor(String type) {
+    switch (type) {
+      case 'tank':
+        return const Color(0xFF3949AB);
+      case 'ranged':
+        return const Color(0xFF00897B);
+      case 'swarm':
+        return const Color(0xFFF57C00);
+      case 'spell':
+        return const Color(0xFFC62828);
+      case 'equipment':
+        return const Color(0xFF6A1B9A);
+      default:
+        return const Color(0xFF6D4C41);
+    }
+  }
+
+  String _cardStats(RoyaleCard card) {
+    if (card.type == 'spell') {
+      return '法術 ${card.spellDamage}';
+    }
+    if (card.type == 'equipment') {
+      switch (card.effectKind) {
+        case 'damage_boost':
+          return '裝備: +${card.effectValue.toInt()} 傷害';
+        case 'health_boost':
+          return '裝備: +${card.effectValue.toInt()} 生命';
+        case 'speed_boost':
+          return '裝備: +${(card.effectValue * 100).toInt()}% 速度';
+      }
+      return '裝備卡';
+    }
+    return 'HP ${card.hp} / DMG ${card.damage}';
   }
 
   Widget _buildLobby(RoyaleRoomSnapshot room) {
@@ -268,6 +366,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     final mySide = room.viewerSide ?? 'left';
     final myDeployLeft = mySide == 'left' ? 0.0 : 0.58;
     final myDeployWidth = 0.42;
+    final selectedCards = _selectedCards(battle);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -308,7 +407,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
               ],
             ),
             const SizedBox(height: 16),
-            DragTarget<RoyaleCard>(
+            DragTarget<_ComboDragPayload>(
               onAcceptWithDetails: (details) {
                 final renderBox =
                     _arenaKey.currentContext?.findRenderObject() as RenderBox?;
@@ -320,7 +419,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                   0.0,
                   1.0,
                 );
-                _playCard(details.data.id, normalized);
+                _castCards(details.data.cards, normalized);
               },
               builder: (context, candidateItems, rejectedItems) {
                 return Container(
@@ -425,33 +524,68 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
             ),
             const SizedBox(height: 16),
             Text(
-              '拖曳手牌到綠色部署區下兵',
+              '點手牌可先組合，拖曳單卡或拖曳組合包到綠色部署區',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 10),
+            if (selectedCards.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Draggable<_ComboDragPayload>(
+                  data: _ComboDragPayload(cards: selectedCards),
+                  feedback: Material(
+                    color: Colors.transparent,
+                    child: _ComboLauncher(cards: selectedCards, elevated: true),
+                  ),
+                  childWhenDragging: Opacity(
+                    opacity: 0.35,
+                    child: _ComboLauncher(cards: selectedCards),
+                  ),
+                  child: _ComboLauncher(cards: selectedCards),
+                ),
+              ),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: battle.yourHand.map((card) {
                   final playable = battle.yourElixir >= card.elixirCost;
+                  final selectionOrder = _selectedCardIds.indexOf(card.id);
                   return Padding(
                     padding: const EdgeInsets.only(right: 12),
-                    child: Draggable<RoyaleCard>(
-                      data: card,
-                      maxSimultaneousDrags: playable ? 1 : 0,
-                      feedback: Material(
-                        color: Colors.transparent,
+                    child: GestureDetector(
+                      onTap: () => _toggleCardSelection(card),
+                      child: Draggable<_ComboDragPayload>(
+                        data: _ComboDragPayload(cards: [card]),
+                        maxSimultaneousDrags: playable ? 1 : 0,
+                        feedback: Material(
+                          color: Colors.transparent,
+                          child: _HandCard(
+                            card: card,
+                            playable: playable,
+                            elevated: true,
+                            selectedOrder: selectionOrder,
+                            cardColor: _cardColor(card.type),
+                            cardStats: _cardStats(card),
+                          ),
+                        ),
+                        childWhenDragging: Opacity(
+                          opacity: 0.35,
+                          child: _HandCard(
+                            card: card,
+                            playable: playable,
+                            selectedOrder: selectionOrder,
+                            cardColor: _cardColor(card.type),
+                            cardStats: _cardStats(card),
+                          ),
+                        ),
                         child: _HandCard(
                           card: card,
                           playable: playable,
-                          elevated: true,
+                          selectedOrder: selectionOrder,
+                          cardColor: _cardColor(card.type),
+                          cardStats: _cardStats(card),
                         ),
                       ),
-                      childWhenDragging: Opacity(
-                        opacity: 0.35,
-                        child: _HandCard(card: card, playable: playable),
-                      ),
-                      child: _HandCard(card: card, playable: playable),
                     ),
                   );
                 }).toList(),
@@ -491,6 +625,12 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                 : _buildArena(_room!)),
     );
   }
+}
+
+class _ComboDragPayload {
+  const _ComboDragPayload({required this.cards});
+
+  final List<RoyaleCard> cards;
 }
 
 class _ArenaPainter extends CustomPainter {
@@ -634,45 +774,126 @@ class _UnitToken extends StatelessWidget {
         : const Color(0xFFD32F2F);
     final progress = unit.maxHp == 0 ? 0.0 : unit.hp / unit.maxHp;
 
-    return Column(
+    return Stack(
+      clipBehavior: Clip.none,
       children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 2),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            unit.name.characters.first,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        const SizedBox(height: 3),
-        Container(
-          width: 34,
-          height: 5,
-          decoration: BoxDecoration(
-            color: Colors.black12,
-            borderRadius: BorderRadius.circular(99),
-          ),
-          alignment: Alignment.centerLeft,
-          child: FractionallySizedBox(
-            widthFactor: progress.clamp(0.0, 1.0),
-            child: Container(
+        Column(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
-                color: Colors.lightGreenAccent.shade400,
+                color: color,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                unit.name.characters.first,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 3),
+            Container(
+              width: 34,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.black12,
                 borderRadius: BorderRadius.circular(99),
+              ),
+              alignment: Alignment.centerLeft,
+              child: FractionallySizedBox(
+                widthFactor: progress.clamp(0.0, 1.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.lightGreenAccent.shade400,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (unit.effects.isNotEmpty)
+          Positioned(
+            right: -4,
+            top: -6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFD54F),
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: Colors.white, width: 1.4),
+              ),
+              child: Text(
+                '+${unit.effects.length}',
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
-        ),
       ],
+    );
+  }
+}
+
+class _ComboLauncher extends StatelessWidget {
+  const _ComboLauncher({required this.cards, this.elevated = false});
+
+  final List<RoyaleCard> cards;
+  final bool elevated;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalCost = cards.fold<int>(0, (sum, card) => sum + card.elixirCost);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF311B92), Color(0xFF512DA8), Color(0xFF7E57C2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: elevated
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 14,
+                  offset: const Offset(0, 8),
+                ),
+              ]
+            : null,
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.layers, color: Colors.white),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '組合包 ${cards.length} 張: ${cards.map((card) => card.name).join(' + ')}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Text(
+            '$totalCost',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -681,83 +902,96 @@ class _HandCard extends StatelessWidget {
   const _HandCard({
     required this.card,
     required this.playable,
+    required this.cardColor,
+    required this.cardStats,
     this.elevated = false,
+    this.selectedOrder = -1,
   });
 
   final RoyaleCard card;
   final bool playable;
+  final Color cardColor;
+  final String cardStats;
   final bool elevated;
-
-  Color _cardColor() {
-    switch (card.type) {
-      case 'tank':
-        return const Color(0xFF3949AB);
-      case 'ranged':
-        return const Color(0xFF00897B);
-      case 'swarm':
-        return const Color(0xFFF57C00);
-      case 'spell':
-        return const Color(0xFFC62828);
-      default:
-        return const Color(0xFF6D4C41);
-    }
-  }
+  final int selectedOrder;
 
   @override
   Widget build(BuildContext context) {
     return Opacity(
       opacity: playable ? 1 : 0.45,
-      child: Container(
-        width: 120,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: _cardColor(),
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: elevated
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 14,
-                    offset: const Offset(0, 8),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 136,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: selectedOrder >= 0
+                    ? Colors.amberAccent
+                    : Colors.white.withValues(alpha: 0.14),
+                width: selectedOrder >= 0 ? 2.4 : 1,
+              ),
+              boxShadow: elevated
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 14,
+                        offset: const Offset(0, 8),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    card.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        card.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ),
+                    CircleAvatar(
+                      radius: 14,
+                      backgroundColor: Colors.white.withValues(alpha: 0.22),
+                      child: Text(
+                        '${card.elixirCost}',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
                 ),
-                CircleAvatar(
-                  radius: 14,
-                  backgroundColor: Colors.white.withValues(alpha: 0.22),
-                  child: Text(
-                    '${card.elixirCost}',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
+                const SizedBox(height: 8),
+                Text(cardStats, style: const TextStyle(color: Colors.white70)),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              card.type == 'spell'
-                  ? '法術 ${card.spellDamage}'
-                  : 'HP ${card.hp} / DMG ${card.damage}',
-              style: const TextStyle(color: Colors.white70),
+          ),
+          if (selectedOrder >= 0)
+            Positioned(
+              right: -6,
+              top: -8,
+              child: CircleAvatar(
+                radius: 14,
+                backgroundColor: Colors.amberAccent,
+                child: Text(
+                  '${selectedOrder + 1}',
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
