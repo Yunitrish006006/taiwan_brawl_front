@@ -1,4 +1,5 @@
 import '../models/admin_models.dart';
+import '../models/royale_models.dart';
 import 'api_client.dart';
 
 class AdminService {
@@ -21,5 +22,21 @@ class AdminService {
       'role': role,
     });
     return ManageUser.fromJson(res['user'] as Map<String, dynamic>);
+  }
+
+  Future<List<RoyaleCard>> fetchCards() async {
+    final res = await _apiClient.getJson('/api/cards');
+    return (res['cards'] as List<dynamic>? ?? const [])
+        .map((item) => RoyaleCard.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<RoyaleCard> upsertCard(Map<String, dynamic> payload) async {
+    final res = await _apiClient.postJson('/api/admin/cards', payload);
+    return RoyaleCard.fromJson(res['card'] as Map<String, dynamic>);
+  }
+
+  Future<void> deleteCard(String cardId) async {
+    await _apiClient.deleteJson('/api/admin/cards/$cardId');
   }
 }

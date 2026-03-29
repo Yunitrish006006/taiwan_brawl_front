@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'constants/app_constants.dart';
+import 'pages/admin/card_management_page.dart';
 import 'pages/admin/role_management_page.dart';
 import 'pages/general/auth_page.dart';
 import 'pages/general/splash_page.dart';
@@ -86,6 +87,7 @@ class MainApp extends StatelessWidget {
             '/home': (_) => const HomePage(),
             '/profile': (_) => const ProfilePage(),
             '/friends': (_) => const FriendsPage(),
+            '/admin/cards': (_) => const CardManagementPage(),
             '/admin/roles': (_) => const RoleManagementPage(),
             '/archery': (_) => const ArcheryGamePage(),
             '/royale-deck': (_) => const RoyaleDeckPage(),
