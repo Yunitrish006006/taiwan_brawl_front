@@ -2,6 +2,9 @@ class RoyaleCard {
   const RoyaleCard({
     required this.id,
     required this.name,
+    required this.nameZhHant,
+    required this.nameEn,
+    required this.nameJa,
     required this.elixirCost,
     required this.type,
     required this.hp,
@@ -20,6 +23,9 @@ class RoyaleCard {
 
   final String id;
   final String name;
+  final String nameZhHant;
+  final String nameEn;
+  final String nameJa;
   final int elixirCost;
   final String type;
   final int hp;
@@ -37,10 +43,27 @@ class RoyaleCard {
 
   bool get isEquipment => type == 'equipment';
 
+  String localizedName(String locale) {
+    final englishFallback = nameEn.isNotEmpty ? nameEn : name;
+    switch (locale) {
+      case 'en':
+        return englishFallback;
+      case 'ja':
+        return nameJa.isNotEmpty ? nameJa : englishFallback;
+      case 'zh-Hant':
+      default:
+        return nameZhHant.isNotEmpty ? nameZhHant : englishFallback;
+    }
+  }
+
   factory RoyaleCard.fromJson(Map<String, dynamic> json) {
     return RoyaleCard(
       id: json['id'] as String,
       name: json['name'] as String,
+      nameZhHant:
+          (json['nameZhHant'] as String?) ?? (json['name'] as String? ?? ''),
+      nameEn: (json['nameEn'] as String?) ?? (json['name'] as String? ?? ''),
+      nameJa: (json['nameJa'] as String?) ?? (json['name'] as String? ?? ''),
       elixirCost: (json['elixirCost'] as num).toInt(),
       type: json['type'] as String,
       hp: (json['hp'] as num).toInt(),
@@ -130,6 +153,9 @@ class RoyaleUnitView {
     required this.id,
     required this.cardId,
     required this.name,
+    required this.nameZhHant,
+    required this.nameEn,
+    required this.nameJa,
     required this.side,
     required this.type,
     required this.progress,
@@ -144,6 +170,9 @@ class RoyaleUnitView {
   final String id;
   final String cardId;
   final String name;
+  final String nameZhHant;
+  final String nameEn;
+  final String nameJa;
   final String side;
   final String type;
   final int progress;
@@ -154,11 +183,28 @@ class RoyaleUnitView {
   final int bodyRadius;
   final List<String> effects;
 
+  String localizedName(String locale) {
+    final englishFallback = nameEn.isNotEmpty ? nameEn : name;
+    switch (locale) {
+      case 'en':
+        return englishFallback;
+      case 'ja':
+        return nameJa.isNotEmpty ? nameJa : englishFallback;
+      case 'zh-Hant':
+      default:
+        return nameZhHant.isNotEmpty ? nameZhHant : englishFallback;
+    }
+  }
+
   factory RoyaleUnitView.fromJson(Map<String, dynamic> json) {
     return RoyaleUnitView(
       id: json['id'] as String,
       cardId: json['cardId'] as String,
       name: json['name'] as String,
+      nameZhHant:
+          (json['nameZhHant'] as String?) ?? (json['name'] as String? ?? ''),
+      nameEn: (json['nameEn'] as String?) ?? (json['name'] as String? ?? ''),
+      nameJa: (json['nameJa'] as String?) ?? (json['name'] as String? ?? ''),
       side: json['side'] as String,
       type: json['type'] as String,
       progress: ((json['progress'] ?? json['x']) as num).toInt(),

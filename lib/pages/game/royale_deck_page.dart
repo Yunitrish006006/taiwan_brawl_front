@@ -210,7 +210,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                               .map(
                                 (card) => InputChip(
                                   label: Text(
-                                    '${card.name} ${card.elixirCost}',
+                                    '${card.localizedName(context.watch<LocaleProvider>().locale)} ${card.elixirCost}',
                                   ),
                                   onDeleted: () => _toggleCard(card),
                                 ),
@@ -288,7 +288,9 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      card.name,
+                                      card.localizedName(
+                                        context.watch<LocaleProvider>().locale,
+                                      ),
                                       style: theme.textTheme.titleMedium
                                           ?.copyWith(
                                             color: Colors.white,

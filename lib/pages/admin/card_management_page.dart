@@ -42,7 +42,9 @@ class _CardManagementPageState extends State<CardManagementPage> {
   late final AdminService _adminService;
 
   final TextEditingController _idController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _nameZhHantController = TextEditingController();
+  final TextEditingController _nameEnController = TextEditingController();
+  final TextEditingController _nameJaController = TextEditingController();
   final TextEditingController _elixirCostController = TextEditingController();
   final TextEditingController _hpController = TextEditingController();
   final TextEditingController _damageController = TextEditingController();
@@ -76,7 +78,9 @@ class _CardManagementPageState extends State<CardManagementPage> {
   @override
   void dispose() {
     _idController.dispose();
-    _nameController.dispose();
+    _nameZhHantController.dispose();
+    _nameEnController.dispose();
+    _nameJaController.dispose();
     _elixirCostController.dispose();
     _hpController.dispose();
     _damageController.dispose();
@@ -146,7 +150,9 @@ class _CardManagementPageState extends State<CardManagementPage> {
       _selectedTargetRule = card.targetRule;
       _selectedEffectKind = card.effectKind;
       _idController.text = card.id;
-      _nameController.text = card.name;
+      _nameZhHantController.text = card.nameZhHant;
+      _nameEnController.text = card.nameEn;
+      _nameJaController.text = card.nameJa;
       _elixirCostController.text = card.elixirCost.toString();
       _hpController.text = card.hp.toString();
       _damageController.text = card.damage.toString();
@@ -169,7 +175,9 @@ class _CardManagementPageState extends State<CardManagementPage> {
       _selectedTargetRule = _targetRuleOptions.first;
       _selectedEffectKind = _effectKindOptions.first;
       _idController.clear();
-      _nameController.clear();
+      _nameZhHantController.clear();
+      _nameEnController.clear();
+      _nameJaController.clear();
       _elixirCostController.text = '3';
       _hpController.text = '300';
       _damageController.text = '100';
@@ -207,9 +215,15 @@ class _CardManagementPageState extends State<CardManagementPage> {
 
   Map<String, dynamic> _buildPayload() {
     final t = context.read<LocaleProvider>().translation;
+    final nameZhHant = _nameZhHantController.text.trim();
+    final nameEn = _nameEnController.text.trim();
+    final nameJa = _nameJaController.text.trim();
     return {
       'id': _idController.text.trim(),
-      'name': _nameController.text.trim(),
+      'nameZhHant': nameZhHant,
+      'nameEn': nameEn,
+      'nameJa': nameJa,
+      'nameI18n': {'zh-Hant': nameZhHant, 'en': nameEn, 'ja': nameJa},
       'elixirCost': _parseIntField(
         _elixirCostController,
         t.text('Elixir Cost'),
@@ -424,7 +438,9 @@ class _CardManagementPageState extends State<CardManagementPage> {
                         context,
                       ).colorScheme.primaryContainer.withValues(alpha: 0.45),
                       title: Text(
-                        card.name,
+                        card.localizedName(
+                          context.read<LocaleProvider>().locale,
+                        ),
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       subtitle: Text(
@@ -531,8 +547,24 @@ class _CardManagementPageState extends State<CardManagementPage> {
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: _nameController,
-              decoration: InputDecoration(labelText: t.text('Card Name')),
+              controller: _nameZhHantController,
+              decoration: InputDecoration(
+                labelText: t.text('Card Name (Traditional Chinese)'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _nameEnController,
+              decoration: InputDecoration(
+                labelText: t.text('Card Name (English)'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _nameJaController,
+              decoration: InputDecoration(
+                labelText: t.text('Card Name (Japanese)'),
+              ),
             ),
             const SizedBox(height: 12),
             Wrap(

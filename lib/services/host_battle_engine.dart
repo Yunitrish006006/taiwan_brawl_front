@@ -367,6 +367,9 @@ class HostBattleEngine {
           id: 'unit-${_nextUnitId++}',
           cardId: card.id,
           name: card.name,
+          nameZhHant: card.nameZhHant,
+          nameEn: card.nameEn,
+          nameJa: card.nameJa,
           type: card.type,
           side: side,
           progress: dropPoint.progress,
@@ -734,6 +737,9 @@ class HostBattleEngine {
                 id: unit.id,
                 cardId: unit.cardId,
                 name: unit.name,
+                nameZhHant: unit.nameZhHant,
+                nameEn: unit.nameEn,
+                nameJa: unit.nameJa,
                 side: unit.side,
                 type: unit.type,
                 progress: unit.progress.round(),
@@ -802,6 +808,9 @@ class _HostUnit {
     required this.id,
     required this.cardId,
     required this.name,
+    required this.nameZhHant,
+    required this.nameEn,
+    required this.nameJa,
     required this.type,
     required this.side,
     required this.progress,
@@ -821,6 +830,9 @@ class _HostUnit {
   final String id;
   final String cardId;
   final String name;
+  final String nameZhHant;
+  final String nameEn;
+  final String nameJa;
   final String type;
   final String side;
   double progress;
