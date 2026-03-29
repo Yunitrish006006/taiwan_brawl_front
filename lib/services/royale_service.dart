@@ -39,10 +39,12 @@ class RoyaleService {
   Future<RoyaleRoomSnapshot> createRoom({
     required int deckId,
     bool vsBot = false,
+    String simulationMode = 'server',
   }) async {
     final res = await _apiClient.postJson('/api/rooms', {
       'deckId': deckId,
       'vsBot': vsBot,
+      'simulationMode': simulationMode,
     });
     return RoyaleRoomSnapshot.fromJson(res['room'] as Map<String, dynamic>);
   }
@@ -64,6 +66,22 @@ class RoyaleService {
 
   Future<RoyaleRoomSnapshot> rematchRoom(String roomCode) async {
     final res = await _apiClient.postJson('/api/rooms/$roomCode/rematch', {});
+    return RoyaleRoomSnapshot.fromJson(res['room'] as Map<String, dynamic>);
+  }
+
+  Future<RoyaleRoomSnapshot> hostFinishRoom({
+    required String roomCode,
+    required String? winnerSide,
+    required String reason,
+    required int leftTowerHp,
+    required int rightTowerHp,
+  }) async {
+    final res = await _apiClient.postJson('/api/rooms/$roomCode/host-finish', {
+      'winnerSide': winnerSide,
+      'reason': reason,
+      'leftTowerHp': leftTowerHp,
+      'rightTowerHp': rightTowerHp,
+    });
     return RoyaleRoomSnapshot.fromJson(res['room'] as Map<String, dynamic>);
   }
 

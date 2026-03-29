@@ -7,6 +7,7 @@ class RoyaleCard {
     required this.hp,
     required this.damage,
     required this.attackRange,
+    required this.bodyRadius,
     required this.moveSpeed,
     required this.attackSpeed,
     required this.spawnCount,
@@ -23,11 +24,12 @@ class RoyaleCard {
   final String type;
   final int hp;
   final int damage;
-  final double attackRange;
-  final double moveSpeed;
+  final int attackRange;
+  final int bodyRadius;
+  final int moveSpeed;
   final double attackSpeed;
   final int spawnCount;
-  final double spellRadius;
+  final int spellRadius;
   final int spellDamage;
   final String targetRule;
   final String effectKind;
@@ -43,11 +45,12 @@ class RoyaleCard {
       type: json['type'] as String,
       hp: (json['hp'] as num).toInt(),
       damage: (json['damage'] as num).toInt(),
-      attackRange: (json['attackRange'] as num).toDouble(),
-      moveSpeed: (json['moveSpeed'] as num).toDouble(),
+      attackRange: (json['attackRange'] as num).toInt(),
+      bodyRadius: (json['bodyRadius'] as num?)?.toInt() ?? 0,
+      moveSpeed: (json['moveSpeed'] as num).toInt(),
       attackSpeed: (json['attackSpeed'] as num).toDouble(),
       spawnCount: (json['spawnCount'] as num).toInt(),
-      spellRadius: (json['spellRadius'] as num).toDouble(),
+      spellRadius: (json['spellRadius'] as num).toInt(),
       spellDamage: (json['spellDamage'] as num).toInt(),
       targetRule: json['targetRule'] as String,
       effectKind: (json['effectKind'] as String?) ?? 'none',
@@ -133,6 +136,8 @@ class RoyaleUnitView {
     required this.lateralPosition,
     required this.hp,
     required this.maxHp,
+    required this.attackRange,
+    required this.bodyRadius,
     required this.effects,
   });
 
@@ -141,10 +146,12 @@ class RoyaleUnitView {
   final String name;
   final String side;
   final String type;
-  final double progress;
-  final double lateralPosition;
+  final int progress;
+  final int lateralPosition;
   final int hp;
   final int maxHp;
+  final int attackRange;
+  final int bodyRadius;
   final List<String> effects;
 
   factory RoyaleUnitView.fromJson(Map<String, dynamic> json) {
@@ -154,12 +161,13 @@ class RoyaleUnitView {
       name: json['name'] as String,
       side: json['side'] as String,
       type: json['type'] as String,
-      progress: ((json['progress'] ?? json['x']) as num).toDouble(),
+      progress: ((json['progress'] ?? json['x']) as num).toInt(),
       lateralPosition:
-          ((json['lateralPosition'] ?? json['yOffset'] ?? 0.5) as num)
-              .toDouble(),
+          ((json['lateralPosition'] ?? json['yOffset'] ?? 500) as num).toInt(),
       hp: (json['hp'] as num?)?.toInt() ?? 0,
       maxHp: (json['maxHp'] as num?)?.toInt() ?? 0,
+      attackRange: (json['attackRange'] as num?)?.toInt() ?? 0,
+      bodyRadius: (json['bodyRadius'] as num?)?.toInt() ?? 0,
       effects: (json['effects'] as List<dynamic>? ?? const [])
           .map((effect) => effect.toString())
           .toList(),
@@ -221,6 +229,7 @@ class RoyaleRoomSnapshot {
   const RoyaleRoomSnapshot({
     required this.code,
     required this.status,
+    required this.simulationMode,
     required this.viewerSide,
     required this.players,
     required this.battle,
@@ -228,6 +237,7 @@ class RoyaleRoomSnapshot {
 
   final String code;
   final String status;
+  final String simulationMode;
   final String? viewerSide;
   final List<RoyalePlayerView> players;
   final RoyaleBattleView? battle;
@@ -261,6 +271,7 @@ class RoyaleRoomSnapshot {
     return RoyaleRoomSnapshot(
       code: json['code'] as String,
       status: json['status'] as String,
+      simulationMode: json['simulationMode'] as String? ?? 'server',
       viewerSide: json['viewerSide'] as String?,
       players: (json['players'] as List<dynamic>? ?? const [])
           .map(

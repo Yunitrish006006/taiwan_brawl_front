@@ -47,6 +47,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
   final TextEditingController _hpController = TextEditingController();
   final TextEditingController _damageController = TextEditingController();
   final TextEditingController _attackRangeController = TextEditingController();
+  final TextEditingController _bodyRadiusController = TextEditingController();
   final TextEditingController _moveSpeedController = TextEditingController();
   final TextEditingController _attackSpeedController = TextEditingController();
   final TextEditingController _spawnCountController = TextEditingController();
@@ -80,6 +81,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
     _hpController.dispose();
     _damageController.dispose();
     _attackRangeController.dispose();
+    _bodyRadiusController.dispose();
     _moveSpeedController.dispose();
     _attackSpeedController.dispose();
     _spawnCountController.dispose();
@@ -149,6 +151,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
       _hpController.text = card.hp.toString();
       _damageController.text = card.damage.toString();
       _attackRangeController.text = card.attackRange.toString();
+      _bodyRadiusController.text = card.bodyRadius.toString();
       _moveSpeedController.text = card.moveSpeed.toString();
       _attackSpeedController.text = card.attackSpeed.toString();
       _spawnCountController.text = card.spawnCount.toString();
@@ -170,8 +173,9 @@ class _CardManagementPageState extends State<CardManagementPage> {
       _elixirCostController.text = '3';
       _hpController.text = '300';
       _damageController.text = '100';
-      _attackRangeController.text = '0.1';
-      _moveSpeedController.text = '0.15';
+      _attackRangeController.text = '100';
+      _bodyRadiusController.text = '18';
+      _moveSpeedController.text = '150';
       _attackSpeedController.text = '1';
       _spawnCountController.text = '1';
       _spellRadiusController.text = '0';
@@ -213,14 +217,15 @@ class _CardManagementPageState extends State<CardManagementPage> {
       'type': _selectedType,
       'hp': _parseIntField(_hpController, t.text('HP')),
       'damage': _parseIntField(_damageController, t.text('Damage')),
-      'attackRange': _parseDoubleField(
+      'attackRange': _parseIntField(
         _attackRangeController,
         t.text('Attack Range'),
       ),
-      'moveSpeed': _parseDoubleField(
-        _moveSpeedController,
-        t.text('Move Speed'),
+      'bodyRadius': _parseIntField(
+        _bodyRadiusController,
+        t.text('Body Radius'),
       ),
+      'moveSpeed': _parseIntField(_moveSpeedController, t.text('Move Speed')),
       'attackSpeed': _parseDoubleField(
         _attackSpeedController,
         t.text('Attack Speed'),
@@ -229,7 +234,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
         _spawnCountController,
         t.text('Spawn Count'),
       ),
-      'spellRadius': _parseDoubleField(
+      'spellRadius': _parseIntField(
         _spellRadiusController,
         t.text('Spell Radius'),
       ),
@@ -442,11 +447,16 @@ class _CardManagementPageState extends State<CardManagementPage> {
     TextEditingController controller,
     String label, {
     String? hint,
+    String? helper,
   }) {
     return TextField(
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(labelText: t.text(label), hintText: hint),
+      decoration: InputDecoration(
+        labelText: t.text(label),
+        hintText: hint,
+        helperText: helper == null ? null : t.text(helper),
+      ),
     );
   }
 
@@ -483,6 +493,22 @@ class _CardManagementPageState extends State<CardManagementPage> {
               ),
             ),
             const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.tertiaryContainer.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                t.text(
+                  'World unit scale: the battlefield uses 1000-based integer coordinates. Example: Attack Range 280 means 28% of the map height, and Body Radius 18 means the unit body takes 1.8% of the map height.',
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -610,11 +636,21 @@ class _CardManagementPageState extends State<CardManagementPage> {
               children: [
                 SizedBox(
                   width: 180,
-                  child: _buildNumberField(t, _hpController, 'HP'),
+                  child: _buildNumberField(
+                    t,
+                    _hpController,
+                    'HP',
+                    helper: 'Hit points. Uses normal game damage values.',
+                  ),
                 ),
                 SizedBox(
                   width: 180,
-                  child: _buildNumberField(t, _damageController, 'Damage'),
+                  child: _buildNumberField(
+                    t,
+                    _damageController,
+                    'Damage',
+                    helper: 'Damage dealt on each successful attack.',
+                  ),
                 ),
                 SizedBox(
                   width: 180,
@@ -622,6 +658,18 @@ class _CardManagementPageState extends State<CardManagementPage> {
                     t,
                     _attackRangeController,
                     'Attack Range',
+                    helper:
+                        'Weapon reach in world units. This does not include the unit body radius.',
+                  ),
+                ),
+                SizedBox(
+                  width: 180,
+                  child: _buildNumberField(
+                    t,
+                    _bodyRadiusController,
+                    'Body Radius',
+                    helper:
+                        'Unit body size in world units. Final reach uses body radius plus attack range.',
                   ),
                 ),
                 SizedBox(
@@ -630,6 +678,8 @@ class _CardManagementPageState extends State<CardManagementPage> {
                     t,
                     _moveSpeedController,
                     'Move Speed',
+                    helper:
+                        'Movement speed in world units per second before global battle multipliers.',
                   ),
                 ),
                 SizedBox(
@@ -638,6 +688,8 @@ class _CardManagementPageState extends State<CardManagementPage> {
                     t,
                     _attackSpeedController,
                     'Attack Speed',
+                    helper:
+                        'Seconds between attacks. Smaller values attack faster.',
                   ),
                 ),
                 SizedBox(
@@ -654,6 +706,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
                     t,
                     _spellRadiusController,
                     'Spell Radius',
+                    helper: 'Spell area radius in world units.',
                   ),
                 ),
                 SizedBox(

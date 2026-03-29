@@ -18,6 +18,7 @@ class RoyaleLobbyPage extends StatefulWidget {
 
 class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
   late final RoyaleService _service;
+  String _simulationMode = 'server';
   bool _isLoading = true;
   bool _isSubmitting = false;
   List<RoyaleDeck> _decks = const [];
@@ -114,6 +115,12 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
     }
   }
 
+  String _simulationModeLabel(Map<String, String> t, String mode) {
+    return mode == 'host'
+        ? t.text('Host Simulation (Experimental)')
+        : t.text('Server Simulation');
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -185,16 +192,85 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
                         },
                       ),
                       const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              t.text('Simulation Mode'),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SegmentedButton<String>(
+                              segments: [
+                                ButtonSegment<String>(
+                                  value: 'server',
+                                  label: Text(
+                                    _simulationModeLabel(t, 'server'),
+                                  ),
+                                  icon: const Icon(Icons.cloud_done_outlined),
+                                ),
+                                ButtonSegment<String>(
+                                  value: 'host',
+                                  label: Text(_simulationModeLabel(t, 'host')),
+                                  icon: const Icon(Icons.memory_rounded),
+                                ),
+                              ],
+                              selected: {_simulationMode},
+                              onSelectionChanged: (selection) {
+                                setState(() {
+                                  _simulationMode = selection.first;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              _simulationMode == 'host'
+                                  ? t.text(
+                                      'Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.',
+                                    )
+                                  : t.text(
+                                      'Server simulation runs in the room server and is the default recommended mode.',
+                                    ),
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: _isSubmitting || _selectedDeck == null
                               ? null
-                              : () => _enterRoom(
-                                  () => _service.createRoom(
-                                    deckId: _selectedDeck!.id,
-                                  ),
-                                ),
+                              : () {
+                                  if (_simulationMode == 'host') {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          t.text(
+                                            'Host simulation is currently available for bot matches only',
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  _enterRoom(
+                                    () => _service.createRoom(
+                                      deckId: _selectedDeck!.id,
+                                      simulationMode: _simulationMode,
+                                    ),
+                                  );
+                                },
                           icon: const Icon(Icons.add_circle_outline),
                           label: Text(t.text('Create Room')),
                         ),
@@ -209,6 +285,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
                                   () => _service.createRoom(
                                     deckId: _selectedDeck!.id,
                                     vsBot: true,
+                                    simulationMode: _simulationMode,
                                   ),
                                 ),
                           icon: const Icon(Icons.smart_toy_outlined),

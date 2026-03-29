@@ -8,8 +8,18 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../models/royale_models.dart';
 import '../../services/api_client.dart';
 import '../../services/friends_service.dart';
+import '../../services/host_battle_engine.dart';
 import '../../services/locale_provider.dart';
 import '../../services/royale_service.dart';
+
+const double _battlefieldAspectRatio = 0.62;
+const double _battlefieldPhoneMaxWidth = 430;
+const double _battlefieldDesktopMaxWidth = 520;
+const int _worldScale = 1000;
+const double _deployZoneMinX = 0.12;
+const double _deployZoneMaxX = 0.88;
+const double _deployZoneMinY = 0.58;
+const double _deployZoneMaxY = 0.92;
 
 class RoyaleArenaPage extends StatefulWidget {
   const RoyaleArenaPage({super.key, required this.roomCode});
@@ -34,8 +44,12 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   bool _isLoading = true;
   bool _readySubmitting = false;
   bool _rematchSubmitting = false;
+  bool _hostFinishSubmitting = false;
+  bool _hostFinishSent = false;
+  bool _dragTargetActive = false;
   String? _error;
   Offset? _aimPoint;
+  HostBattleEngine? _hostBattleEngine;
 
   Map<String, String> get _t => context.read<LocaleProvider>().translation;
 
@@ -53,6 +67,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     _pingTimer?.cancel();
     _socketSubscription?.cancel();
     _channel?.sink.close();
+    _hostBattleEngine?.dispose();
     super.dispose();
   }
 
@@ -68,7 +83,11 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         _syncSelectionWithRoom(room);
         _isLoading = false;
       });
-      _connectSocket();
+      if (_usesHostSimulation(room)) {
+        await _initializeHostBattle(room);
+      } else {
+        _connectSocket();
+      }
     } on ApiException catch (e) {
       if (!mounted) {
         return;
@@ -85,6 +104,109 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         _error = '${_t.text('Failed to load room')}: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  bool _usesHostSimulation([RoyaleRoomSnapshot? room]) {
+    final current = room ?? _room;
+    return current?.simulationMode == 'host' && current?.opponent?.userId == 0;
+  }
+
+  Future<void> _initializeHostBattle(RoyaleRoomSnapshot room) async {
+    if (!_usesHostSimulation(room) ||
+        room.battle == null ||
+        _hostBattleEngine != null) {
+      return;
+    }
+
+    final me = room.me;
+    if (me == null) {
+      return;
+    }
+
+    try {
+      final decks = await _service.fetchDecks();
+      RoyaleDeck? deck;
+      for (final entry in decks) {
+        if (entry.id == me.deckId) {
+          deck = entry;
+          break;
+        }
+      }
+      if (deck == null || !mounted) {
+        return;
+      }
+
+      final engine = HostBattleEngine(
+        room: room,
+        deck: deck,
+        onSnapshot: (snapshot) {
+          if (!mounted) {
+            return;
+          }
+          setState(() {
+            _room = snapshot;
+            _syncSelectionWithRoom(snapshot);
+          });
+          if (snapshot.battle?.result != null) {
+            unawaited(_reportHostFinish(snapshot));
+          }
+        },
+      );
+      setState(() {
+        _hostBattleEngine = engine;
+        _room = engine.snapshot;
+        _syncSelectionWithRoom(engine.snapshot);
+      });
+      engine.start();
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${_t.text('Action failed')}: $e')),
+      );
+    }
+  }
+
+  Future<void> _reportHostFinish(RoyaleRoomSnapshot snapshot) async {
+    if (_hostFinishSent || _hostFinishSubmitting) {
+      return;
+    }
+    final result = snapshot.battle?.result;
+    if (result == null) {
+      return;
+    }
+
+    setState(() {
+      _hostFinishSubmitting = true;
+    });
+
+    try {
+      await _service.hostFinishRoom(
+        roomCode: widget.roomCode,
+        winnerSide: result.winnerSide,
+        reason: result.reason,
+        leftTowerHp: snapshot.players
+            .firstWhere((player) => player.side == 'left')
+            .towerHp,
+        rightTowerHp: snapshot.players
+            .firstWhere((player) => player.side == 'right')
+            .towerHp,
+      );
+      _hostFinishSent = true;
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _hostFinishSubmitting = false;
+        });
+      }
     }
   }
 
@@ -121,6 +243,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   }
 
   void _connectSocket() {
+    if (_usesHostSimulation()) {
+      return;
+    }
     _channel = _service.connectToRoom(widget.roomCode);
     _socketSubscription = _channel!.stream.listen(
       (message) {
@@ -182,6 +307,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         _room = room;
         _syncSelectionWithRoom(room);
       });
+      if (_usesHostSimulation(room)) {
+        await _initializeHostBattle(room);
+      }
     } on ApiException catch (e) {
       if (!mounted) {
         return;
@@ -203,6 +331,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     if (alreadySelected) {
       setState(() {
         _selectedCardIds.remove(card.id);
+        if (_selectedCardIds.isEmpty && !_dragTargetActive) {
+          _aimPoint = null;
+        }
       });
       return;
     }
@@ -229,9 +360,16 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         .toList();
   }
 
+  bool get _hasDeploymentTarget {
+    return _selectedCardIds.isNotEmpty || _dragTargetActive;
+  }
+
   void _clearSelection() {
     setState(() {
       _selectedCardIds.clear();
+      if (!_dragTargetActive) {
+        _aimPoint = null;
+      }
     });
   }
 
@@ -248,9 +386,35 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     return Offset(dropX, dropY);
   }
 
+  bool _isLegalDeployPoint(Offset point) {
+    return point.dx >= _deployZoneMinX &&
+        point.dx <= _deployZoneMaxX &&
+        point.dy >= _deployZoneMinY &&
+        point.dy <= _deployZoneMaxY;
+  }
+
   void _updateAimPoint(Offset globalOffset) {
+    if (!_hasDeploymentTarget) {
+      if (_aimPoint == null) {
+        return;
+      }
+      setState(() {
+        _aimPoint = null;
+      });
+      return;
+    }
+
     final point = _normalizedDropPointForGlobalOffset(globalOffset);
     if (point == null) {
+      return;
+    }
+    if (!_isLegalDeployPoint(point)) {
+      if (_aimPoint == null) {
+        return;
+      }
+      setState(() {
+        _aimPoint = null;
+      });
       return;
     }
     setState(() {
@@ -294,21 +458,45 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       return;
     }
 
+    final dropPoint = Offset(dropX, dropY);
+    if (!_isLegalDeployPoint(dropPoint)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_t.text('Place cards inside your deployment zone')),
+        ),
+      );
+      return;
+    }
+
     final mySide = _room?.viewerSide ?? 'left';
     final lanePosition = (mySide == 'left' ? 1 - dropY : dropY).clamp(0.0, 1.0);
 
-    _channel?.sink.add(
-      jsonEncode({
-        'type': 'play_combo',
-        'cardIds': cards.map((card) => card.id).toList(),
-        'lanePosition': lanePosition,
-        'dropX': dropX,
-        'dropY': dropY,
-      }),
-    );
+    if (_usesHostSimulation()) {
+      final error = _hostBattleEngine?.playCombo(
+        cards,
+        dropX: dropX,
+        dropY: dropY,
+      );
+      if (error != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error)));
+        return;
+      }
+    } else {
+      _channel?.sink.add(
+        jsonEncode({
+          'type': 'play_combo',
+          'cardIds': cards.map((card) => card.id).toList(),
+          'lanePosition': lanePosition,
+          'dropX': dropX,
+          'dropY': dropY,
+        }),
+      );
+    }
     setState(() {
       _selectedCardIds.clear();
-      _aimPoint = Offset(dropX, dropY);
+      _aimPoint = dropPoint;
     });
   }
 
@@ -395,6 +583,10 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         return;
       }
       setState(() {
+        _hostBattleEngine?.dispose();
+        _hostBattleEngine = null;
+        _hostFinishSubmitting = false;
+        _hostFinishSent = false;
         _room = room;
         _syncSelectionWithRoom(room);
       });
@@ -461,6 +653,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
 
   Widget _buildLobby(RoyaleRoomSnapshot room) {
     final myUserId = room.me?.userId;
+    final isHostMode = room.simulationMode == 'host';
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 860),
@@ -509,6 +702,14 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                           'Battle starts as soon as both players are ready',
                         ),
                         style: TextStyle(color: Colors.white70),
+                      ),
+                      _StatusPill(
+                        label: isHostMode
+                            ? _t.text('Host Simulation (Experimental)')
+                            : _t.text('Server Simulation'),
+                        color: isHostMode
+                            ? const Color(0xFFB084F5)
+                            : const Color(0xFF48C7F4),
                       ),
                     ],
                   ),
@@ -638,7 +839,16 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 880;
-        final boardHeight = constraints.maxWidth < 680 ? 300.0 : 400.0;
+        final boardWidth =
+            constraints.maxWidth <
+                (compact
+                    ? _battlefieldPhoneMaxWidth
+                    : _battlefieldDesktopMaxWidth)
+            ? constraints.maxWidth
+            : (compact
+                  ? _battlefieldPhoneMaxWidth
+                  : _battlefieldDesktopMaxWidth);
+        final boardHeight = boardWidth / _battlefieldAspectRatio;
         return Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1200),
@@ -650,10 +860,16 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                   me: me,
                   opponent: opponent,
                   mySide: mySide,
+                  simulationMode: room.simulationMode,
                 ),
                 const SizedBox(height: 16),
                 DragTarget<_ComboDragPayload>(
                   onAcceptWithDetails: (details) {
+                    if (mounted) {
+                      setState(() {
+                        _dragTargetActive = false;
+                      });
+                    }
                     final point = _normalizedDropPointForGlobalOffset(
                       details.offset,
                     );
@@ -665,6 +881,22 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                       dropX: point.dx,
                       dropY: point.dy,
                     );
+                  },
+                  onMove: (details) {
+                    if (!_dragTargetActive) {
+                      setState(() {
+                        _dragTargetActive = true;
+                      });
+                    }
+                    _updateAimPoint(details.offset);
+                  },
+                  onLeave: (_) {
+                    setState(() {
+                      _dragTargetActive = false;
+                      if (_selectedCardIds.isEmpty) {
+                        _aimPoint = null;
+                      }
+                    });
                   },
                   builder: (context, candidateItems, rejectedItems) {
                     final highlightDropZone = candidateItems.isNotEmpty;
@@ -707,331 +939,398 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                             ],
                           ),
                           const SizedBox(height: 14),
-                          Container(
-                            key: _arenaKey,
-                            height: boardHeight,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(30),
-                              gradient: const LinearGradient(
-                                colors: [
-                                  Color(0xFFDEF4FF),
-                                  Color(0xFF9DD6FF),
-                                  Color(0xFF7EC97D),
-                                  Color(0xFF5DAA4D),
-                                ],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                              ),
-                              border: Border.all(
-                                color: highlightDropZone
-                                    ? const Color(0xFFFFD166)
-                                    : Colors.white.withValues(alpha: 0.32),
-                                width: highlightDropZone ? 2.4 : 1.2,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(
-                                    0xFF07111F,
-                                  ).withValues(alpha: 0.28),
-                                  blurRadius: 28,
-                                  offset: const Offset(0, 18),
+                          Align(
+                            child: SizedBox(
+                              width: boardWidth,
+                              height: boardHeight,
+                              child: Container(
+                                key: _arenaKey,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(30),
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFFDEF4FF),
+                                      Color(0xFF9DD6FF),
+                                      Color(0xFF7EC97D),
+                                      Color(0xFF5DAA4D),
+                                    ],
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                  ),
+                                  border: Border.all(
+                                    color: highlightDropZone
+                                        ? const Color(0xFFFFD166)
+                                        : Colors.white.withValues(alpha: 0.32),
+                                    width: highlightDropZone ? 2.4 : 1.2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFF07111F,
+                                      ).withValues(alpha: 0.28),
+                                      blurRadius: 28,
+                                      offset: const Offset(0, 18),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(28),
-                              child: MouseRegion(
-                                onHover: (event) =>
-                                    _updateAimPoint(event.position),
-                                onExit: (_) => _clearAimPoint(),
-                                child: GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTapDown: selectedCards.isEmpty
-                                      ? null
-                                      : (details) {
-                                          final point =
-                                              _normalizedDropPointForGlobalOffset(
-                                                details.globalPosition,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(28),
+                                  child: MouseRegion(
+                                    onHover: (event) =>
+                                        _updateAimPoint(event.position),
+                                    onExit: (_) => _clearAimPoint(),
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTapDown: selectedCards.isEmpty
+                                          ? null
+                                          : (details) {
+                                              final point =
+                                                  _normalizedDropPointForGlobalOffset(
+                                                    details.globalPosition,
+                                                  );
+                                              if (point == null) {
+                                                return;
+                                              }
+                                              _castCards(
+                                                selectedCards,
+                                                dropX: point.dx,
+                                                dropY: point.dy,
                                               );
-                                          if (point == null) {
-                                            return;
-                                          }
-                                          _castCards(
-                                            selectedCards,
-                                            dropX: point.dx,
-                                            dropY: point.dy,
-                                          );
-                                        },
-                                  child: LayoutBuilder(
-                                    builder: (context, board) {
-                                      return Stack(
-                                        children: [
-                                          Positioned.fill(
-                                            child: DecoratedBox(
-                                              decoration: BoxDecoration(
-                                                gradient: RadialGradient(
-                                                  center: const Alignment(
-                                                    0,
-                                                    -0.85,
-                                                  ),
-                                                  radius: 1.1,
-                                                  colors: [
-                                                    Colors.white.withValues(
-                                                      alpha: 0.44,
+                                            },
+                                      child: LayoutBuilder(
+                                        builder: (context, board) {
+                                          return Stack(
+                                            children: [
+                                              Positioned.fill(
+                                                child: DecoratedBox(
+                                                  decoration: BoxDecoration(
+                                                    gradient: RadialGradient(
+                                                      center: const Alignment(
+                                                        0,
+                                                        -0.85,
+                                                      ),
+                                                      radius: 1.1,
+                                                      colors: [
+                                                        Colors.white.withValues(
+                                                          alpha: 0.44,
+                                                        ),
+                                                        Colors.transparent,
+                                                      ],
                                                     ),
-                                                    Colors.transparent,
-                                                  ],
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          ),
-                                          Positioned.fill(
-                                            child: CustomPaint(
-                                              painter: _ArenaPainter(
-                                                playerSide: mySide,
-                                              ),
-                                            ),
-                                          ),
-                                          Positioned(
-                                            left: 18,
-                                            top: 18,
-                                            child: _FieldLabel(
-                                              label: _t.text('Enemy Base'),
-                                              color: const Color(0xFFE25555),
-                                            ),
-                                          ),
-                                          Positioned(
-                                            left: board.maxWidth * 0.5 - 42,
-                                            top: 18,
-                                            child: _FieldLabel(
-                                              label: _t.text('Central Bridge'),
-                                              color: const Color(0xFF2F7D87),
-                                            ),
-                                          ),
-                                          Positioned(
-                                            right: 18,
-                                            bottom: 18,
-                                            child: _FieldLabel(
-                                              label: _t.text(
-                                                'Your Deployment Zone',
-                                              ),
-                                              color: const Color(0xFF136F63),
-                                            ),
-                                          ),
-                                          Positioned(
-                                            left: board.maxWidth * 0.5 - 34,
-                                            top:
-                                                (mySide == 'left'
-                                                    ? board.maxHeight * 0.95
-                                                    : board.maxHeight * 0.05) -
-                                                60,
-                                            child: _TowerToken(
-                                              label: room.players
-                                                  .firstWhere(
-                                                    (p) => p.side == 'left',
-                                                  )
-                                                  .name,
-                                              color: _sideColor('left'),
-                                              towerHp: room.players
-                                                  .firstWhere(
-                                                    (p) => p.side == 'left',
-                                                  )
-                                                  .towerHp,
-                                            ),
-                                          ),
-                                          Positioned(
-                                            left: board.maxWidth * 0.5 - 34,
-                                            top:
-                                                (mySide == 'left'
-                                                    ? board.maxHeight * 0.05
-                                                    : board.maxHeight * 0.95) -
-                                                60,
-                                            child: _TowerToken(
-                                              label: room.players
-                                                  .firstWhere(
-                                                    (p) => p.side == 'right',
-                                                    orElse: () =>
-                                                        RoyalePlayerView(
-                                                          userId: 0,
-                                                          name: _t.text(
-                                                            'Waiting for players',
-                                                          ),
-                                                          side: 'right',
-                                                          deckId: 0,
-                                                          deckName: '',
-                                                          ready: false,
-                                                          connected: false,
-                                                          towerHp: 0,
-                                                          maxTowerHp: 1,
-                                                        ),
-                                                  )
-                                                  .name,
-                                              color: _sideColor('right'),
-                                              towerHp: room.players
-                                                  .firstWhere(
-                                                    (p) => p.side == 'right',
-                                                    orElse: () =>
-                                                        RoyalePlayerView(
-                                                          userId: 0,
-                                                          name: _t.text(
-                                                            'Waiting for players',
-                                                          ),
-                                                          side: 'right',
-                                                          deckId: 0,
-                                                          deckName: '',
-                                                          ready: false,
-                                                          connected: false,
-                                                          towerHp: 0,
-                                                          maxTowerHp: 1,
-                                                        ),
-                                                  )
-                                                  .towerHp,
-                                            ),
-                                          ),
-                                          if (_aimPoint != null)
-                                            Positioned(
-                                              left:
-                                                  board.maxWidth *
-                                                      _aimPoint!.dx -
-                                                  28,
-                                              top:
-                                                  board.maxHeight *
-                                                      _aimPoint!.dy -
-                                                  28,
-                                              child: _AimMarker(
-                                                point: _aimPoint!,
-                                                active:
-                                                    selectedCards.isNotEmpty,
-                                              ),
-                                            ),
-                                          ...battle.units.map((unit) {
-                                            final longitudinal =
-                                                mySide == 'left'
-                                                ? 1 - unit.progress
-                                                : unit.progress;
-                                            final depthFactor = longitudinal
-                                                .clamp(0.0, 1.0);
-                                            final tokenSize =
-                                                40 + (depthFactor * 8);
-                                            final left =
-                                                board.maxWidth *
-                                                    unit.lateralPosition -
-                                                tokenSize / 2;
-                                            final top =
-                                                board.maxHeight * longitudinal -
-                                                tokenSize * 0.62;
-                                            return Positioned(
-                                              left: left,
-                                              top: top,
-                                              child: _UnitToken(
-                                                unit: unit,
-                                                friendly: unit.side == mySide,
-                                                size: tokenSize,
-                                              ),
-                                            );
-                                          }),
-                                          if (battle.result != null)
-                                            Positioned.fill(
-                                              child: Center(
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 28,
-                                                        vertical: 20,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(
-                                                      0xFF07111F,
-                                                    ).withValues(alpha: 0.8),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          26,
-                                                        ),
-                                                    border: Border.all(
-                                                      color: Colors.white
-                                                          .withValues(
-                                                            alpha: 0.18,
-                                                          ),
-                                                    ),
+                                              Positioned.fill(
+                                                child: CustomPaint(
+                                                  painter: _ArenaPainter(
+                                                    playerSide: mySide,
                                                   ),
-                                                  child: Column(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
+                                                ),
+                                              ),
+                                              Positioned(
+                                                left: 18,
+                                                top: 18,
+                                                child: _FieldLabel(
+                                                  label: _t.text('Enemy Base'),
+                                                  color: const Color(
+                                                    0xFFE25555,
+                                                  ),
+                                                ),
+                                              ),
+                                              Positioned(
+                                                left: board.maxWidth * 0.5 - 42,
+                                                top: 18,
+                                                child: _FieldLabel(
+                                                  label: _t.text(
+                                                    'Central Bridge',
+                                                  ),
+                                                  color: const Color(
+                                                    0xFF2F7D87,
+                                                  ),
+                                                ),
+                                              ),
+                                              Positioned(
+                                                right: 18,
+                                                bottom: 18,
+                                                child: _FieldLabel(
+                                                  label: _t.text(
+                                                    'Your Deployment Zone',
+                                                  ),
+                                                  color: const Color(
+                                                    0xFF136F63,
+                                                  ),
+                                                ),
+                                              ),
+                                              Positioned(
+                                                left: board.maxWidth * 0.5 - 34,
+                                                top:
+                                                    (mySide == 'left'
+                                                        ? board.maxHeight * 0.95
+                                                        : board.maxHeight *
+                                                              0.05) -
+                                                    60,
+                                                child: _TowerToken(
+                                                  label: room.players
+                                                      .firstWhere(
+                                                        (p) => p.side == 'left',
+                                                      )
+                                                      .name,
+                                                  color: _sideColor('left'),
+                                                  towerHp: room.players
+                                                      .firstWhere(
+                                                        (p) => p.side == 'left',
+                                                      )
+                                                      .towerHp,
+                                                ),
+                                              ),
+                                              Positioned(
+                                                left: board.maxWidth * 0.5 - 34,
+                                                top:
+                                                    (mySide == 'left'
+                                                        ? board.maxHeight * 0.05
+                                                        : board.maxHeight *
+                                                              0.95) -
+                                                    60,
+                                                child: _TowerToken(
+                                                  label: room.players
+                                                      .firstWhere(
+                                                        (p) =>
+                                                            p.side == 'right',
+                                                        orElse: () =>
+                                                            RoyalePlayerView(
+                                                              userId: 0,
+                                                              name: _t.text(
+                                                                'Waiting for players',
+                                                              ),
+                                                              side: 'right',
+                                                              deckId: 0,
+                                                              deckName: '',
+                                                              ready: false,
+                                                              connected: false,
+                                                              towerHp: 0,
+                                                              maxTowerHp: 1,
+                                                            ),
+                                                      )
+                                                      .name,
+                                                  color: _sideColor('right'),
+                                                  towerHp: room.players
+                                                      .firstWhere(
+                                                        (p) =>
+                                                            p.side == 'right',
+                                                        orElse: () =>
+                                                            RoyalePlayerView(
+                                                              userId: 0,
+                                                              name: _t.text(
+                                                                'Waiting for players',
+                                                              ),
+                                                              side: 'right',
+                                                              deckId: 0,
+                                                              deckName: '',
+                                                              ready: false,
+                                                              connected: false,
+                                                              towerHp: 0,
+                                                              maxTowerHp: 1,
+                                                            ),
+                                                      )
+                                                      .towerHp,
+                                                ),
+                                              ),
+                                              if (_aimPoint != null &&
+                                                  _hasDeploymentTarget &&
+                                                  !_dragTargetActive)
+                                                Positioned(
+                                                  left:
+                                                      board.maxWidth *
+                                                          _aimPoint!.dx -
+                                                      28,
+                                                  top:
+                                                      board.maxHeight *
+                                                          _aimPoint!.dy -
+                                                      28,
+                                                  child: _AimMarker(
+                                                    point: _aimPoint!,
+                                                    active: selectedCards
+                                                        .isNotEmpty,
+                                                  ),
+                                                ),
+                                              ...battle.units.map((unit) {
+                                                final longitudinal =
+                                                    mySide == 'left'
+                                                    ? 1 -
+                                                          (unit.progress /
+                                                              _worldScale)
+                                                    : (unit.progress /
+                                                          _worldScale);
+                                                final depthFactor = longitudinal
+                                                    .clamp(0.0, 1.0);
+                                                final tokenSize =
+                                                    40 + (depthFactor * 8);
+                                                final left =
+                                                    board.maxWidth *
+                                                        (unit.lateralPosition /
+                                                            _worldScale) -
+                                                    tokenSize / 2;
+                                                final top =
+                                                    board.maxHeight *
+                                                        longitudinal -
+                                                    tokenSize * 0.62;
+                                                final attackIndicatorDiameter =
+                                                    board.maxHeight *
+                                                    (unit.attackRange /
+                                                        _worldScale) *
+                                                    2;
+                                                return Positioned(
+                                                  left: left,
+                                                  top: top,
+                                                  child: Stack(
+                                                    clipBehavior: Clip.none,
                                                     children: [
-                                                      Text(
-                                                        _resultLabel(
-                                                          battle.result!,
-                                                          mySide,
-                                                        ),
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 28,
-                                                          fontWeight:
-                                                              FontWeight.w800,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(height: 6),
-                                                      Text(
-                                                        _t.text(
-                                                          'Battle finished',
-                                                        ),
-                                                        style: TextStyle(
-                                                          color: Colors.white
-                                                              .withValues(
-                                                                alpha: 0.72,
-                                                              ),
-                                                        ),
-                                                      ),
-                                                      const SizedBox(
-                                                        height: 16,
-                                                      ),
-                                                      FilledButton.icon(
-                                                        onPressed:
-                                                            _rematchSubmitting
-                                                            ? null
-                                                            : _playAgain,
-                                                        style: FilledButton.styleFrom(
-                                                          backgroundColor:
-                                                              const Color(
-                                                                0xFFFFB703,
-                                                              ),
-                                                          foregroundColor:
-                                                              const Color(
-                                                                0xFF1F2937,
-                                                              ),
-                                                          padding:
-                                                              const EdgeInsets.symmetric(
-                                                                horizontal: 20,
-                                                                vertical: 14,
-                                                              ),
-                                                          shape: RoundedRectangleBorder(
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  16,
-                                                                ),
+                                                      if (unit.attackRange > 0)
+                                                        Positioned(
+                                                          left:
+                                                              tokenSize / 2 -
+                                                              attackIndicatorDiameter /
+                                                                  2,
+                                                          top:
+                                                              tokenSize * 0.5 -
+                                                              attackIndicatorDiameter /
+                                                                  2,
+                                                          child: _AttackRangeIndicator(
+                                                            width:
+                                                                attackIndicatorDiameter,
+                                                            height:
+                                                                attackIndicatorDiameter,
+                                                            friendly:
+                                                                unit.side ==
+                                                                mySide,
                                                           ),
                                                         ),
-                                                        icon: const Icon(
-                                                          Icons.replay_rounded,
-                                                        ),
-                                                        label: Text(
-                                                          _rematchSubmitting
-                                                              ? _t.text(
-                                                                  'Returning to room...',
-                                                                )
-                                                              : _t.text(
-                                                                  'Play Again',
-                                                                ),
-                                                        ),
+                                                      _UnitToken(
+                                                        unit: unit,
+                                                        friendly:
+                                                            unit.side == mySide,
+                                                        size: tokenSize,
                                                       ),
                                                     ],
                                                   ),
+                                                );
+                                              }),
+                                              if (battle.result != null)
+                                                Positioned.fill(
+                                                  child: Center(
+                                                    child: Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 28,
+                                                            vertical: 20,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            const Color(
+                                                              0xFF07111F,
+                                                            ).withValues(
+                                                              alpha: 0.8,
+                                                            ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              26,
+                                                            ),
+                                                        border: Border.all(
+                                                          color: Colors.white
+                                                              .withValues(
+                                                                alpha: 0.18,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                      child: Column(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          Text(
+                                                            _resultLabel(
+                                                              battle.result!,
+                                                              mySide,
+                                                            ),
+                                                            style:
+                                                                const TextStyle(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  fontSize: 28,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w800,
+                                                                ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 6,
+                                                          ),
+                                                          Text(
+                                                            _t.text(
+                                                              'Battle finished',
+                                                            ),
+                                                            style: TextStyle(
+                                                              color: Colors
+                                                                  .white
+                                                                  .withValues(
+                                                                    alpha: 0.72,
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 16,
+                                                          ),
+                                                          FilledButton.icon(
+                                                            onPressed:
+                                                                _rematchSubmitting
+                                                                ? null
+                                                                : _playAgain,
+                                                            style: FilledButton.styleFrom(
+                                                              backgroundColor:
+                                                                  const Color(
+                                                                    0xFFFFB703,
+                                                                  ),
+                                                              foregroundColor:
+                                                                  const Color(
+                                                                    0xFF1F2937,
+                                                                  ),
+                                                              padding:
+                                                                  const EdgeInsets.symmetric(
+                                                                    horizontal:
+                                                                        20,
+                                                                    vertical:
+                                                                        14,
+                                                                  ),
+                                                              shape: RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      16,
+                                                                    ),
+                                                              ),
+                                                            ),
+                                                            icon: const Icon(
+                                                              Icons
+                                                                  .replay_rounded,
+                                                            ),
+                                                            label: Text(
+                                                              _rematchSubmitting
+                                                                  ? _t.text(
+                                                                      'Returning to room...',
+                                                                    )
+                                                                  : _t.text(
+                                                                      'Play Again',
+                                                                    ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
                                                 ),
-                                              ),
-                                            ),
-                                        ],
-                                      );
-                                    },
+                                            ],
+                                          );
+                                        },
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1085,6 +1384,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     required RoyalePlayerView? me,
     required RoyalePlayerView? opponent,
     required String mySide,
+    required String simulationMode,
   }) {
     return _GlassPanel(
       padding: const EdgeInsets.all(16),
@@ -1161,6 +1461,14 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
               _ArenaLegendChip(
                 label: _t.text('Equipment can stack'),
                 color: const Color(0xFF9B5DE5),
+              ),
+              _ArenaLegendChip(
+                label: simulationMode == 'host'
+                    ? _t.text('Host Simulation (Experimental)')
+                    : _t.text('Server Simulation'),
+                color: simulationMode == 'host'
+                    ? const Color(0xFFB084F5)
+                    : const Color(0xFF48C7F4),
               ),
               if (opponent != null &&
                   _shouldShowAddFriendButton(opponent, me?.userId))
@@ -2011,6 +2319,34 @@ class _UnitToken extends StatelessWidget {
   }
 }
 
+class _AttackRangeIndicator extends StatelessWidget {
+  const _AttackRangeIndicator({
+    required this.width,
+    required this.height,
+    required this.friendly,
+  });
+
+  final double width;
+  final double height;
+  final bool friendly;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = friendly ? const Color(0xFF4FC3F7) : const Color(0xFFFF8A80);
+    return IgnorePointer(
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(9999),
+          border: Border.all(color: color.withValues(alpha: 0.24), width: 1.4),
+        ),
+      ),
+    );
+  }
+}
+
 class _AimMarker extends StatelessWidget {
   const _AimMarker({
     required this.point,
@@ -2071,7 +2407,7 @@ class _AimMarker extends StatelessWidget {
                 border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
               ),
               child: Text(
-                'x ${(point.dx * 100).toStringAsFixed(0)} / y ${(point.dy * 100).toStringAsFixed(0)}',
+                'x ${(point.dx * _worldScale).round()} / y ${(point.dy * _worldScale).round()}',
                 style: TextStyle(
                   color: markerColor,
                   fontSize: 11,

@@ -18,6 +18,9 @@ const Map<String, String> zhHant = {
   'Friends': '好友系統',
   'Role Management': '身份組管理',
   'Card Management': '卡牌管理',
+  'Simulation Mode': '運算方式',
+  'Host Simulation (Experimental)': '房主運算（實驗）',
+  'Server Simulation': '伺服器運算',
   'Refresh Friends List': '重新整理好友列表',
   'Friend List': '好友列表',
   'Failed to load friend data': '好友資料載入失敗',
@@ -71,10 +74,18 @@ const Map<String, String> zhHant = {
   'Refresh': '重新整理',
   'Manage player roles': '管理玩家身份組',
   'Manage battle cards': '管理對戰卡牌',
+  'Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.':
+      '房主運算會直接在你的裝置上執行。這個實驗模式目前只開放人機房，開打後就會鎖定不可切換。',
+  'Server simulation runs in the room server and is the default recommended mode.':
+      '伺服器運算會在房間伺服器端執行，也是目前預設且最建議的模式。',
+  'Host simulation is currently available for bot matches only':
+      '房主運算目前只開放人機對戰使用',
   'Available roles are Admin, Card Manager, and Player. This version only changes role assignments and does not attach role-specific features yet.':
       '目前可分配的身份組有 Admin、Card Manager、Player。這一版先只做角色切換，不綁實際功能。',
   'Create or edit card stats and effects. Changes are saved to the live cards table immediately.':
       '建立或編輯卡牌數值與效果，變更會直接寫進正式使用中的 cards 資料表。',
+  'World unit scale: the battlefield uses 1000-based integer coordinates. Example: Attack Range 280 means 28% of the map height, and Body Radius 18 means the unit body takes 1.8% of the map height.':
+      '世界單位採用 1000 制整數座標。例：Attack Range 280 代表地圖高度的 28%，Body Radius 18 代表角色本體佔地圖高度的 1.8%。',
   'Cards are stored in the D1 cards table. Starter definitions live in src/royale_cards.js and seed the table when empty.':
       '目前卡牌存放在 D1 的 cards 資料表。src/royale_cards.js 只保留起始卡牌定義，資料表為空時才會拿來初始化。',
   'Search players': '搜尋玩家',
@@ -118,6 +129,7 @@ const Map<String, String> zhHant = {
   'No cards found': '目前沒有卡牌',
   'Elixir Cost': '聖水消耗',
   'Attack Range': '攻擊距離',
+  'Body Radius': '體積半徑',
   'Move Speed': '移動速度',
   'Attack Speed': '攻擊速度',
   'Spawn Count': '生成數量',
@@ -134,6 +146,17 @@ const Map<String, String> zhHant = {
   'Health Boost': '生命加成',
   'Speed Boost': '速度加成',
   'Please enter a valid number for': '請輸入正確數字：',
+  'Hit points. Uses normal game damage values.': '生命值，使用一般戰鬥傷害數值。',
+  'Damage dealt on each successful attack.': '每次成功攻擊造成的傷害。',
+  'Weapon reach in world units. This does not include the unit body radius.':
+      '武器延伸距離，使用世界單位，不包含角色本體半徑。',
+  'Unit body size in world units. Final reach uses body radius plus attack range.':
+      '角色本體大小，使用世界單位。最終攻擊範圍會用本體半徑加上攻擊距離計算。',
+  'Movement speed in world units per second before global battle multipliers.':
+      '每秒移動的世界單位數，尚未套用全域戰鬥倍率。',
+  'Seconds between attacks. Smaller values attack faster.':
+      '兩次攻擊之間的秒數，越小代表攻擊越快。',
+  'Spell area radius in world units.': '法術範圍半徑，使用世界單位。',
   'Editing existing card IDs is disabled. Create a new card if you need a different ID.':
       '編輯既有卡牌時不能修改卡牌 ID。如果你需要不同的 ID，請改用新增卡牌。',
   'Spell Damage': '法術傷害',

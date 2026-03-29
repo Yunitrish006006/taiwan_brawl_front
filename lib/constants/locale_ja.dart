@@ -19,6 +19,9 @@ const Map<String, String> jaJP = {
   'Friends': 'フレンド',
   'Role Management': '権限管理',
   'Card Management': 'カード管理',
+  'Simulation Mode': '演算方式',
+  'Host Simulation (Experimental)': 'ホスト演算（実験）',
+  'Server Simulation': 'サーバー演算',
   'Refresh Friends List': 'フレンド一覧を更新',
   'Friend List': 'フレンド一覧',
   'Failed to load friend data': 'フレンドデータの読み込みに失敗しました',
@@ -75,10 +78,18 @@ const Map<String, String> jaJP = {
   'Refresh': '更新',
   'Manage player roles': 'プレイヤー権限を管理',
   'Manage battle cards': '対戦カードを管理',
+  'Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.':
+      'ホスト演算はあなたの端末上で動作します。この実験モードは現在 Bot 戦のみ対応し、対戦開始後は切り替えできません。',
+  'Server simulation runs in the room server and is the default recommended mode.':
+      'サーバー演算はルームサーバー側で実行され、現在の標準かつ推奨モードです。',
+  'Host simulation is currently available for bot matches only':
+      'ホスト演算は現在 Bot 戦のみ対応しています',
   'Available roles are Admin, Card Manager, and Player. This version only changes role assignments and does not attach role-specific features yet.':
       '割り当て可能な権限は Admin、Card Manager、Player です。このバージョンでは権限変更のみで、権限ごとの機能はまだ紐づけていません。',
   'Create or edit card stats and effects. Changes are saved to the live cards table immediately.':
       'カードの数値と効果を作成・編集できます。変更はそのまま本番の cards テーブルへ保存されます。',
+  'World unit scale: the battlefield uses 1000-based integer coordinates. Example: Attack Range 280 means 28% of the map height, and Body Radius 18 means the unit body takes 1.8% of the map height.':
+      'ワールド単位は 1000 基準の整数座標です。例: Attack Range 280 はマップ高さの 28%、Body Radius 18 はユニット本体がマップ高さの 1.8% を占めます。',
   'Cards are stored in the D1 cards table. Starter definitions live in src/royale_cards.js and seed the table when empty.':
       'カードは D1 の cards テーブルに保存されています。src/royale_cards.js には初期定義のみがあり、テーブルが空のときだけ初期投入に使われます。',
   'Search players': 'プレイヤーを検索',
@@ -122,6 +133,7 @@ const Map<String, String> jaJP = {
   'No cards found': 'カードが見つかりません',
   'Elixir Cost': 'エリクサー消費',
   'Attack Range': '攻撃距離',
+  'Body Radius': '当たり半径',
   'Move Speed': '移動速度',
   'Attack Speed': '攻撃速度',
   'Spawn Count': '生成数',
@@ -138,6 +150,17 @@ const Map<String, String> jaJP = {
   'Health Boost': '体力強化',
   'Speed Boost': '速度強化',
   'Please enter a valid number for': '有効な数値を入力してください:',
+  'Hit points. Uses normal game damage values.': 'HP。通常の戦闘ダメージ値を使います。',
+  'Damage dealt on each successful attack.': '攻撃が成功したときに与えるダメージです。',
+  'Weapon reach in world units. This does not include the unit body radius.':
+      '武器の届く距離です。ワールド単位で、本体半径は含みません。',
+  'Unit body size in world units. Final reach uses body radius plus attack range.':
+      'ユニット本体の大きさです。最終射程は本体半径と攻撃距離を足して計算します。',
+  'Movement speed in world units per second before global battle multipliers.':
+      'グローバル戦闘倍率をかける前の、1 秒あたりの移動ワールド単位です。',
+  'Seconds between attacks. Smaller values attack faster.':
+      '攻撃間隔の秒数です。小さいほど攻撃が速くなります。',
+  'Spell area radius in world units.': '呪文の範囲半径です。ワールド単位を使います。',
   'Editing existing card IDs is disabled. Create a new card if you need a different ID.':
       '既存カードの ID は編集できません。別の ID が必要な場合は新しいカードを作成してください。',
   'Spell Damage': '呪文ダメージ',
