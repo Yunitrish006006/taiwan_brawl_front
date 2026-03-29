@@ -192,6 +192,16 @@ class _HomePageState extends State<HomePage> {
                 Navigator.of(context).pushNamed('/friends');
               },
             ),
+            if (user.role == 'admin')
+              ListTile(
+                leading: const Icon(Icons.admin_panel_settings_outlined),
+                title: const Text('身份組管理'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pushNamed('/admin/roles');
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.refresh_rounded),
               title: const Text('重新整理好友列表'),
@@ -300,6 +310,15 @@ class _HomePageState extends State<HomePage> {
                 icon: const Icon(Icons.group_outlined),
                 label: const Text('好友系統'),
               ),
+              if (user.role == 'admin') ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () =>
+                      Navigator.of(context).pushNamed('/admin/roles'),
+                  icon: const Icon(Icons.admin_panel_settings_outlined),
+                  label: const Text('身份組管理'),
+                ),
+              ],
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: () => Navigator.of(context).pushNamed('/archery'),

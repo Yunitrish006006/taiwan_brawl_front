@@ -34,7 +34,7 @@ class AppUser {
       id: json['id'] as int,
       name: json['name'] as String,
       email: json['email'] as String,
-      role: json['role'] as String? ?? 'user',
+      role: json['role'] as String? ?? 'player',
       bio: json['bio'] as String?,
       avatarUrl: json['avatar_url'] as String?,
       googleAvatarUrl: json['google_avatar_url'] as String?,
