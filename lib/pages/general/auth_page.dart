@@ -42,6 +42,7 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<void> _initializeGoogleSignIn() async {
+    final t = context.read<LocaleProvider>().translation;
     try {
       await _googleSignIn.initialize(
         clientId: AppConstants.googleWebClientId.isEmpty
@@ -66,17 +67,19 @@ class _AuthPageState extends State<AuthPage> {
       if (!mounted) return;
       setState(() {
         _isGoogleReady = false;
-        _googleErrorMessage = 'Google 登入初始化失敗: $e';
+        _googleErrorMessage =
+            '${t.text('Google sign-in initialization failed')}: $e';
       });
     }
   }
 
   void _handleGoogleAuthenticationError(Object error) {
+    final t = context.read<LocaleProvider>().translation;
     if (!mounted) return;
     setState(() {
       _isGoogleSigningIn = false;
     });
-    showAppSnackBar(context, 'Google 登入錯誤: $error');
+    showAppSnackBar(context, '${t.text('Google sign-in error')}: $error');
   }
 
   Future<void> _handleGoogleAuthentication(GoogleSignInAccount user) async {
@@ -84,6 +87,7 @@ class _AuthPageState extends State<AuthPage> {
       return;
     }
 
+    final t = context.read<LocaleProvider>().translation;
     final auth = context.read<AuthService>();
     final messenger = ScaffoldMessenger.of(context);
 
@@ -95,7 +99,11 @@ class _AuthPageState extends State<AuthPage> {
       final idToken = user.authentication.idToken;
       if (idToken == null || idToken.isEmpty) {
         messenger.showSnackBar(
-          const SnackBar(content: Text('Google 沒有回傳可用的登入憑證')),
+          SnackBar(
+            content: Text(
+              t.text('Google sign-in did not return a usable credential'),
+            ),
+          ),
         );
         return;
       }
@@ -108,7 +116,7 @@ class _AuthPageState extends State<AuthPage> {
       showAppSnackBar(context, e.message);
     } catch (e) {
       if (!mounted) return;
-      showAppSnackBar(context, 'Google 登入錯誤: $e');
+      showAppSnackBar(context, '${t.text('Google sign-in error')}: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -168,29 +176,33 @@ class _AuthPageState extends State<AuthPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      t['登入說明'] ?? '登入說明',
+                      t.text('Login Guide'),
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      t['Taiwan Brawl Portal 使用 Google 帳號登入，登入後會用安全 Cookie 維持 session。'] ??
-                          'Taiwan Brawl Portal 使用 Google 帳號登入，登入後會用安全 Cookie 維持 session。',
+                      t.text(
+                        'Taiwan Brawl Portal uses Google sign-in and keeps your session with a secure cookie.',
+                      ),
                       style: theme.textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      t['• 自動恢復登入狀態與個人偏好'] ?? '• 自動恢復登入狀態與個人偏好',
+                      t.text(
+                        'Automatically restore your login state and personal preferences',
+                      ),
                       style: theme.textTheme.bodyMedium,
                     ),
                     Text(
-                      t['• 直接使用 /api/me 驗證目前 session'] ??
-                          '• 直接使用 /api/me 驗證目前 session',
+                      t.text('Verify the current session directly via /api/me'),
                       style: theme.textTheme.bodyMedium,
                     ),
                     Text(
-                      t['• 不再提供舊版帳密與註冊入口'] ?? '• 不再提供舊版帳密與註冊入口',
+                      t.text(
+                        'Legacy username/password login and registration are no longer available',
+                      ),
                       style: theme.textTheme.bodyMedium,
                     ),
                   ],
@@ -227,7 +239,7 @@ class _AuthPageState extends State<AuthPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            t['使用 Google 帳號登入'] ?? '使用 Google 帳號登入',
+                            t.text('Sign in with Google'),
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
@@ -235,7 +247,9 @@ class _AuthPageState extends State<AuthPage> {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            t['登入後即可繼續使用首頁與遊戲頁面。'] ?? '登入後即可繼續使用首頁與遊戲頁面。',
+                            t.text(
+                              'Sign in to continue to the portal and game pages.',
+                            ),
                             style: theme.textTheme.bodyMedium,
                             textAlign: TextAlign.center,
                           ),
@@ -250,8 +264,9 @@ class _AuthPageState extends State<AuthPage> {
                                   Icons.desktop_windows_outlined,
                                 ),
                                 label: Text(
-                                  t['Google 登入目前先只支援網頁版'] ??
-                                      'Google 登入目前先只支援網頁版',
+                                  t.text(
+                                    'Google sign-in is currently available on web only',
+                                  ),
                                 ),
                               ),
                             )
@@ -265,7 +280,9 @@ class _AuthPageState extends State<AuthPage> {
                                     onPressed: null,
                                     icon: const Icon(Icons.error_outline),
                                     label: Text(
-                                      t['Google 登入目前無法使用'] ?? 'Google 登入目前無法使用',
+                                      t.text(
+                                        'Google sign-in is currently unavailable',
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -287,7 +304,7 @@ class _AuthPageState extends State<AuthPage> {
                               child: OutlinedButton(
                                 onPressed: null,
                                 child: Text(
-                                  t['Google 登入載入中...'] ?? 'Google 登入載入中...',
+                                  t.text('Google sign-in is loading...'),
                                 ),
                               ),
                             )
@@ -321,14 +338,15 @@ class _AuthPageState extends State<AuthPage> {
                           if (loading) ...[
                             const SizedBox(height: 12),
                             Text(
-                              t['正在驗證 Google 登入...'] ?? '正在驗證 Google 登入...',
+                              t.text('Verifying Google sign-in...'),
                               textAlign: TextAlign.center,
                             ),
                           ],
                           const SizedBox(height: 12),
                           Text(
-                            t['登入後會以安全 Cookie 維持 session'] ??
-                                '登入後會以安全 Cookie 維持 session',
+                            t.text(
+                              'Your session will be kept with a secure cookie after login',
+                            ),
                             textAlign: TextAlign.center,
                             style: theme.textTheme.bodySmall,
                           ),

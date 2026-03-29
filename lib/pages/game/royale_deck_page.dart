@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/royale_models.dart';
 import '../../services/api_client.dart';
+import '../../services/locale_provider.dart';
 import '../../services/royale_service.dart';
 
 class RoyaleDeckPage extends StatefulWidget {
@@ -36,6 +38,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   }
 
   Future<void> _load() async {
+    final t = context.read<LocaleProvider>().translation;
     setState(() {
       _isLoading = true;
       _error = null;
@@ -63,7 +66,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
       });
     } catch (e) {
       setState(() {
-        _error = '載入牌組失敗: $e';
+        _error = '${t.text('Failed to load decks')}: $e';
       });
     } finally {
       if (mounted) {
@@ -97,10 +100,11 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   }
 
   Future<void> _save() async {
+    final t = context.read<LocaleProvider>().translation;
     if (_selectedCardIds.length != 8) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('牌組必須剛好 8 張')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t.text('Deck must contain exactly 8 cards'))),
+      );
       return;
     }
 
@@ -126,7 +130,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
       });
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('牌組已儲存')));
+      ).showSnackBar(SnackBar(content: Text(t.text('Deck saved'))));
     } on ApiException catch (e) {
       if (!mounted) {
         return;
@@ -161,9 +165,10 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = context.watch<LocaleProvider>().translation;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mini Royale 牌組編輯')),
+      appBar: AppBar(title: Text(t.text('Mini Royale Deck Builder'))),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -175,8 +180,8 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                 children: [
                   TextField(
                     controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: '牌組名稱',
+                    decoration: InputDecoration(
+                      labelText: t.text('Deck Name'),
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -192,7 +197,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '已選牌組 ${_selectedCardIds.length}/8',
+                          '${t.text('Selected Cards')} ${_selectedCardIds.length}/8',
                           style: theme.textTheme.titleMedium,
                         ),
                         const SizedBox(height: 12),
@@ -222,7 +227,11 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                         child: ElevatedButton.icon(
                           onPressed: _isSaving ? null : _save,
                           icon: const Icon(Icons.save_outlined),
-                          label: Text(_isSaving ? '儲存中...' : '儲存牌組'),
+                          label: Text(
+                            _isSaving
+                                ? t.text('Saving...')
+                                : t.text('Save Deck'),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -230,12 +239,15 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                         onPressed: () =>
                             Navigator.of(context).pushNamed('/royale-lobby'),
                         icon: const Icon(Icons.sports_esports_outlined),
-                        label: const Text('前往房間'),
+                        label: Text(t.text('Go to Lobby')),
                       ),
                     ],
                   ),
                   const SizedBox(height: 24),
-                  Text('可選卡牌', style: theme.textTheme.titleLarge),
+                  Text(
+                    t.text('Available Cards'),
+                    style: theme.textTheme.titleLarge,
+                  ),
                   const SizedBox(height: 12),
                   GridView.builder(
                     shrinkWrap: true,
@@ -301,23 +313,23 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                               ),
                               const Spacer(),
                               Text(
-                                '類型: ${card.type}',
+                                '${t.text('Type')}: ${card.type}',
                                 style: const TextStyle(color: Colors.white),
                               ),
                               Text(
                                 card.type == 'spell'
-                                    ? '法術傷害 ${card.spellDamage}'
+                                    ? '${t.text('Spell Damage')} ${card.spellDamage}'
                                     : card.type == 'equipment'
                                     ? switch (card.effectKind) {
                                         'damage_boost' =>
-                                          '裝備: +${card.effectValue.toInt()} 傷害',
+                                          '${t.text('Equipment: +Damage')} ${card.effectValue.toInt()}',
                                         'health_boost' =>
-                                          '裝備: +${card.effectValue.toInt()} 生命',
+                                          '${t.text('Equipment: +Health')} ${card.effectValue.toInt()}',
                                         'speed_boost' =>
-                                          '裝備: +${(card.effectValue * 100).toInt()}% 速度',
-                                        _ => '裝備卡',
+                                          '${t.text('Equipment: +Speed')} ${(card.effectValue * 100).toInt()}%',
+                                        _ => t.text('Equipment Card'),
                                       }
-                                    : '生命 ${card.hp} / 傷害 ${card.damage}',
+                                    : '${t.text('HP')} ${card.hp} / ${t.text('Damage')} ${card.damage}',
                                 style: const TextStyle(color: Colors.white70),
                               ),
                             ],

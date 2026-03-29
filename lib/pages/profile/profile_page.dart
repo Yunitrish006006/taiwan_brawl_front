@@ -45,6 +45,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _save() async {
+    final t = context.read<LocaleProvider>().translation;
     try {
       await context.read<AuthService>().updateProfile(
         name: _nameController.text.trim(),
@@ -53,7 +54,7 @@ class _ProfilePageState extends State<ProfilePage> {
         customAvatarUrl: _customAvatarUrlController.text.trim(),
       );
       if (!mounted) return;
-      showAppSnackBar(context, '個人資料已更新');
+      showAppSnackBar(context, t.text('Profile updated'));
     } on ApiException catch (e) {
       if (!mounted) return;
       showAppSnackBar(context, e.message);
@@ -68,7 +69,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return user.googleAvatarUrl ?? '';
   }
 
-  Widget _buildAvatarPreview(AppUser user) {
+  Widget _buildAvatarPreview(AppUser user, Map<String, String> t) {
     final avatarUrl = _previewAvatarUrl(user);
     final hasAvatar = avatarUrl.isNotEmpty;
 
@@ -102,7 +103,7 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         const SizedBox(height: 10),
         Text(
-          hasAvatar ? '目前頭像預覽' : '目前沒有可用頭像',
+          hasAvatar ? t.text('Avatar Preview') : t.text('No avatar available'),
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
@@ -116,11 +117,11 @@ class _ProfilePageState extends State<ProfilePage> {
     final user = context.watch<AuthService>().user;
     final t = context.watch<LocaleProvider>().translation;
     if (user == null) {
-      return Scaffold(body: Center(child: Text(t['請先登入'] ?? '請先登入')));
+      return Scaffold(body: Center(child: Text(t.text('Please log in first'))));
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(t['個人資料'] ?? '個人資料')),
+      appBar: AppBar(title: Text(t.text('Profile'))),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
@@ -129,26 +130,29 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               Text('Email: ${user.email}'),
               const SizedBox(height: 8),
-              Text('玩家 ID: ${user.id}'),
+              Text('${t.text('Player ID')}: ${user.id}'),
               const SizedBox(height: 20),
-              Center(child: _buildAvatarPreview(user)),
+              Center(child: _buildAvatarPreview(user, t)),
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: () => Navigator.of(context).pushNamed('/friends'),
                 icon: const Icon(Icons.group_outlined),
-                label: const Text('打開好友系統'),
+                label: Text(t.text('Open Friends')),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _nameController,
-                decoration: InputDecoration(labelText: t['名稱'] ?? '名稱'),
+                decoration: InputDecoration(labelText: t.text('Name')),
                 onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 12),
-              Text('頭像來源', style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                t.text('Avatar Source'),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 8),
               SegmentedButton<String>(
-                segments: const [
+                segments: [
                   ButtonSegment<String>(
                     value: 'google',
                     icon: Icon(Icons.account_circle_outlined),
@@ -157,7 +161,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ButtonSegment<String>(
                     value: 'custom',
                     icon: Icon(Icons.edit_outlined),
-                    label: Text('自訂'),
+                    label: Text(t.text('Custom')),
                   ),
                 ],
                 selected: {_avatarSource},
@@ -166,7 +170,12 @@ class _ProfilePageState extends State<ProfilePage> {
                   if (nextSource == 'google' &&
                       (user.googleAvatarUrl == null ||
                           user.googleAvatarUrl!.isEmpty)) {
-                    showAppSnackBar(context, '這個帳號目前沒有可用的 Google 頭像');
+                    showAppSnackBar(
+                      context,
+                      t.text(
+                        'This account does not have an available Google avatar.',
+                      ),
+                    );
                     return;
                   }
                   setState(() {
@@ -177,8 +186,12 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: 8),
               Text(
                 _avatarSource == 'google'
-                    ? '使用 Google 登入時的頭像，之後重新登入也會自動同步最新照片。'
-                    : '使用你自訂的圖片網址，之後 Google 登入也不會覆蓋它。',
+                    ? t.text(
+                        'Use your Google sign-in avatar. It will sync again the next time you sign in.',
+                      )
+                    : t.text(
+                        'Use your custom image URL. Future Google sign-ins will not overwrite it.',
+                      ),
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -188,8 +201,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 controller: _customAvatarUrlController,
                 keyboardType: TextInputType.url,
                 enabled: _avatarSource == 'custom',
-                decoration: const InputDecoration(
-                  labelText: '自訂頭像網址',
+                decoration: InputDecoration(
+                  labelText: t.text('Custom Avatar URL'),
                   hintText: 'https://example.com/avatar.png',
                 ),
                 onChanged: (_) => setState(() {}),
@@ -198,10 +211,10 @@ class _ProfilePageState extends State<ProfilePage> {
               TextField(
                 controller: _bioController,
                 maxLines: 4,
-                decoration: InputDecoration(labelText: t['自我介紹'] ?? '自我介紹'),
+                decoration: InputDecoration(labelText: t.text('Bio')),
               ),
               const SizedBox(height: 16),
-              FilledButton(onPressed: _save, child: Text(t['儲存'] ?? '儲存')),
+              FilledButton(onPressed: _save, child: Text(t.text('Save'))),
               const SizedBox(height: 24),
               // 顯示設定面板
               const SettingsPanel(),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/royale_models.dart';
 import '../../services/api_client.dart';
+import '../../services/locale_provider.dart';
 import '../../services/royale_service.dart';
 import 'royale_arena_page.dart';
 
@@ -38,6 +40,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
   }
 
   Future<void> _loadDecks() async {
+    final t = context.read<LocaleProvider>().translation;
     setState(() {
       _isLoading = true;
     });
@@ -52,9 +55,9 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('載入牌組失敗: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${t.text('Failed to load decks')}: $e')),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -65,10 +68,11 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
   }
 
   Future<void> _enterRoom(Future<RoyaleRoomSnapshot> Function() action) async {
+    final t = context.read<LocaleProvider>().translation;
     if (_selectedDeck == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('請先建立一組牌組')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t.text('Please create a deck first'))),
+      );
       return;
     }
 
@@ -100,7 +104,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('操作失敗: $e')));
+      ).showSnackBar(SnackBar(content: Text('${t.text('Action failed')}: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -113,9 +117,10 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = context.watch<LocaleProvider>().translation;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mini Royale 房間大廳')),
+      appBar: AppBar(title: Text(t.text('Mini Royale Lobby'))),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -139,24 +144,26 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '建立 1v1 房間',
+                        t.text('Create a 1v1 Room'),
                         style: theme.textTheme.headlineSmall?.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        '選一組 8 張牌的牌組，建立房間後把房碼丟給朋友就能開始準備。',
-                        style: TextStyle(color: Colors.white70),
+                      Text(
+                        t.text(
+                          'Choose an 8-card deck. After creating the room, send the room code to your friend so both of you can get ready.',
+                        ),
+                        style: const TextStyle(color: Colors.white70),
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<RoyaleDeck>(
                         key: ValueKey(_selectedDeck?.id),
                         initialValue: _selectedDeck,
                         dropdownColor: const Color(0xFF16324F),
-                        decoration: const InputDecoration(
-                          labelText: '選擇牌組',
+                        decoration: InputDecoration(
+                          labelText: t.text('Select Deck'),
                           border: OutlineInputBorder(),
                           filled: true,
                           fillColor: Colors.white,
@@ -189,7 +196,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
                                   ),
                                 ),
                           icon: const Icon(Icons.add_circle_outline),
-                          label: const Text('建立房間'),
+                          label: Text(t.text('Create Room')),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -205,7 +212,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
                                   ),
                                 ),
                           icon: const Icon(Icons.smart_toy_outlined),
-                          label: const Text('建立人機對戰'),
+                          label: Text(t.text('Create Bot Match')),
                         ),
                       ),
                     ],
@@ -223,13 +230,16 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('加入朋友房間', style: theme.textTheme.titleLarge),
+                      Text(
+                        t.text('Join a Friend\'s Room'),
+                        style: theme.textTheme.titleLarge,
+                      ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: _roomCodeController,
                         textCapitalization: TextCapitalization.characters,
-                        decoration: const InputDecoration(
-                          labelText: '輸入 6 碼房碼',
+                        decoration: InputDecoration(
+                          labelText: t.text('Enter a 6-character room code'),
                           border: OutlineInputBorder(),
                         ),
                       ),
@@ -248,7 +258,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
                                   ),
                                 ),
                           icon: const Icon(Icons.login),
-                          label: const Text('加入房間'),
+                          label: Text(t.text('Join Room')),
                         ),
                       ),
                     ],
@@ -259,7 +269,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
                   onPressed: () =>
                       Navigator.of(context).pushNamed('/royale-deck'),
                   icon: const Icon(Icons.style_outlined),
-                  label: const Text('回牌組編輯'),
+                  label: Text(t.text('Back to Deck Builder')),
                 ),
               ],
             ),

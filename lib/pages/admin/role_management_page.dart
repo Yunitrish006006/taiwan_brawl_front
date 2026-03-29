@@ -5,6 +5,7 @@ import '../../models/admin_models.dart';
 import '../../services/admin_service.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
+import '../../services/locale_provider.dart';
 
 class RoleManagementPage extends StatefulWidget {
   const RoleManagementPage({super.key});
@@ -86,9 +87,15 @@ class _RoleManagementPageState extends State<RoleManagementPage> {
             .map((item) => item.id == updated.id ? updated : item)
             .toList();
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('${updated.name} 的身份組已更新')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.read<LocaleProvider>().translation.text(
+              'Role updated successfully',
+            ),
+          ),
+        ),
+      );
     } on ApiException catch (e) {
       if (!mounted) {
         return;
@@ -106,8 +113,9 @@ class _RoleManagementPageState extends State<RoleManagementPage> {
   }
 
   String _formatLastActive(String? value) {
+    final t = context.read<LocaleProvider>().translation;
     if (value == null || value.isEmpty) {
-      return '尚無紀錄';
+      return t.text('No activity yet');
     }
     return value;
   }
@@ -115,24 +123,25 @@ class _RoleManagementPageState extends State<RoleManagementPage> {
   @override
   Widget build(BuildContext context) {
     final viewer = context.watch<AuthService>().user;
+    final t = context.watch<LocaleProvider>().translation;
     if (viewer == null) {
-      return const Scaffold(body: Center(child: Text('請先登入')));
+      return Scaffold(body: Center(child: Text(t.text('Please log in first'))));
     }
     if (viewer.role != 'admin') {
       return Scaffold(
-        appBar: AppBar(title: const Text('身份組管理')),
-        body: const Center(child: Text('只有 Admin 可以查看這個頁面')),
+        appBar: AppBar(title: Text(t.text('Role Management'))),
+        body: Center(child: Text(t.text('Only admins can view this page'))),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('身份組管理'),
+        title: Text(t.text('Role Management')),
         actions: [
           IconButton(
             onPressed: _loadUsers,
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: '重新整理',
+            tooltip: t.text('Refresh'),
           ),
         ],
       ),
@@ -142,10 +151,15 @@ class _RoleManagementPageState extends State<RoleManagementPage> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text('管理玩家身份組', style: Theme.of(context).textTheme.headlineSmall),
+              Text(
+                t.text('Manage player roles'),
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
               const SizedBox(height: 8),
               Text(
-                '目前可分配的身份組有 Admin、Card Manager、Player。這一版先只做角色切換，不綁實際功能。',
+                t.text(
+                  'Available roles are Admin, Card Manager, and Player. This version only changes role assignments and does not attach role-specific features yet.',
+                ),
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -156,10 +170,10 @@ class _RoleManagementPageState extends State<RoleManagementPage> {
                   Expanded(
                     child: TextField(
                       controller: _searchController,
-                      decoration: const InputDecoration(
-                        labelText: '搜尋玩家',
-                        hintText: '輸入名稱、Email 或玩家 ID',
-                        prefixIcon: Icon(Icons.search),
+                      decoration: InputDecoration(
+                        labelText: t.text('Search players'),
+                        hintText: t.text('Search by name, email, or player ID'),
+                        prefixIcon: const Icon(Icons.search),
                       ),
                       onSubmitted: (_) => _loadUsers(),
                     ),
@@ -168,7 +182,7 @@ class _RoleManagementPageState extends State<RoleManagementPage> {
                   FilledButton.icon(
                     onPressed: _loadUsers,
                     icon: const Icon(Icons.search),
-                    label: const Text('搜尋'),
+                    label: Text(t.text('Search')),
                   ),
                 ],
               ),
@@ -179,9 +193,11 @@ class _RoleManagementPageState extends State<RoleManagementPage> {
                   child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : _users.isEmpty
-                      ? const Padding(
+                      ? Padding(
                           padding: EdgeInsets.symmetric(vertical: 28),
-                          child: Center(child: Text('找不到符合條件的玩家')),
+                          child: Center(
+                            child: Text(t.text('No matching players found')),
+                          ),
                         )
                       : Column(
                           children: _users
@@ -201,6 +217,7 @@ class _RoleManagementPageState extends State<RoleManagementPage> {
   }
 
   Widget _buildUserTile(BuildContext context, int viewerId, ManageUser user) {
+    final t = context.watch<LocaleProvider>().translation;
     final isSelf = viewerId == user.id;
     final busy = _busyKey == 'role-${user.id}';
 
@@ -229,10 +246,10 @@ class _RoleManagementPageState extends State<RoleManagementPage> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text('ID ${user.id} · ${user.email}'),
+                Text('${t.text('Player ID')} ${user.id} · ${user.email}'),
                 const SizedBox(height: 4),
                 Text(
-                  '最後上線: ${_formatLastActive(user.lastActiveAt)}',
+                  '${t.text('Last online')}: ${_formatLastActive(user.lastActiveAt)}',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -240,7 +257,7 @@ class _RoleManagementPageState extends State<RoleManagementPage> {
                 if (isSelf) ...[
                   const SizedBox(height: 6),
                   Text(
-                    '不能修改自己的身份組',
+                    t.text('You cannot change your own role'),
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.error,
                       fontWeight: FontWeight.w600,
@@ -256,7 +273,7 @@ class _RoleManagementPageState extends State<RoleManagementPage> {
             child: DropdownButtonFormField<String>(
               initialValue: user.role,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: '身份組'),
+              decoration: InputDecoration(labelText: t.text('Role')),
               items: _roleLabels.entries
                   .map(
                     (entry) => DropdownMenuItem<String>(
