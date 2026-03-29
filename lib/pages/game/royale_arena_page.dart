@@ -421,7 +421,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   }
 
   bool _shouldShowAddFriendButton(RoyalePlayerView player, int? myUserId) {
-    if (myUserId == null || player.userId == myUserId) {
+    if (myUserId == null || player.userId == myUserId || player.userId <= 0) {
       return false;
     }
     if (_friendUserIds.contains(player.userId)) {

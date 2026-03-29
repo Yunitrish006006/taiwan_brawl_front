@@ -192,6 +192,22 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
                           label: const Text('建立房間'),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _isSubmitting || _selectedDeck == null
+                              ? null
+                              : () => _enterRoom(
+                                  () => _service.createRoom(
+                                    deckId: _selectedDeck!.id,
+                                    vsBot: true,
+                                  ),
+                                ),
+                          icon: const Icon(Icons.smart_toy_outlined),
+                          label: const Text('建立人機對戰'),
+                        ),
+                      ),
                     ],
                   ),
                 ),
