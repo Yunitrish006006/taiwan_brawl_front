@@ -41,13 +41,27 @@ const Map<String, String> jaJP = {
   'Name': '名前',
   'Avatar Source': 'アバターソース',
   'Custom': 'カスタム',
+  'Upload': 'アップロード',
   'This account does not have an available Google avatar.':
       'このアカウントでは利用できる Google アバターがありません。',
   'Use your Google sign-in avatar. It will sync again the next time you sign in.':
       'Google ログイン時のアバターを使用します。次回ログイン時にも再同期されます。',
   'Use your custom image URL. Future Google sign-ins will not overwrite it.':
       'カスタム画像 URL を使用します。今後の Google ログインでも上書きされません。',
+  'Use an uploaded image stored in Taiwan Brawl. You can pick a file from your device and future Google sign-ins will not overwrite it.':
+      'Taiwan Brawl に保存したアップロード画像を使います。端末から画像を選べて、今後の Google ログインでも上書きされません。',
   'Custom Avatar URL': 'カスタムアバター URL',
+  'Uploaded Avatar Image': 'アップロード済みアバター画像',
+  'Choose Avatar Image': 'アバター画像を選択',
+  'Upload Selected Image': '選択画像をアップロード',
+  'Remove Uploaded Image': 'アップロード画像を削除',
+  'Please upload an avatar image first': '先にアバター画像をアップロードしてください',
+  'Avatar image uploaded successfully': 'アバター画像をアップロードしました',
+  'Avatar image removed successfully': 'アバター画像を削除しました',
+  'Avatar Preview (Pending Upload)': 'アバタープレビュー（未アップロード）',
+  'Selected file': '選択ファイル',
+  'An uploaded avatar image is ready to use': '使用できるアップロード済みアバター画像があります',
+  'No uploaded avatar image yet': 'まだアップロードされたアバター画像がありません',
   'Bio': '自己紹介',
   'Save': '保存',
   'Login Guide': 'ログインガイド',

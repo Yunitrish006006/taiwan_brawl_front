@@ -40,13 +40,28 @@ const Map<String, String> enUS = {
   'Name': 'Name',
   'Avatar Source': 'Avatar Source',
   'Custom': 'Custom',
+  'Upload': 'Upload',
   'This account does not have an available Google avatar.':
       'This account does not have an available Google avatar.',
   'Use your Google sign-in avatar. It will sync again the next time you sign in.':
       'Use your Google sign-in avatar. It will sync again the next time you sign in.',
   'Use your custom image URL. Future Google sign-ins will not overwrite it.':
       'Use your custom image URL. Future Google sign-ins will not overwrite it.',
+  'Use an uploaded image stored in Taiwan Brawl. You can pick a file from your device and future Google sign-ins will not overwrite it.':
+      'Use an uploaded image stored in Taiwan Brawl. You can pick a file from your device and future Google sign-ins will not overwrite it.',
   'Custom Avatar URL': 'Custom Avatar URL',
+  'Uploaded Avatar Image': 'Uploaded Avatar Image',
+  'Choose Avatar Image': 'Choose Avatar Image',
+  'Upload Selected Image': 'Upload Selected Image',
+  'Remove Uploaded Image': 'Remove Uploaded Image',
+  'Please upload an avatar image first': 'Please upload an avatar image first',
+  'Avatar image uploaded successfully': 'Avatar image uploaded successfully',
+  'Avatar image removed successfully': 'Avatar image removed successfully',
+  'Avatar Preview (Pending Upload)': 'Avatar Preview (Pending Upload)',
+  'Selected file': 'Selected file',
+  'An uploaded avatar image is ready to use':
+      'An uploaded avatar image is ready to use',
+  'No uploaded avatar image yet': 'No uploaded avatar image yet',
   'Bio': 'Bio',
   'Save': 'Save',
   'Login Guide': 'Login Guide',

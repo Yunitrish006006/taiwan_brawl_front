@@ -67,6 +67,24 @@ class AuthService extends ChangeNotifier {
     await refreshMe(silent: true);
   }
 
+  Future<void> uploadAvatarImage({
+    required String bytesBase64,
+    required String contentType,
+    String? fileName,
+  }) async {
+    await _apiClient.postJson('/api/users/me/avatar-image', {
+      'bytesBase64': bytesBase64,
+      'contentType': contentType,
+      'fileName': fileName,
+    });
+    await refreshMe(silent: true);
+  }
+
+  Future<void> deleteAvatarImage() async {
+    await _apiClient.deleteJson('/api/users/me/avatar-image');
+    await refreshMe(silent: true);
+  }
+
   Future<void> updateThemeMode(String themeMode) async {
     await _apiClient.putJson('/api/users/theme-mode', {
       'theme_mode': themeMode,

@@ -40,13 +40,27 @@ const Map<String, String> zhHant = {
   'Name': '名稱',
   'Avatar Source': '頭像來源',
   'Custom': '自訂',
+  'Upload': '上傳',
   'This account does not have an available Google avatar.':
       '這個帳號目前沒有可用的 Google 頭像',
   'Use your Google sign-in avatar. It will sync again the next time you sign in.':
       '使用 Google 登入時的頭像，之後重新登入也會自動同步最新照片。',
   'Use your custom image URL. Future Google sign-ins will not overwrite it.':
       '使用你自訂的圖片網址，之後 Google 登入也不會覆蓋它。',
+  'Use an uploaded image stored in Taiwan Brawl. You can pick a file from your device and future Google sign-ins will not overwrite it.':
+      '使用你上傳到鬼島亂鬥的圖片，可以直接從裝置選圖，之後 Google 登入也不會覆蓋它。',
   'Custom Avatar URL': '自訂頭像網址',
+  'Uploaded Avatar Image': '上傳的頭像圖片',
+  'Choose Avatar Image': '選擇頭像圖片',
+  'Upload Selected Image': '上傳選定圖片',
+  'Remove Uploaded Image': '移除已上傳圖片',
+  'Please upload an avatar image first': '請先上傳一張頭像圖片',
+  'Avatar image uploaded successfully': '頭像圖片已上傳',
+  'Avatar image removed successfully': '頭像圖片已移除',
+  'Avatar Preview (Pending Upload)': '頭像預覽（尚未上傳）',
+  'Selected file': '已選檔案',
+  'An uploaded avatar image is ready to use': '已經有可使用的上傳頭像圖片',
+  'No uploaded avatar image yet': '目前還沒有上傳頭像圖片',
   'Bio': '自我介紹',
   'Save': '儲存',
   'Login Guide': '登入說明',

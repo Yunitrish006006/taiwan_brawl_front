@@ -8,6 +8,8 @@ class AppUser {
     this.avatarUrl,
     this.googleAvatarUrl,
     this.customAvatarUrl,
+    this.uploadedAvatarUrl,
+    this.uploadedAvatarVersion,
     this.avatarSource,
     this.lastActiveAt,
     required this.themeMode,
@@ -23,6 +25,8 @@ class AppUser {
   final String? avatarUrl;
   final String? googleAvatarUrl;
   final String? customAvatarUrl;
+  final String? uploadedAvatarUrl;
+  final int? uploadedAvatarVersion;
   final String? avatarSource;
   final String? lastActiveAt;
   final String themeMode;
@@ -39,6 +43,8 @@ class AppUser {
       avatarUrl: json['avatar_url'] as String?,
       googleAvatarUrl: json['google_avatar_url'] as String?,
       customAvatarUrl: json['custom_avatar_url'] as String?,
+      uploadedAvatarUrl: json['uploaded_avatar_url'] as String?,
+      uploadedAvatarVersion: (json['uploaded_avatar_version'] as num?)?.toInt(),
       avatarSource: json['avatar_source'] as String?,
       lastActiveAt: json['last_active_at'] as String?,
       themeMode: (json['theme_mode'] as String?) ?? 'system',
