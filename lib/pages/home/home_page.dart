@@ -22,6 +22,8 @@ class _HomePageState extends State<HomePage> {
   int? _loadedUserId;
   bool _isLoadingFriends = false;
 
+  Map<String, String> get _t => context.read<LocaleProvider>().translation;
+
   @override
   void initState() {
     super.initState();
@@ -30,6 +32,37 @@ class _HomePageState extends State<HomePage> {
 
   bool _canManageCards(AppUser user) {
     return user.role == 'admin' || user.role == 'card_manager';
+  }
+
+  String _friendStatusText(SocialUser friend) {
+    if (friend.isOnline) {
+      return _t.text('Online');
+    }
+    if (friend.lastActiveAt == null || friend.lastActiveAt!.isEmpty) {
+      return _t.text('Offline');
+    }
+    return '${_t.text('Last online')} ${friend.lastActiveAt}';
+  }
+
+  Widget _buildUserAvatar({
+    required String label,
+    String? avatarUrl,
+    double radius = 18,
+    TextStyle? fallbackStyle,
+    Color? fallbackBackgroundColor,
+  }) {
+    final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: fallbackBackgroundColor,
+      backgroundImage: hasAvatar ? NetworkImage(avatarUrl) : null,
+      child: hasAvatar
+          ? null
+          : Text(
+              label.isEmpty ? '?' : label.characters.first,
+              style: fallbackStyle,
+            ),
+    );
   }
 
   @override
@@ -71,12 +104,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildDrawerFriendTile(SocialUser friend) {
-    final t = context.watch<LocaleProvider>().translation;
-    final subtitle = friend.isOnline
-        ? t.text('Online')
-        : friend.lastActiveAt == null || friend.lastActiveAt!.isEmpty
-        ? t.text('Offline')
-        : '${t.text('Last online')} ${friend.lastActiveAt}';
+    final subtitle = _friendStatusText(friend);
 
     return ListTile(
       dense: true,
@@ -84,16 +112,11 @@ class _HomePageState extends State<HomePage> {
       leading: Stack(
         clipBehavior: Clip.none,
         children: [
-          CircleAvatar(
+          _buildUserAvatar(
+            label: friend.name,
+            avatarUrl: friend.avatarUrl,
             radius: 18,
-            backgroundColor: const Color(0xFF16324F),
-            backgroundImage:
-                friend.avatarUrl != null && friend.avatarUrl!.isNotEmpty
-                ? NetworkImage(friend.avatarUrl!)
-                : null,
-            child: friend.avatarUrl == null || friend.avatarUrl!.isEmpty
-                ? Text(friend.name.isEmpty ? '?' : friend.name.characters.first)
-                : null,
+            fallbackBackgroundColor: const Color(0xFF16324F),
           ),
           Positioned(
             right: -1,
@@ -123,7 +146,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Drawer _buildDrawer(AppUser user) {
-    final t = context.watch<LocaleProvider>().translation;
     final overview = _friendsOverview;
     final friends = overview?.friends ?? const <SocialUser>[];
 
@@ -148,25 +170,18 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
+                  _buildUserAvatar(
+                    label: user.name,
+                    avatarUrl: user.avatarUrl,
                     radius: 28,
-                    backgroundColor: Colors.white.withValues(alpha: 0.16),
-                    backgroundImage:
-                        user.avatarUrl != null && user.avatarUrl!.isNotEmpty
-                        ? NetworkImage(user.avatarUrl!)
-                        : null,
-                    child: user.avatarUrl == null || user.avatarUrl!.isEmpty
-                        ? Text(
-                            user.name.isEmpty
-                                ? '?'
-                                : user.name.characters.first,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          )
-                        : null,
+                    fallbackBackgroundColor: Colors.white.withValues(
+                      alpha: 0.16,
+                    ),
+                    fallbackStyle: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -189,7 +204,7 @@ class _HomePageState extends State<HomePage> {
             ),
             ListTile(
               leading: const Icon(Icons.group_outlined),
-              title: Text(t.text('Friends')),
+              title: Text(_t.text('Friends')),
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
                 Navigator.of(context).pop();
@@ -199,7 +214,7 @@ class _HomePageState extends State<HomePage> {
             if (_canManageCards(user))
               ListTile(
                 leading: const Icon(Icons.style_outlined),
-                title: Text(t.text('Card Management')),
+                title: Text(_t.text('Card Management')),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.of(context).pop();
@@ -209,7 +224,7 @@ class _HomePageState extends State<HomePage> {
             if (user.role == 'admin')
               ListTile(
                 leading: const Icon(Icons.admin_panel_settings_outlined),
-                title: Text(t.text('Role Management')),
+                title: Text(_t.text('Role Management')),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.of(context).pop();
@@ -218,7 +233,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ListTile(
               leading: const Icon(Icons.refresh_rounded),
-              title: Text(t.text('Refresh Friends List')),
+              title: Text(_t.text('Refresh Friends List')),
               onTap: _loadFriends,
             ),
             Padding(
@@ -227,7 +242,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Expanded(
                     child: Text(
-                      t.text('Friend List'),
+                      _t.text('Friend List'),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
@@ -244,7 +259,7 @@ class _HomePageState extends State<HomePage> {
                         color: const Color(0xFF16324F).withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: Text('${friends.length} ${t.text('people')}'),
+                      child: Text('${friends.length} ${_t.text('people')}'),
                     ),
                 ],
               ),
@@ -253,9 +268,9 @@ class _HomePageState extends State<HomePage> {
               child: _isLoadingFriends && overview == null
                   ? const Center(child: CircularProgressIndicator())
                   : overview == null
-                  ? Center(child: Text(t.text('Failed to load friend data')))
+                  ? Center(child: Text(_t.text('Failed to load friend data')))
                   : friends.isEmpty
-                  ? Center(child: Text(t.text('No friends yet')))
+                  ? Center(child: Text(_t.text('No friends yet')))
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       itemCount: friends.length,

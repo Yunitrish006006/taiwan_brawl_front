@@ -27,6 +27,8 @@ class _FriendsPageState extends State<FriendsPage> {
   bool _isLoading = true;
   String? _busyKey;
 
+  Map<String, String> get _t => context.read<LocaleProvider>().translation;
+
   @override
   void initState() {
     super.initState();
@@ -56,12 +58,7 @@ class _FriendsPageState extends State<FriendsPage> {
         _overview = overview;
       });
     } on ApiException catch (e) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message)));
+      _showSnackBar(e.message);
     } finally {
       if (mounted) {
         setState(() {
@@ -87,17 +84,10 @@ class _FriendsPageState extends State<FriendsPage> {
         return;
       }
       if (successMessage != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(successMessage)));
+        _showSnackBar(successMessage);
       }
     } on ApiException catch (e) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message)));
+      _showSnackBar(e.message);
     } finally {
       if (mounted) {
         setState(() {
@@ -128,10 +118,9 @@ class _FriendsPageState extends State<FriendsPage> {
   }
 
   Future<RoyaleDeck?> _pickDeck() async {
-    final t = context.read<LocaleProvider>().translation;
     final decks = await _royaleService.fetchDecks();
     if (decks.isEmpty) {
-      throw ApiException(t.text('Please create a deck first'));
+      throw ApiException(_t.text('Please create a deck first'));
     }
     if (decks.length == 1) {
       return decks.first;
@@ -186,31 +175,23 @@ class _FriendsPageState extends State<FriendsPage> {
   }
 
   Future<void> _inviteFriendToBattle(SocialUser friend) async {
-    await _runAction(
-      'invite-${friend.userId}',
-      () async {
-        final deck = await _pickDeck();
-        if (deck == null) {
-          return;
-        }
-        final room = await _royaleService.createRoom(deckId: deck.id);
-        await _friendsService.sendRoomInvite(
-          roomCode: room.code,
-          inviteeUserId: friend.userId,
-        );
-        if (!mounted) {
-          return;
-        }
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => RoyaleArenaPage(roomCode: room.code),
-          ),
-        );
-      },
-      successMessage: context.read<LocaleProvider>().translation.text(
-        'Battle invite sent',
-      ),
-    );
+    await _runAction('invite-${friend.userId}', () async {
+      final deck = await _pickDeck();
+      if (deck == null) {
+        return;
+      }
+      final room = await _royaleService.createRoom(deckId: deck.id);
+      await _friendsService.sendRoomInvite(
+        roomCode: room.code,
+        inviteeUserId: friend.userId,
+      );
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => RoyaleArenaPage(roomCode: room.code)),
+      );
+    }, successMessage: _t.text('Battle invite sent'));
   }
 
   Future<void> _acceptRoomInvite(RoomInviteItem invite) async {
@@ -228,24 +209,34 @@ class _FriendsPageState extends State<FriendsPage> {
   }
 
   String _relationshipLabel(String status) {
-    final t = context.read<LocaleProvider>().translation;
     switch (status) {
       case 'friend':
-        return t.text('Already friends');
+        return _t.text('Already friends');
       case 'outgoing_pending':
-        return t.text('Invitation already sent');
+        return _t.text('Invitation already sent');
       case 'incoming_pending':
-        return t.text('They invited you');
+        return _t.text('They invited you');
       case 'blocked':
-        return t.text('You blocked them');
+        return _t.text('You blocked them');
       case 'blocked_by_them':
-        return t.text('Unable to join');
+        return _t.text('Unable to join');
       case 'self':
-        return t.text('This is you');
+        return _t.text('This is you');
       default:
-        return t.text('Not friends yet');
+        return _t.text('Not friends yet');
     }
   }
+
+  void _showSnackBar(String message) {
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  bool _isBusy(String key) => _busyKey == key;
 
   Widget _buildUserAvatar(SocialUser user) {
     if (user.avatarUrl != null && user.avatarUrl!.isNotEmpty) {
@@ -331,6 +322,161 @@ class _FriendsPageState extends State<FriendsPage> {
     );
   }
 
+  List<Widget> _buildSearchActions(FriendSearchResult result) {
+    final user = result.user;
+    return [
+      if (result.relationshipStatus == 'none')
+        FilledButton.icon(
+          onPressed: _isBusy('send-${user.userId}')
+              ? null
+              : () => _runAction(
+                  'send-${user.userId}',
+                  () => _friendsService.sendFriendRequest(user.userId),
+                  successMessage: _t.text('Friend request sent'),
+                ),
+          icon: const Icon(Icons.person_add_alt_1),
+          label: Text(_t.text('Add Friend')),
+        ),
+      if (result.relationshipStatus == 'friend')
+        OutlinedButton.icon(
+          onPressed: _isBusy('invite-${user.userId}')
+              ? null
+              : () => _inviteFriendToBattle(user),
+          icon: const Icon(Icons.sports_esports_outlined),
+          label: Text(_t.text('Invite Battle')),
+        ),
+      if (result.relationshipStatus != 'blocked')
+        OutlinedButton.icon(
+          onPressed: _isBusy('block-${user.userId}')
+              ? null
+              : () => _runAction(
+                  'block-${user.userId}',
+                  () => _friendsService.blockUser(user.userId),
+                  successMessage: _t.text('Player blocked'),
+                ),
+          icon: const Icon(Icons.block),
+          label: Text(_t.text('Block')),
+        ),
+    ];
+  }
+
+  List<Widget> _buildRoomInviteActions(RoomInviteItem invite) {
+    return [
+      FilledButton(
+        onPressed: _isBusy('room-accept-${invite.id}')
+            ? null
+            : () => _acceptRoomInvite(invite),
+        child: Text(_t.text('Go to Room')),
+      ),
+      OutlinedButton(
+        onPressed: _isBusy('room-reject-${invite.id}')
+            ? null
+            : () => _runAction(
+                'room-reject-${invite.id}',
+                () => _friendsService.rejectRoomInvite(invite.id),
+              ),
+        child: Text(_t.text('Reject')),
+      ),
+    ];
+  }
+
+  List<Widget> _buildIncomingRequestActions(FriendRequestItem item) {
+    return [
+      FilledButton(
+        onPressed: _isBusy('accept-${item.id}')
+            ? null
+            : () => _runAction(
+                'accept-${item.id}',
+                () => _friendsService.acceptFriendRequest(item.id),
+                successMessage: _t.text('You are now friends'),
+              ),
+        child: Text(_t.text('Accept')),
+      ),
+      OutlinedButton(
+        onPressed: _isBusy('reject-${item.id}')
+            ? null
+            : () => _runAction(
+                'reject-${item.id}',
+                () => _friendsService.rejectFriendRequest(item.id),
+              ),
+        child: Text(_t.text('Reject')),
+      ),
+      OutlinedButton(
+        onPressed: _isBusy('block-${item.user.userId}')
+            ? null
+            : () => _runAction(
+                'block-${item.user.userId}',
+                () => _friendsService.blockUser(item.user.userId),
+                successMessage: _t.text('Player blocked'),
+              ),
+        child: Text(_t.text('Block')),
+      ),
+    ];
+  }
+
+  List<Widget> _buildOutgoingRequestActions(FriendRequestItem item) {
+    return [
+      OutlinedButton(
+        onPressed: _isBusy('cancel-${item.id}')
+            ? null
+            : () => _runAction(
+                'cancel-${item.id}',
+                () => _friendsService.cancelFriendRequest(item.id),
+              ),
+        child: Text(_t.text('Cancel')),
+      ),
+    ];
+  }
+
+  List<Widget> _buildFriendActions(SocialUser friend) {
+    return [
+      FilledButton.icon(
+        onPressed: _isBusy('invite-${friend.userId}')
+            ? null
+            : () => _inviteFriendToBattle(friend),
+        icon: const Icon(Icons.sports_esports_outlined),
+        label: Text(_t.text('Invite Battle')),
+      ),
+      OutlinedButton.icon(
+        onPressed: _isBusy('remove-${friend.userId}')
+            ? null
+            : () => _runAction(
+                'remove-${friend.userId}',
+                () => _friendsService.removeFriend(friend.userId),
+                successMessage: _t.text('Friend removed'),
+              ),
+        icon: const Icon(Icons.person_remove_outlined),
+        label: Text(_t.text('Remove Friend')),
+      ),
+      OutlinedButton.icon(
+        onPressed: _isBusy('block-${friend.userId}')
+            ? null
+            : () => _runAction(
+                'block-${friend.userId}',
+                () => _friendsService.blockUser(friend.userId),
+                successMessage: _t.text('Player blocked'),
+              ),
+        icon: const Icon(Icons.block),
+        label: Text(_t.text('Block')),
+      ),
+    ];
+  }
+
+  List<Widget> _buildBlockedUserActions(SocialUser user) {
+    return [
+      OutlinedButton(
+        onPressed: _isBusy('unblock-${user.userId}')
+            ? null
+            : () => _runAction(
+                'unblock-${user.userId}',
+                () => _friendsService.unblockUser(user.userId),
+                successMessage: _t.text('Unblocked'),
+              ),
+        child: Text(_t.text('Unblock')),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.watch<LocaleProvider>().translation;
@@ -407,59 +553,7 @@ class _FriendsPageState extends State<FriendsPage> {
                                 user: result.user,
                                 subtitle:
                                     '${t.text('Relationship Status')}: ${_relationshipLabel(result.relationshipStatus)}',
-                                actions: [
-                                  if (result.relationshipStatus == 'none')
-                                    FilledButton.icon(
-                                      onPressed:
-                                          _busyKey ==
-                                              'send-${result.user.userId}'
-                                          ? null
-                                          : () => _runAction(
-                                              'send-${result.user.userId}',
-                                              () => _friendsService
-                                                  .sendFriendRequest(
-                                                    result.user.userId,
-                                                  ),
-                                              successMessage: t.text(
-                                                'Friend request sent',
-                                              ),
-                                            ),
-                                      icon: const Icon(Icons.person_add_alt_1),
-                                      label: Text(t.text('Add Friend')),
-                                    ),
-                                  if (result.relationshipStatus == 'friend')
-                                    OutlinedButton.icon(
-                                      onPressed:
-                                          _busyKey ==
-                                              'invite-${result.user.userId}'
-                                          ? null
-                                          : () => _inviteFriendToBattle(
-                                              result.user,
-                                            ),
-                                      icon: const Icon(
-                                        Icons.sports_esports_outlined,
-                                      ),
-                                      label: Text(t.text('Invite Battle')),
-                                    ),
-                                  if (result.relationshipStatus != 'blocked')
-                                    OutlinedButton.icon(
-                                      onPressed:
-                                          _busyKey ==
-                                              'block-${result.user.userId}'
-                                          ? null
-                                          : () => _runAction(
-                                              'block-${result.user.userId}',
-                                              () => _friendsService.blockUser(
-                                                result.user.userId,
-                                              ),
-                                              successMessage: t.text(
-                                                'Player blocked',
-                                              ),
-                                            ),
-                                      icon: const Icon(Icons.block),
-                                      label: Text(t.text('Block')),
-                                    ),
-                                ],
+                                actions: _buildSearchActions(result),
                               ),
                             ),
                           ),
@@ -480,26 +574,7 @@ class _FriendsPageState extends State<FriendsPage> {
                                   user: invite.inviter,
                                   subtitle:
                                       '${t.text('invites you to join room')} ${invite.roomCode}',
-                                  actions: [
-                                    FilledButton(
-                                      onPressed:
-                                          _busyKey == 'room-accept-${invite.id}'
-                                          ? null
-                                          : () => _acceptRoomInvite(invite),
-                                      child: Text(t.text('Go to Room')),
-                                    ),
-                                    OutlinedButton(
-                                      onPressed:
-                                          _busyKey == 'room-reject-${invite.id}'
-                                          ? null
-                                          : () => _runAction(
-                                              'room-reject-${invite.id}',
-                                              () => _friendsService
-                                                  .rejectRoomInvite(invite.id),
-                                            ),
-                                      child: Text(t.text('Reject')),
-                                    ),
-                                  ],
+                                  actions: _buildRoomInviteActions(invite),
                                 ),
                               )
                               .toList(),
@@ -515,47 +590,7 @@ class _FriendsPageState extends State<FriendsPage> {
                               .map(
                                 (item) => _buildUserTile(
                                   user: item.user,
-                                  actions: [
-                                    FilledButton(
-                                      onPressed: _busyKey == 'accept-${item.id}'
-                                          ? null
-                                          : () => _runAction(
-                                              'accept-${item.id}',
-                                              () => _friendsService
-                                                  .acceptFriendRequest(item.id),
-                                              successMessage: t.text(
-                                                'You are now friends',
-                                              ),
-                                            ),
-                                      child: Text(t.text('Accept')),
-                                    ),
-                                    OutlinedButton(
-                                      onPressed: _busyKey == 'reject-${item.id}'
-                                          ? null
-                                          : () => _runAction(
-                                              'reject-${item.id}',
-                                              () => _friendsService
-                                                  .rejectFriendRequest(item.id),
-                                            ),
-                                      child: Text(t.text('Reject')),
-                                    ),
-                                    OutlinedButton(
-                                      onPressed:
-                                          _busyKey ==
-                                              'block-${item.user.userId}'
-                                          ? null
-                                          : () => _runAction(
-                                              'block-${item.user.userId}',
-                                              () => _friendsService.blockUser(
-                                                item.user.userId,
-                                              ),
-                                              successMessage: t.text(
-                                                'Player blocked',
-                                              ),
-                                            ),
-                                      child: Text(t.text('Block')),
-                                    ),
-                                  ],
+                                  actions: _buildIncomingRequestActions(item),
                                 ),
                               )
                               .toList(),
@@ -572,18 +607,7 @@ class _FriendsPageState extends State<FriendsPage> {
                                 (item) => _buildUserTile(
                                   user: item.user,
                                   subtitle: t.text('Waiting for confirmation'),
-                                  actions: [
-                                    OutlinedButton(
-                                      onPressed: _busyKey == 'cancel-${item.id}'
-                                          ? null
-                                          : () => _runAction(
-                                              'cancel-${item.id}',
-                                              () => _friendsService
-                                                  .cancelFriendRequest(item.id),
-                                            ),
-                                      child: Text(t.text('Cancel')),
-                                    ),
-                                  ],
+                                  actions: _buildOutgoingRequestActions(item),
                                 ),
                               )
                               .toList(),
@@ -603,51 +627,7 @@ class _FriendsPageState extends State<FriendsPage> {
                               .map(
                                 (friend) => _buildUserTile(
                                   user: friend,
-                                  actions: [
-                                    FilledButton.icon(
-                                      onPressed:
-                                          _busyKey == 'invite-${friend.userId}'
-                                          ? null
-                                          : () => _inviteFriendToBattle(friend),
-                                      icon: const Icon(
-                                        Icons.sports_esports_outlined,
-                                      ),
-                                      label: Text(t.text('Invite Battle')),
-                                    ),
-                                    OutlinedButton.icon(
-                                      onPressed:
-                                          _busyKey == 'remove-${friend.userId}'
-                                          ? null
-                                          : () => _runAction(
-                                              'remove-${friend.userId}',
-                                              () => _friendsService
-                                                  .removeFriend(friend.userId),
-                                              successMessage: t.text(
-                                                'Friend removed',
-                                              ),
-                                            ),
-                                      icon: const Icon(
-                                        Icons.person_remove_outlined,
-                                      ),
-                                      label: Text(t.text('Remove Friend')),
-                                    ),
-                                    OutlinedButton.icon(
-                                      onPressed:
-                                          _busyKey == 'block-${friend.userId}'
-                                          ? null
-                                          : () => _runAction(
-                                              'block-${friend.userId}',
-                                              () => _friendsService.blockUser(
-                                                friend.userId,
-                                              ),
-                                              successMessage: t.text(
-                                                'Player blocked',
-                                              ),
-                                            ),
-                                      icon: const Icon(Icons.block),
-                                      label: Text(t.text('Block')),
-                                    ),
-                                  ],
+                                  actions: _buildFriendActions(friend),
                                 ),
                               )
                               .toList(),
@@ -664,23 +644,7 @@ class _FriendsPageState extends State<FriendsPage> {
                                 (user) => _buildUserTile(
                                   user: user,
                                   subtitle: t.text('Blocked'),
-                                  actions: [
-                                    OutlinedButton(
-                                      onPressed:
-                                          _busyKey == 'unblock-${user.userId}'
-                                          ? null
-                                          : () => _runAction(
-                                              'unblock-${user.userId}',
-                                              () => _friendsService.unblockUser(
-                                                user.userId,
-                                              ),
-                                              successMessage: t.text(
-                                                'Unblocked',
-                                              ),
-                                            ),
-                                      child: Text(t.text('Unblock')),
-                                    ),
-                                  ],
+                                  actions: _buildBlockedUserActions(user),
                                 ),
                               )
                               .toList(),
