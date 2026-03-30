@@ -299,8 +299,6 @@ class _ProfilePageState extends State<ProfilePage> {
             padding: const EdgeInsets.all(16),
             children: [
               Text('Email: ${user.email}'),
-              const SizedBox(height: 8),
-              Text('${t.text('Player ID')}: ${user.id}'),
               const SizedBox(height: 20),
               Center(child: _buildAvatarPreview(user, t)),
               const SizedBox(height: 12),

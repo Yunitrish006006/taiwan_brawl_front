@@ -289,8 +289,6 @@ class _FriendsPageState extends State<FriendsPage> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text('${t.text('Player ID')} ${user.userId}'),
                       const SizedBox(height: 2),
                       Text(
                         subtitle ?? statusText,
