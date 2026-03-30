@@ -123,6 +123,10 @@ class RoyalePlayerView {
     required this.side,
     required this.deckId,
     required this.deckName,
+    required this.deckCards,
+    required this.elixir,
+    required this.handCardIds,
+    required this.queueCardIds,
     required this.ready,
     required this.connected,
     required this.towerHp,
@@ -134,6 +138,10 @@ class RoyalePlayerView {
   final String side;
   final int deckId;
   final String deckName;
+  final List<RoyaleCard> deckCards;
+  final double? elixir;
+  final List<String> handCardIds;
+  final List<String> queueCardIds;
   final bool ready;
   final bool connected;
   final int towerHp;
@@ -146,6 +154,16 @@ class RoyalePlayerView {
       side: json['side'] as String,
       deckId: (json['deckId'] as num).toInt(),
       deckName: json['deckName'] as String,
+      deckCards: (json['deckCards'] as List<dynamic>? ?? const [])
+          .map((card) => RoyaleCard.fromJson(card as Map<String, dynamic>))
+          .toList(),
+      elixir: (json['elixir'] as num?)?.toDouble(),
+      handCardIds: (json['handCardIds'] as List<dynamic>? ?? const [])
+          .map((cardId) => cardId.toString())
+          .toList(),
+      queueCardIds: (json['queueCardIds'] as List<dynamic>? ?? const [])
+          .map((cardId) => cardId.toString())
+          .toList(),
       ready: json['ready'] as bool? ?? false,
       connected: json['connected'] as bool? ?? false,
       towerHp: (json['towerHp'] as num?)?.toInt() ?? 0,
@@ -285,6 +303,7 @@ class RoyaleRoomSnapshot {
     required this.code,
     required this.status,
     required this.simulationMode,
+    required this.hostUserId,
     required this.viewerSide,
     required this.players,
     required this.battle,
@@ -293,6 +312,7 @@ class RoyaleRoomSnapshot {
   final String code;
   final String status;
   final String simulationMode;
+  final int hostUserId;
   final String? viewerSide;
   final List<RoyalePlayerView> players;
   final RoyaleBattleView? battle;
@@ -327,6 +347,7 @@ class RoyaleRoomSnapshot {
       code: json['code'] as String,
       status: json['status'] as String,
       simulationMode: json['simulationMode'] as String? ?? 'server',
+      hostUserId: (json['hostUserId'] as num?)?.toInt() ?? 0,
       viewerSide: json['viewerSide'] as String?,
       players: (json['players'] as List<dynamic>? ?? const [])
           .map(

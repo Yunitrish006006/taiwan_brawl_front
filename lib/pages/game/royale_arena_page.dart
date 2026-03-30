@@ -83,10 +83,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         _syncSelectionWithRoom(room);
         _isLoading = false;
       });
+      _connectSocket();
       if (_usesHostSimulation(room)) {
         await _initializeHostBattle(room);
-      } else {
-        _connectSocket();
       }
     } on ApiException catch (e) {
       if (!mounted) {
@@ -109,7 +108,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
 
   bool _usesHostSimulation([RoyaleRoomSnapshot? room]) {
     final current = room ?? _room;
-    return current?.simulationMode == 'host' && current?.opponent?.userId == 0;
+    return current?.simulationMode == 'host' &&
+        current?.viewerSide == 'left' &&
+        current?.hostUserId == current?.me?.userId;
   }
 
   Future<void> _initializeHostBattle(RoyaleRoomSnapshot room) async {
@@ -119,27 +120,10 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       return;
     }
 
-    final me = room.me;
-    if (me == null) {
-      return;
-    }
-
     try {
-      final decks = await _service.fetchDecks();
-      RoyaleDeck? deck;
-      for (final entry in decks) {
-        if (entry.id == me.deckId) {
-          deck = entry;
-          break;
-        }
-      }
-      if (deck == null || !mounted) {
-        return;
-      }
-
-      final engine = HostBattleEngine(
+      late final HostBattleEngine engine;
+      engine = HostBattleEngine(
         room: room,
-        deck: deck,
         onSnapshot: (snapshot) {
           if (!mounted) {
             return;
@@ -148,6 +132,12 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
             _room = snapshot;
             _syncSelectionWithRoom(snapshot);
           });
+          _channel?.sink.add(
+            jsonEncode({
+              'type': 'host_state',
+              'state': engine.exportBattleState(),
+            }),
+          );
           if (snapshot.battle?.result != null) {
             unawaited(_reportHostFinish(snapshot));
           }
@@ -243,12 +233,12 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   }
 
   void _connectSocket() {
-    if (_usesHostSimulation()) {
+    if (_channel != null) {
       return;
     }
     _channel = _service.connectToRoom(widget.roomCode);
     _socketSubscription = _channel!.stream.listen(
-      (message) {
+      (message) async {
         final data = jsonDecode(message as String) as Map<String, dynamic>;
         if (data['type'] == 'pong') {
           return;
@@ -266,11 +256,45 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
           return;
         }
 
+        if (data['type'] == 'host_command') {
+          final command = data['command'] as Map<String, dynamic>?;
+          if (command == null || !_usesHostSimulation()) {
+            return;
+          }
+          final side = command['side'] as String? ?? 'right';
+          final cardIds = (command['cardIds'] as List<dynamic>? ?? const [])
+              .map((cardId) => cardId.toString())
+              .toList();
+          final dropX = (command['dropX'] as num?)?.toDouble();
+          final dropY = (command['dropY'] as num?)?.toDouble();
+          if (dropX == null || dropY == null) {
+            return;
+          }
+          final error = _hostBattleEngine?.applyRemoteCombo(
+            side: side,
+            cardIds: cardIds,
+            dropX: dropX,
+            dropY: dropY,
+          );
+          if (error != null && mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(error)));
+          }
+          return;
+        }
+
         final roomJson = data['room'] as Map<String, dynamic>?;
         if (roomJson == null || !mounted) {
           return;
         }
         final room = RoyaleRoomSnapshot.fromJson(roomJson);
+        if (data['type'] == 'battle_started' && _usesHostSimulation(room)) {
+          await _initializeHostBattle(room);
+        }
+        if (_usesHostSimulation() && data['type'] == 'state_snapshot') {
+          return;
+        }
         setState(() {
           _room = room;
           _syncSelectionWithRoom(room);
@@ -1105,6 +1129,13 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                                                               side: 'right',
                                                               deckId: 0,
                                                               deckName: '',
+                                                              deckCards:
+                                                                  const [],
+                                                              elixir: null,
+                                                              handCardIds:
+                                                                  const [],
+                                                              queueCardIds:
+                                                                  const [],
                                                               ready: false,
                                                               connected: false,
                                                               towerHp: 0,
@@ -1126,6 +1157,13 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                                                               side: 'right',
                                                               deckId: 0,
                                                               deckName: '',
+                                                              deckCards:
+                                                                  const [],
+                                                              elixir: null,
+                                                              handCardIds:
+                                                                  const [],
+                                                              queueCardIds:
+                                                                  const [],
                                                               ready: false,
                                                               connected: false,
                                                               towerHp: 0,

@@ -235,7 +235,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
                             Text(
                               _simulationMode == 'host'
                                   ? t.text(
-                                      'Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.',
+                                      'Host simulation runs on the room host device. This experimental mode locks after battle starts.',
                                     )
                                   : t.text(
                                       'Server simulation runs in the room server and is the default recommended mode.',
@@ -251,26 +251,12 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
                         child: ElevatedButton.icon(
                           onPressed: _isSubmitting || _selectedDeck == null
                               ? null
-                              : () {
-                                  if (_simulationMode == 'host') {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          t.text(
-                                            'Host simulation is currently available for bot matches only',
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                    return;
-                                  }
-                                  _enterRoom(
-                                    () => _service.createRoom(
-                                      deckId: _selectedDeck!.id,
-                                      simulationMode: _simulationMode,
-                                    ),
-                                  );
-                                },
+                              : () => _enterRoom(
+                                  () => _service.createRoom(
+                                    deckId: _selectedDeck!.id,
+                                    simulationMode: _simulationMode,
+                                  ),
+                                ),
                           icon: const Icon(Icons.add_circle_outline),
                           label: Text(t.text('Create Room')),
                         ),

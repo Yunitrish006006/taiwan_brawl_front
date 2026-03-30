@@ -97,6 +97,8 @@ const Map<String, String> enUS = {
   'Manage battle cards': 'Manage battle cards',
   'Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.':
       'Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.',
+  'Host simulation runs on the room host device. This experimental mode locks after battle starts.':
+      'Host simulation runs on the room host device. This experimental mode locks after battle starts.',
   'Server simulation runs in the room server and is the default recommended mode.':
       'Server simulation runs in the room server and is the default recommended mode.',
   'Host simulation is currently available for bot matches only':
