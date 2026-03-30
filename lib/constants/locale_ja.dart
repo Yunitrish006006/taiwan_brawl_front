@@ -94,6 +94,8 @@ const Map<String, String> jaJP = {
   'Manage battle cards': '対戦カードを管理',
   'Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.':
       'ホスト演算はあなたの端末上で動作します。この実験モードは現在 Bot 戦のみ対応し、対戦開始後は切り替えできません。',
+  'Host simulation runs on the room host device. This experimental mode locks after battle starts.':
+      'ホスト演算はルームのホスト端末上で動作します。この実験モードは対戦開始後に切り替えできません。',
   'Server simulation runs in the room server and is the default recommended mode.':
       'サーバー演算はルームサーバー側で実行され、現在の標準かつ推奨モードです。',
   'Host simulation is currently available for bot matches only':

@@ -114,14 +114,11 @@ double _effectiveAttackReachToTower(_HostUnit unit) {
 }
 
 class HostBattleEngine {
-  HostBattleEngine({
-    required RoyaleRoomSnapshot room,
-    required RoyaleDeck deck,
-    required this.onSnapshot,
-  }) : _code = room.code,
-       _viewerSide = room.viewerSide ?? 'left' {
-    _leftPlayer = _buildPlayer(room, 'left', deck);
-    _rightPlayer = _buildPlayer(room, 'right', deck);
+  HostBattleEngine({required RoyaleRoomSnapshot room, required this.onSnapshot})
+    : _code = room.code,
+      _viewerSide = room.viewerSide ?? 'left' {
+    _leftPlayer = _buildPlayer(room, 'left');
+    _rightPlayer = _buildPlayer(room, 'right');
     _emitSnapshot();
   }
 
@@ -154,29 +151,104 @@ class HostBattleEngine {
 
   RoyaleRoomSnapshot get snapshot => _snapshot();
 
+  Map<String, dynamic> exportBattleState() {
+    return {
+      'timeRemainingMs': _timeRemainingMs,
+      'nextUnitId': _nextUnitId,
+      'result': _result == null
+          ? null
+          : {'winnerSide': _result!.winnerSide, 'reason': _result!.reason},
+      'players': {
+        'left': _exportPlayerState(_leftPlayer),
+        'right': _exportPlayerState(_rightPlayer),
+      },
+      'units': _units
+          .map(
+            (unit) => {
+              'id': unit.id,
+              'cardId': unit.cardId,
+              'name': unit.name,
+              'nameZhHant': unit.nameZhHant,
+              'nameEn': unit.nameEn,
+              'nameJa': unit.nameJa,
+              'imageUrl': unit.imageUrl,
+              'type': unit.type,
+              'side': unit.side,
+              'progress': unit.progress.round(),
+              'lateralPosition': unit.lateralPosition.round(),
+              'hp': unit.hp,
+              'maxHp': unit.maxHp,
+              'damage': unit.damage,
+              'attackRange': unit.attackRange.round(),
+              'bodyRadius': unit.bodyRadius.round(),
+              'moveSpeed': unit.moveSpeed.round(),
+              'attackSpeed': unit.attackSpeed,
+              'targetRule': unit.targetRule,
+              'cooldown': unit.cooldown,
+              'effects': unit.effects,
+            },
+          )
+          .toList(),
+    };
+  }
+
   String? playCombo(
     List<RoyaleCard> cards, {
+    required double dropX,
+    required double dropY,
+  }) {
+    return _playComboForSide(
+      side: _viewerSide,
+      cardIds: cards.map((card) => card.id).toList(),
+      dropX: dropX,
+      dropY: dropY,
+    );
+  }
+
+  String? applyRemoteCombo({
+    required String side,
+    required List<String> cardIds,
+    required double dropX,
+    required double dropY,
+  }) {
+    return _playComboForSide(
+      side: side,
+      cardIds: cardIds,
+      dropX: dropX,
+      dropY: dropY,
+    );
+  }
+
+  String? _playComboForSide({
+    required String side,
+    required List<String> cardIds,
     required double dropX,
     required double dropY,
   }) {
     if (_result != null) {
       return null;
     }
-    if (cards.isEmpty) {
+    if (cardIds.isEmpty) {
       return 'Select at least one card';
     }
-    if (cards.length > _maxComboCards) {
+    if (cardIds.length > _maxComboCards) {
       return 'You can cast at most 3 cards';
     }
 
-    final player = _playerForSide(_viewerSide);
+    final player = _playerForSide(side);
+    final cards = <RoyaleCard>[];
     final remainingHand = List<String>.from(player.hand);
-    for (final card in cards) {
-      final handIndex = remainingHand.indexOf(card.id);
+    for (final cardId in cardIds) {
+      final handIndex = remainingHand.indexOf(cardId);
       if (handIndex == -1) {
         return 'One of the selected cards is not in hand';
       }
       remainingHand.removeAt(handIndex);
+      final card = player.cardById(cardId);
+      if (card == null) {
+        return 'Unknown card';
+      }
+      cards.add(card);
     }
 
     final totalElixirCost = cards.fold<double>(
@@ -195,17 +267,17 @@ class HostBattleEngine {
       return 'Equipment cards need at least one unit in the same cast';
     }
 
-    final dropPoint = _normalizeDropPoint(_viewerSide, dropX, dropY);
+    final dropPoint = _normalizeDropPoint(side, dropX, dropY);
     final equipmentEffects = _equipmentEffects(cards);
 
     player.elixir = _clamp(player.elixir - totalElixirCost, 0, _maxElixir);
-    _drawReplacementCards(player, cards.map((card) => card.id).toList());
+    _drawReplacementCards(player, cardIds);
 
     for (final card in cards) {
       if (card.type == 'spell') {
-        _resolveSpell(_viewerSide, card, dropPoint);
+        _resolveSpell(side, card, dropPoint);
       } else if (card.type != 'equipment') {
-        _spawnUnits(_viewerSide, card, dropPoint, equipmentEffects);
+        _spawnUnits(side, card, dropPoint, equipmentEffects);
       }
     }
 
@@ -213,13 +285,26 @@ class HostBattleEngine {
     return null;
   }
 
-  _HostPlayer _buildPlayer(
-    RoyaleRoomSnapshot room,
-    String side,
-    RoyaleDeck deck,
-  ) {
+  Map<String, dynamic> _exportPlayerState(_HostPlayer player) {
+    return {
+      'elixir': player.elixir,
+      'hand': player.hand,
+      'queue': player.queue,
+      'botThinkMs': player.botThinkMs,
+      'towerHp': player.towerHp,
+      'maxTowerHp': player.maxTowerHp,
+    };
+  }
+
+  _HostPlayer _buildPlayer(RoyaleRoomSnapshot room, String side) {
     final view = room.players.firstWhere((player) => player.side == side);
-    final deckCardIds = deck.cards.map((card) => card.id).toList();
+    final deckCards = view.deckCards;
+    if (deckCards.isEmpty) {
+      throw StateError(
+        'Host simulation requires full deck data for both players',
+      );
+    }
+    final deckCardIds = deckCards.map((card) => card.id).toList();
     final hand = deckCardIds.take(4).toList();
     final queue = deckCardIds.skip(4).toList();
     return _HostPlayer(
@@ -231,10 +316,14 @@ class HostBattleEngine {
       isBot: view.userId == 0,
       ready: view.ready,
       connected: view.connected,
-      deckCards: deck.cards,
-      hand: hand,
-      queue: queue,
-      elixir: 5,
+      deckCards: deckCards,
+      hand: view.handCardIds.isNotEmpty
+          ? List<String>.from(view.handCardIds)
+          : hand,
+      queue: view.queueCardIds.isNotEmpty
+          ? List<String>.from(view.queueCardIds)
+          : queue,
+      elixir: view.elixir ?? 5,
       towerHp: view.maxTowerHp == 0 ? _towerHp : view.maxTowerHp,
       maxTowerHp: view.maxTowerHp == 0 ? _towerHp : view.maxTowerHp,
       botThinkMs: view.userId == 0 ? _randomBotThinkMs() : 0,
@@ -698,6 +787,10 @@ class HostBattleEngine {
         side: _leftPlayer.side,
         deckId: _leftPlayer.deckId,
         deckName: _leftPlayer.deckName,
+        deckCards: _leftPlayer.deckCards,
+        elixir: _leftPlayer.elixir,
+        handCardIds: _leftPlayer.hand,
+        queueCardIds: _leftPlayer.queue,
         ready: _leftPlayer.ready,
         connected: _leftPlayer.connected,
         towerHp: _leftPlayer.towerHp,
@@ -709,6 +802,10 @@ class HostBattleEngine {
         side: _rightPlayer.side,
         deckId: _rightPlayer.deckId,
         deckName: _rightPlayer.deckName,
+        deckCards: _rightPlayer.deckCards,
+        elixir: _rightPlayer.elixir,
+        handCardIds: _rightPlayer.hand,
+        queueCardIds: _rightPlayer.queue,
         ready: _rightPlayer.ready,
         connected: _rightPlayer.connected,
         towerHp: _rightPlayer.towerHp,
@@ -720,6 +817,7 @@ class HostBattleEngine {
       code: _code,
       status: _result == null ? 'battle' : 'finished',
       simulationMode: 'host',
+      hostUserId: _leftPlayer.userId,
       viewerSide: _viewerSide,
       players: players,
       battle: RoyaleBattleView(

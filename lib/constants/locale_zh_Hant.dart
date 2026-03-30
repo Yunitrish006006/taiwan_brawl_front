@@ -90,6 +90,8 @@ const Map<String, String> zhHant = {
   'Manage battle cards': '管理對戰卡牌',
   'Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.':
       '房主運算會直接在你的裝置上執行。這個實驗模式目前只開放人機房，開打後就會鎖定不可切換。',
+  'Host simulation runs on the room host device. This experimental mode locks after battle starts.':
+      '房主運算會直接在開房者的裝置上執行。這個實驗模式開打後就會鎖定不可切換。',
   'Server simulation runs in the room server and is the default recommended mode.':
       '伺服器運算會在房間伺服器端執行，也是目前預設且最建議的模式。',
   'Host simulation is currently available for bot matches only':
