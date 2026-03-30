@@ -76,6 +76,26 @@ class _CardManagementPageState extends State<CardManagementPage> {
   String _selectedTargetRule = _targetRuleOptions.first;
   String _selectedEffectKind = _effectKindOptions.first;
 
+  List<TextEditingController> get _allControllers => [
+    _idController,
+    _nameZhHantController,
+    _nameEnController,
+    _nameJaController,
+    _elixirCostController,
+    _hpController,
+    _damageController,
+    _attackRangeController,
+    _bodyRadiusController,
+    _moveSpeedController,
+    _attackSpeedController,
+    _spawnCountController,
+    _spellRadiusController,
+    _spellDamageController,
+    _effectValueController,
+  ];
+
+  Map<String, String> get _t => context.read<LocaleProvider>().translation;
+
   @override
   void initState() {
     super.initState();
@@ -86,26 +106,20 @@ class _CardManagementPageState extends State<CardManagementPage> {
 
   @override
   void dispose() {
-    _idController.dispose();
-    _nameZhHantController.dispose();
-    _nameEnController.dispose();
-    _nameJaController.dispose();
-    _elixirCostController.dispose();
-    _hpController.dispose();
-    _damageController.dispose();
-    _attackRangeController.dispose();
-    _bodyRadiusController.dispose();
-    _moveSpeedController.dispose();
-    _attackSpeedController.dispose();
-    _spawnCountController.dispose();
-    _spellRadiusController.dispose();
-    _spellDamageController.dispose();
-    _effectValueController.dispose();
+    for (final controller in _allControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
   bool _canManageCards(AppUser user) {
     return user.role == 'admin' || user.role == 'card_manager';
+  }
+
+  void _clearPendingImageSelection() {
+    _pendingImageBytes = null;
+    _pendingImageMimeType = null;
+    _pendingImageFileName = null;
   }
 
   Future<void> _loadCards({String? preferCardId}) async {
@@ -173,9 +187,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
       _spellRadiusController.text = card.spellRadius.toString();
       _spellDamageController.text = card.spellDamage.toString();
       _effectValueController.text = card.effectValue.toString();
-      _pendingImageBytes = null;
-      _pendingImageMimeType = null;
-      _pendingImageFileName = null;
+      _clearPendingImageSelection();
     });
   }
 
@@ -201,9 +213,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
       _spellRadiusController.text = '0';
       _spellDamageController.text = '0';
       _effectValueController.text = '0';
-      _pendingImageBytes = null;
-      _pendingImageMimeType = null;
-      _pendingImageFileName = null;
+      _clearPendingImageSelection();
     });
   }
 
@@ -237,12 +247,10 @@ class _CardManagementPageState extends State<CardManagementPage> {
   }
 
   String _invalidNumberMessage(String label) {
-    final t = context.read<LocaleProvider>().translation;
-    return '${t.text('Please enter a valid number for')} $label';
+    return '${_t.text('Please enter a valid number for')} $label';
   }
 
   Map<String, dynamic> _buildPayload() {
-    final t = context.read<LocaleProvider>().translation;
     final nameZhHant = _nameZhHantController.text.trim();
     final nameEn = _nameEnController.text.trim();
     final nameJa = _nameJaController.text.trim();
@@ -254,41 +262,41 @@ class _CardManagementPageState extends State<CardManagementPage> {
       'nameI18n': {'zh-Hant': nameZhHant, 'en': nameEn, 'ja': nameJa},
       'elixirCost': _parseIntField(
         _elixirCostController,
-        t.text('Elixir Cost'),
+        _t.text('Elixir Cost'),
       ),
       'type': _selectedType,
-      'hp': _parseIntField(_hpController, t.text('HP')),
-      'damage': _parseIntField(_damageController, t.text('Damage')),
+      'hp': _parseIntField(_hpController, _t.text('HP')),
+      'damage': _parseIntField(_damageController, _t.text('Damage')),
       'attackRange': _parseIntField(
         _attackRangeController,
-        t.text('Attack Range'),
+        _t.text('Attack Range'),
       ),
       'bodyRadius': _parseIntField(
         _bodyRadiusController,
-        t.text('Body Radius'),
+        _t.text('Body Radius'),
       ),
-      'moveSpeed': _parseIntField(_moveSpeedController, t.text('Move Speed')),
+      'moveSpeed': _parseIntField(_moveSpeedController, _t.text('Move Speed')),
       'attackSpeed': _parseDoubleField(
         _attackSpeedController,
-        t.text('Attack Speed'),
+        _t.text('Attack Speed'),
       ),
       'spawnCount': _parseIntField(
         _spawnCountController,
-        t.text('Spawn Count'),
+        _t.text('Spawn Count'),
       ),
       'spellRadius': _parseIntField(
         _spellRadiusController,
-        t.text('Spell Radius'),
+        _t.text('Spell Radius'),
       ),
       'spellDamage': _parseIntField(
         _spellDamageController,
-        t.text('Spell Damage'),
+        _t.text('Spell Damage'),
       ),
       'targetRule': _selectedTargetRule,
       'effectKind': _selectedEffectKind,
       'effectValue': _parseDoubleField(
         _effectValueController,
-        t.text('Effect Value'),
+        _t.text('Effect Value'),
       ),
     };
   }
@@ -307,11 +315,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
       if (!mounted) {
         return;
       }
-      _showSnackBar(
-        context.read<LocaleProvider>().translation.text(
-          'Card saved successfully',
-        ),
-      );
+      _showSnackBar(_t.text('Card saved successfully'));
     } on FormatException catch (error) {
       _showSnackBar(error.message);
     } on ApiException catch (error) {
@@ -345,11 +349,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
       if (!mounted) {
         return;
       }
-      _showSnackBar(
-        context.read<LocaleProvider>().translation.text(
-          'Card deleted successfully',
-        ),
-      );
+      _showSnackBar(_t.text('Card deleted successfully'));
     } on ApiException catch (error) {
       _showSnackBar(error.message);
     } finally {
@@ -391,30 +391,18 @@ class _CardManagementPageState extends State<CardManagementPage> {
     final file = result.files.single;
     final bytes = file.bytes;
     if (bytes == null || bytes.isEmpty) {
-      _showSnackBar(
-        context.read<LocaleProvider>().translation.text(
-          'Selected file has no readable bytes',
-        ),
-      );
+      _showSnackBar(_t.text('Selected file has no readable bytes'));
       return;
     }
 
     final mimeType = _detectImageMimeType(file);
     if (mimeType == null) {
-      _showSnackBar(
-        context.read<LocaleProvider>().translation.text(
-          'Selected image is unsupported',
-        ),
-      );
+      _showSnackBar(_t.text('Selected image is unsupported'));
       return;
     }
 
     if (bytes.length > 1024 * 1024) {
-      _showSnackBar(
-        context.read<LocaleProvider>().translation.text(
-          'Image must be 1 MB or smaller',
-        ),
-      );
+      _showSnackBar(_t.text('Image must be 1 MB or smaller'));
       return;
     }
 
@@ -428,11 +416,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
   Future<void> _uploadImage() async {
     final card = _selectedCard();
     if (card == null || _isCreatingNew) {
-      _showSnackBar(
-        context.read<LocaleProvider>().translation.text(
-          'Save the card first before uploading an image',
-        ),
-      );
+      _showSnackBar(_t.text('Save the card first before uploading an image'));
       return;
     }
     if (_pendingImageBytes == null || _pendingImageMimeType == null) {
@@ -457,11 +441,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
       if (!mounted) {
         return;
       }
-      _showSnackBar(
-        context.read<LocaleProvider>().translation.text(
-          'Image uploaded successfully',
-        ),
-      );
+      _showSnackBar(_t.text('Image uploaded successfully'));
     } on ApiException catch (error) {
       _showSnackBar(error.message);
     } finally {
@@ -492,11 +472,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
       if (!mounted) {
         return;
       }
-      _showSnackBar(
-        context.read<LocaleProvider>().translation.text(
-          'Image removed successfully',
-        ),
-      );
+      _showSnackBar(_t.text('Image removed successfully'));
     } on ApiException catch (error) {
       _showSnackBar(error.message);
     } finally {
@@ -652,6 +628,58 @@ class _CardManagementPageState extends State<CardManagementPage> {
     );
   }
 
+  Widget _buildTextField(
+    Map<String, String> t,
+    TextEditingController controller,
+    String label, {
+    String? hint,
+    bool enabled = true,
+  }) {
+    return TextField(
+      controller: controller,
+      enabled: enabled,
+      decoration: InputDecoration(labelText: t.text(label), hintText: hint),
+    );
+  }
+
+  Widget _buildFieldBox(Widget child, {double width = 180}) {
+    return SizedBox(width: width, child: child);
+  }
+
+  Widget _buildDropdownField({
+    required Map<String, String> t,
+    required String value,
+    required String label,
+    required String keyPrefix,
+    required List<String> options,
+    required String Function(String value) labelBuilder,
+    required ValueChanged<String> onChanged,
+    double width = 220,
+  }) {
+    return _buildFieldBox(
+      DropdownButtonFormField<String>(
+        key: ValueKey('$keyPrefix-$value-$_selectedCardId'),
+        initialValue: value,
+        decoration: InputDecoration(labelText: t.text(label)),
+        items: options
+            .map(
+              (option) => DropdownMenuItem<String>(
+                value: option,
+                child: Text(labelBuilder(option)),
+              ),
+            )
+            .toList(),
+        onChanged: (nextValue) {
+          if (nextValue == null) {
+            return;
+          }
+          onChanged(nextValue);
+        },
+      ),
+      width: width,
+    );
+  }
+
   Widget _buildForm(Map<String, String> t) {
     final selectedCard = _selectedCard();
     final formIntro = _isCreatingNew
@@ -714,35 +742,23 @@ class _CardManagementPageState extends State<CardManagementPage> {
               child: Text(formIntro),
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: _idController,
+            _buildTextField(
+              t,
+              _idController,
+              'Card ID',
+              hint: 'swordsman',
               enabled: _isCreatingNew,
-              decoration: InputDecoration(
-                labelText: t.text('Card ID'),
-                hintText: 'swordsman',
-              ),
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _nameZhHantController,
-              decoration: InputDecoration(
-                labelText: t.text('Card Name (Traditional Chinese)'),
-              ),
+            _buildTextField(
+              t,
+              _nameZhHantController,
+              'Card Name (Traditional Chinese)',
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _nameEnController,
-              decoration: InputDecoration(
-                labelText: t.text('Card Name (English)'),
-              ),
-            ),
+            _buildTextField(t, _nameEnController, 'Card Name (English)'),
             const SizedBox(height: 12),
-            TextField(
-              controller: _nameJaController,
-              decoration: InputDecoration(
-                labelText: t.text('Card Name (Japanese)'),
-              ),
-            ),
+            _buildTextField(t, _nameJaController, 'Card Name (Japanese)'),
             const SizedBox(height: 12),
             _CardImageEditor(
               card: selectedCard,
@@ -761,93 +777,48 @@ class _CardManagementPageState extends State<CardManagementPage> {
               spacing: 12,
               runSpacing: 12,
               children: [
-                SizedBox(
+                _buildFieldBox(
+                  _buildNumberField(t, _elixirCostController, 'Elixir Cost'),
                   width: 220,
-                  child: _buildNumberField(
-                    t,
-                    _elixirCostController,
-                    'Elixir Cost',
-                  ),
                 ),
-                SizedBox(
-                  width: 220,
-                  child: DropdownButtonFormField<String>(
-                    key: ValueKey('type-$_selectedType-$_selectedCardId'),
-                    initialValue: _selectedType,
-                    decoration: InputDecoration(labelText: t.text('Type')),
-                    items: _typeOptions
-                        .map(
-                          (value) => DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(_typeLabel(t, value)),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value == null) {
-                        return;
-                      }
-                      setState(() {
-                        _selectedType = value;
-                      });
-                    },
-                  ),
+                _buildDropdownField(
+                  t: t,
+                  value: _selectedType,
+                  label: 'Type',
+                  keyPrefix: 'type',
+                  options: _typeOptions,
+                  labelBuilder: (value) => _typeLabel(t, value),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedType = value;
+                    });
+                  },
                 ),
-                SizedBox(
-                  width: 220,
-                  child: DropdownButtonFormField<String>(
-                    key: ValueKey(
-                      'target-$_selectedTargetRule-$_selectedCardId',
-                    ),
-                    initialValue: _selectedTargetRule,
-                    decoration: InputDecoration(
-                      labelText: t.text('Target Rule'),
-                    ),
-                    items: _targetRuleOptions
-                        .map(
-                          (value) => DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(_targetRuleLabel(t, value)),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value == null) {
-                        return;
-                      }
-                      setState(() {
-                        _selectedTargetRule = value;
-                      });
-                    },
-                  ),
+                _buildDropdownField(
+                  t: t,
+                  value: _selectedTargetRule,
+                  label: 'Target Rule',
+                  keyPrefix: 'target',
+                  options: _targetRuleOptions,
+                  labelBuilder: (value) => _targetRuleLabel(t, value),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedTargetRule = value;
+                    });
+                  },
                 ),
-                SizedBox(
-                  width: 220,
-                  child: DropdownButtonFormField<String>(
-                    key: ValueKey(
-                      'effect-$_selectedEffectKind-$_selectedCardId',
-                    ),
-                    initialValue: _selectedEffectKind,
-                    decoration: InputDecoration(
-                      labelText: t.text('Effect Kind'),
-                    ),
-                    items: _effectKindOptions
-                        .map(
-                          (value) => DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(_effectKindLabel(t, value)),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value == null) {
-                        return;
-                      }
-                      setState(() {
-                        _selectedEffectKind = value;
-                      });
-                    },
-                  ),
+                _buildDropdownField(
+                  t: t,
+                  value: _selectedEffectKind,
+                  label: 'Effect Kind',
+                  keyPrefix: 'effect',
+                  options: _effectKindOptions,
+                  labelBuilder: (value) => _effectKindLabel(t, value),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedEffectKind = value;
+                    });
+                  },
                 ),
               ],
             ),
@@ -856,27 +827,24 @@ class _CardManagementPageState extends State<CardManagementPage> {
               spacing: 12,
               runSpacing: 12,
               children: [
-                SizedBox(
-                  width: 180,
-                  child: _buildNumberField(
+                _buildFieldBox(
+                  _buildNumberField(
                     t,
                     _hpController,
                     'HP',
                     helper: 'Hit points. Uses normal game damage values.',
                   ),
                 ),
-                SizedBox(
-                  width: 180,
-                  child: _buildNumberField(
+                _buildFieldBox(
+                  _buildNumberField(
                     t,
                     _damageController,
                     'Damage',
                     helper: 'Damage dealt on each successful attack.',
                   ),
                 ),
-                SizedBox(
-                  width: 180,
-                  child: _buildNumberField(
+                _buildFieldBox(
+                  _buildNumberField(
                     t,
                     _attackRangeController,
                     'Attack Range',
@@ -884,9 +852,8 @@ class _CardManagementPageState extends State<CardManagementPage> {
                         'Weapon reach in world units. This does not include the unit body radius.',
                   ),
                 ),
-                SizedBox(
-                  width: 180,
-                  child: _buildNumberField(
+                _buildFieldBox(
+                  _buildNumberField(
                     t,
                     _bodyRadiusController,
                     'Body Radius',
@@ -894,9 +861,8 @@ class _CardManagementPageState extends State<CardManagementPage> {
                         'Unit body size in world units. Final reach uses body radius plus attack range.',
                   ),
                 ),
-                SizedBox(
-                  width: 180,
-                  child: _buildNumberField(
+                _buildFieldBox(
+                  _buildNumberField(
                     t,
                     _moveSpeedController,
                     'Move Speed',
@@ -904,9 +870,8 @@ class _CardManagementPageState extends State<CardManagementPage> {
                         'Movement speed in world units per second before global battle multipliers.',
                   ),
                 ),
-                SizedBox(
-                  width: 180,
-                  child: _buildNumberField(
+                _buildFieldBox(
+                  _buildNumberField(
                     t,
                     _attackSpeedController,
                     'Attack Speed',
@@ -914,38 +879,22 @@ class _CardManagementPageState extends State<CardManagementPage> {
                         'Seconds between attacks. Smaller values attack faster.',
                   ),
                 ),
-                SizedBox(
-                  width: 180,
-                  child: _buildNumberField(
-                    t,
-                    _spawnCountController,
-                    'Spawn Count',
-                  ),
+                _buildFieldBox(
+                  _buildNumberField(t, _spawnCountController, 'Spawn Count'),
                 ),
-                SizedBox(
-                  width: 180,
-                  child: _buildNumberField(
+                _buildFieldBox(
+                  _buildNumberField(
                     t,
                     _spellRadiusController,
                     'Spell Radius',
                     helper: 'Spell area radius in world units.',
                   ),
                 ),
-                SizedBox(
-                  width: 180,
-                  child: _buildNumberField(
-                    t,
-                    _spellDamageController,
-                    'Spell Damage',
-                  ),
+                _buildFieldBox(
+                  _buildNumberField(t, _spellDamageController, 'Spell Damage'),
                 ),
-                SizedBox(
-                  width: 180,
-                  child: _buildNumberField(
-                    t,
-                    _effectValueController,
-                    'Effect Value',
-                  ),
+                _buildFieldBox(
+                  _buildNumberField(t, _effectValueController, 'Effect Value'),
                 ),
               ],
             ),

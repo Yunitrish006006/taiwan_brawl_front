@@ -113,6 +113,22 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         current?.hostUserId == current?.me?.userId;
   }
 
+  void _showSnackBar(String message) {
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _applyRoomSnapshot(RoyaleRoomSnapshot room) {
+    setState(() {
+      _room = room;
+      _syncSelectionWithRoom(room);
+    });
+  }
+
   Future<void> _initializeHostBattle(RoyaleRoomSnapshot room) async {
     if (!_usesHostSimulation(room) ||
         room.battle == null ||
@@ -150,12 +166,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       });
       engine.start();
     } catch (e) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${_t.text('Action failed')}: $e')),
-      );
+      _showSnackBar('${_t.text('Action failed')}: $e');
     }
   }
 
@@ -240,82 +251,69 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     _socketSubscription = _channel!.stream.listen(
       (message) async {
         final data = jsonDecode(message as String) as Map<String, dynamic>;
-        if (data['type'] == 'pong') {
-          return;
-        }
-        if (data['type'] == 'error') {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  data['message'] as String? ?? _t.text('Unknown error'),
-                ),
-              ),
-            );
-          }
-          return;
-        }
-
-        if (data['type'] == 'host_command') {
-          final command = data['command'] as Map<String, dynamic>?;
-          if (command == null || !_usesHostSimulation()) {
-            return;
-          }
-          final side = command['side'] as String? ?? 'right';
-          final cardIds = (command['cardIds'] as List<dynamic>? ?? const [])
-              .map((cardId) => cardId.toString())
-              .toList();
-          final dropX = (command['dropX'] as num?)?.toDouble();
-          final dropY = (command['dropY'] as num?)?.toDouble();
-          if (dropX == null || dropY == null) {
-            return;
-          }
-          final error = _hostBattleEngine?.applyRemoteCombo(
-            side: side,
-            cardIds: cardIds,
-            dropX: dropX,
-            dropY: dropY,
-          );
-          if (error != null && mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(error)));
-          }
-          return;
-        }
-
-        final roomJson = data['room'] as Map<String, dynamic>?;
-        if (roomJson == null || !mounted) {
-          return;
-        }
-        final room = RoyaleRoomSnapshot.fromJson(roomJson);
-        if (data['type'] == 'battle_started' && _usesHostSimulation(room)) {
-          await _initializeHostBattle(room);
-        }
-        if (_usesHostSimulation() && data['type'] == 'state_snapshot') {
-          return;
-        }
-        setState(() {
-          _room = room;
-          _syncSelectionWithRoom(room);
-        });
+        await _handleSocketPayload(data);
       },
-      onError: (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                _t.text('Live connection lost. Please refresh the page.'),
-              ),
-            ),
-          );
-        }
-      },
+      onError: (_) => _showSnackBar(
+        _t.text('Live connection lost. Please refresh the page.'),
+      ),
     );
 
     _pingTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       _channel?.sink.add(jsonEncode({'type': 'ping'}));
     });
+  }
+
+  Future<void> _handleSocketPayload(Map<String, dynamic> data) async {
+    final type = data['type'] as String?;
+    if (type == 'pong') {
+      return;
+    }
+    if (type == 'error') {
+      _showSnackBar(data['message'] as String? ?? _t.text('Unknown error'));
+      return;
+    }
+    if (type == 'host_command') {
+      _handleHostCommand(data['command'] as Map<String, dynamic>?);
+      return;
+    }
+
+    final roomJson = data['room'] as Map<String, dynamic>?;
+    if (roomJson == null || !mounted) {
+      return;
+    }
+
+    final room = RoyaleRoomSnapshot.fromJson(roomJson);
+    if (type == 'battle_started' && _usesHostSimulation(room)) {
+      await _initializeHostBattle(room);
+    }
+    if (_usesHostSimulation() && type == 'state_snapshot') {
+      return;
+    }
+    _applyRoomSnapshot(room);
+  }
+
+  void _handleHostCommand(Map<String, dynamic>? command) {
+    if (command == null || !_usesHostSimulation()) {
+      return;
+    }
+
+    final dropX = (command['dropX'] as num?)?.toDouble();
+    final dropY = (command['dropY'] as num?)?.toDouble();
+    if (dropX == null || dropY == null) {
+      return;
+    }
+
+    final error = _hostBattleEngine?.applyRemoteCombo(
+      side: command['side'] as String? ?? 'right',
+      cardIds: (command['cardIds'] as List<dynamic>? ?? const [])
+          .map((cardId) => cardId.toString())
+          .toList(),
+      dropX: dropX,
+      dropY: dropY,
+    );
+    if (error != null) {
+      _showSnackBar(error);
+    }
   }
 
   Future<void> _sendReady() async {
@@ -327,20 +325,12 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       if (!mounted) {
         return;
       }
-      setState(() {
-        _room = room;
-        _syncSelectionWithRoom(room);
-      });
+      _applyRoomSnapshot(room);
       if (_usesHostSimulation(room)) {
         await _initializeHostBattle(room);
       }
     } on ApiException catch (e) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message)));
+      _showSnackBar(e.message);
     } finally {
       if (mounted) {
         setState(() {
@@ -363,11 +353,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     }
 
     if (_selectedCardIds.length >= 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_t.text('You can preselect up to 3 cards at once')),
-        ),
-      );
+      _showSnackBar(_t.text('You can preselect up to 3 cards at once'));
       return;
     }
 
@@ -382,6 +368,10 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         .map((id) => handMap[id])
         .whereType<RoyaleCard>()
         .toList();
+  }
+
+  int _selectedCardCost(List<RoyaleCard> cards) {
+    return cards.fold<int>(0, (sum, card) => sum + card.elixirCost);
   }
 
   bool get _hasDeploymentTarget {
@@ -470,25 +460,15 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     );
 
     if (hasEquipment && !hasUnit) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _t.text(
-              'Equipment cards must be played with at least one unit card',
-            ),
-          ),
-        ),
+      _showSnackBar(
+        _t.text('Equipment cards must be played with at least one unit card'),
       );
       return;
     }
 
     final dropPoint = Offset(dropX, dropY);
     if (!_isLegalDeployPoint(dropPoint)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_t.text('Place cards inside your deployment zone')),
-        ),
-      );
+      _showSnackBar(_t.text('Place cards inside your deployment zone'));
       return;
     }
 
@@ -502,9 +482,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         dropY: dropY,
       );
       if (error != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error)));
+        _showSnackBar(error);
         return;
       }
     } else {
@@ -645,20 +623,12 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       setState(() {
         _sentFriendRequestUserIds.add(userId);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${_t.text('Sent a friend request to')} ${player.name}',
-          ),
-        ),
-      );
+      _showSnackBar('${_t.text('Sent a friend request to')} ${player.name}');
     } on ApiException catch (e) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message)));
+      _showSnackBar(e.message);
     }
   }
 
@@ -673,6 +643,555 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       return false;
     }
     return true;
+  }
+
+  double _boardWidthFor(BoxConstraints constraints, bool compact) {
+    final maxWidth = compact
+        ? _battlefieldPhoneMaxWidth
+        : _battlefieldDesktopMaxWidth;
+    return constraints.maxWidth < maxWidth ? constraints.maxWidth : maxWidth;
+  }
+
+  RoyalePlayerView _placeholderPlayer(String side) {
+    return RoyalePlayerView(
+      userId: 0,
+      name: _t.text('Waiting for players'),
+      side: side,
+      deckId: 0,
+      deckName: '',
+      deckCards: const [],
+      elixir: null,
+      handCardIds: const [],
+      queueCardIds: const [],
+      ready: false,
+      connected: false,
+      towerHp: 0,
+      maxTowerHp: 1,
+    );
+  }
+
+  RoyalePlayerView _playerBySideOrPlaceholder(
+    RoyaleRoomSnapshot room,
+    String side,
+  ) {
+    for (final player in room.players) {
+      if (player.side == side) {
+        return player;
+      }
+    }
+    return _placeholderPlayer(side);
+  }
+
+  String _battlefieldHintText(
+    bool highlightDropZone,
+    List<RoyaleCard> selectedCards,
+  ) {
+    if (highlightDropZone) {
+      return _t.text('Release to cast all selected cards here');
+    }
+    if (selectedCards.isNotEmpty) {
+      return _t.text(
+        'Precision targeting enabled. Tap the battlefield to place cards.',
+      );
+    }
+    return _t.text(
+      'Drag a single card or combo, or select cards first then tap the 2D battlefield.',
+    );
+  }
+
+  void _setDragTargetActive(bool active) {
+    if (_dragTargetActive == active) {
+      return;
+    }
+    setState(() {
+      _dragTargetActive = active;
+    });
+  }
+
+  void _handleBattlefieldAccept(DragTargetDetails<_ComboDragPayload> details) {
+    _setDragTargetActive(false);
+    final point = _normalizedDropPointForGlobalOffset(details.offset);
+    if (point == null) {
+      return;
+    }
+    _castCards(details.data.cards, dropX: point.dx, dropY: point.dy);
+  }
+
+  void _handleBattlefieldLeave() {
+    setState(() {
+      _dragTargetActive = false;
+      if (_selectedCardIds.isEmpty) {
+        _aimPoint = null;
+      }
+    });
+  }
+
+  void _handleBattlefieldTap(
+    TapDownDetails details,
+    List<RoyaleCard> selectedCards,
+  ) {
+    final point = _normalizedDropPointForGlobalOffset(details.globalPosition);
+    if (point == null) {
+      return;
+    }
+    _castCards(selectedCards, dropX: point.dx, dropY: point.dy);
+  }
+
+  void _handleBattlefieldMove(DragTargetDetails<_ComboDragPayload> details) {
+    if (!_dragTargetActive) {
+      _setDragTargetActive(true);
+    }
+    _updateAimPoint(details.offset);
+  }
+
+  Widget _buildBattlefieldHeader({
+    required bool highlightDropZone,
+    required List<RoyaleCard> selectedCards,
+    required String mySide,
+  }) {
+    return Row(
+      children: [
+        const Icon(Icons.grid_view_rounded, color: Colors.white70),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            _battlefieldHintText(highlightDropZone, selectedCards),
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        _ArenaLegendChip(
+          label: mySide == 'left'
+              ? _t.text('Your Left Base')
+              : _t.text('Your Right Base'),
+          color: _sideColor(mySide),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTowerToken({
+    required BoxConstraints board,
+    required String mySide,
+    required RoyalePlayerView player,
+  }) {
+    final isLeftSide = player.side == 'left';
+    final top =
+        (mySide == 'left'
+            ? board.maxHeight * (isLeftSide ? 0.95 : 0.05)
+            : board.maxHeight * (isLeftSide ? 0.05 : 0.95)) -
+        60;
+    return Positioned(
+      left: board.maxWidth * 0.5 - 34,
+      top: top,
+      child: _TowerToken(
+        label: player.name,
+        color: _sideColor(player.side),
+        towerHp: player.towerHp,
+      ),
+    );
+  }
+
+  List<Widget> _buildBattlefieldUnits({
+    required RoyaleBattleView battle,
+    required String mySide,
+    required BoxConstraints board,
+  }) {
+    return battle.units.map((unit) {
+      final longitudinal = mySide == 'left'
+          ? 1 - (unit.progress / _worldScale)
+          : (unit.progress / _worldScale);
+      final depthFactor = longitudinal.clamp(0.0, 1.0);
+      final tokenSize = 40 + (depthFactor * 8);
+      final left =
+          board.maxWidth * (unit.lateralPosition / _worldScale) - tokenSize / 2;
+      final top = board.maxHeight * longitudinal - tokenSize * 0.62;
+      final attackIndicatorDiameter =
+          board.maxHeight * (unit.attackRange / _worldScale) * 2;
+
+      return Positioned(
+        left: left,
+        top: top,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            if (unit.attackRange > 0)
+              Positioned(
+                left: tokenSize / 2 - attackIndicatorDiameter / 2,
+                top: tokenSize * 0.5 - attackIndicatorDiameter / 2,
+                child: _AttackRangeIndicator(
+                  width: attackIndicatorDiameter,
+                  height: attackIndicatorDiameter,
+                  friendly: unit.side == mySide,
+                ),
+              ),
+            _UnitToken(
+              unit: unit,
+              friendly: unit.side == mySide,
+              size: tokenSize,
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  Widget? _buildBattleResultOverlay(RoyaleBattleResult? result, String mySide) {
+    if (result == null) {
+      return null;
+    }
+
+    return Positioned.fill(
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF07111F).withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _resultLabel(result, mySide),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _t.text('Battle finished'),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.72)),
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: _rematchSubmitting ? null : _playAgain,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFB703),
+                  foregroundColor: const Color(0xFF1F2937),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                icon: const Icon(Icons.replay_rounded),
+                label: Text(
+                  _rematchSubmitting
+                      ? _t.text('Returning to room...')
+                      : _t.text('Play Again'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBattlefieldBoard({
+    required RoyaleRoomSnapshot room,
+    required RoyaleBattleView battle,
+    required String mySide,
+    required List<RoyaleCard> selectedCards,
+    required double boardWidth,
+    required double boardHeight,
+    required bool highlightDropZone,
+  }) {
+    final leftPlayer = _playerBySideOrPlaceholder(room, 'left');
+    final rightPlayer = _playerBySideOrPlaceholder(room, 'right');
+
+    return Align(
+      child: SizedBox(
+        width: boardWidth,
+        height: boardHeight,
+        child: Container(
+          key: _arenaKey,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFFDEF4FF),
+                Color(0xFF9DD6FF),
+                Color(0xFF7EC97D),
+                Color(0xFF5DAA4D),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            border: Border.all(
+              color: highlightDropZone
+                  ? const Color(0xFFFFD166)
+                  : Colors.white.withValues(alpha: 0.32),
+              width: highlightDropZone ? 2.4 : 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF07111F).withValues(alpha: 0.28),
+                blurRadius: 28,
+                offset: const Offset(0, 18),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: MouseRegion(
+              onHover: (event) => _updateAimPoint(event.position),
+              onExit: (_) => _clearAimPoint(),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: selectedCards.isEmpty
+                    ? null
+                    : (details) =>
+                          _handleBattlefieldTap(details, selectedCards),
+                child: LayoutBuilder(
+                  builder: (context, board) {
+                    final resultOverlay = _buildBattleResultOverlay(
+                      battle.result,
+                      mySide,
+                    );
+                    return Stack(
+                      children: [
+                        Positioned.fill(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: RadialGradient(
+                                center: const Alignment(0, -0.85),
+                                radius: 1.1,
+                                colors: [
+                                  Colors.white.withValues(alpha: 0.44),
+                                  Colors.transparent,
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned.fill(
+                          child: CustomPaint(
+                            painter: _ArenaPainter(playerSide: mySide),
+                          ),
+                        ),
+                        Positioned(
+                          left: 18,
+                          top: 18,
+                          child: _FieldLabel(
+                            label: _t.text('Enemy Base'),
+                            color: const Color(0xFFE25555),
+                          ),
+                        ),
+                        Positioned(
+                          left: board.maxWidth * 0.5 - 42,
+                          top: 18,
+                          child: _FieldLabel(
+                            label: _t.text('Central Bridge'),
+                            color: const Color(0xFF2F7D87),
+                          ),
+                        ),
+                        Positioned(
+                          right: 18,
+                          bottom: 18,
+                          child: _FieldLabel(
+                            label: _t.text('Your Deployment Zone'),
+                            color: const Color(0xFF136F63),
+                          ),
+                        ),
+                        _buildTowerToken(
+                          board: board,
+                          mySide: mySide,
+                          player: leftPlayer,
+                        ),
+                        _buildTowerToken(
+                          board: board,
+                          mySide: mySide,
+                          player: rightPlayer,
+                        ),
+                        if (_aimPoint != null &&
+                            _hasDeploymentTarget &&
+                            !_dragTargetActive)
+                          Positioned(
+                            left: board.maxWidth * _aimPoint!.dx - 28,
+                            top: board.maxHeight * _aimPoint!.dy - 28,
+                            child: _AimMarker(
+                              point: _aimPoint!,
+                              active: selectedCards.isNotEmpty,
+                            ),
+                          ),
+                        ..._buildBattlefieldUnits(
+                          battle: battle,
+                          mySide: mySide,
+                          board: board,
+                        ),
+                        if (resultOverlay != null) ...[resultOverlay],
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectedComboLauncher(
+    List<RoyaleCard> selectedCards,
+    int selectedCost,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Draggable<_ComboDragPayload>(
+        data: _ComboDragPayload(cards: selectedCards),
+        dragAnchorStrategy: pointerDragAnchorStrategy,
+        feedback: Material(
+          color: Colors.transparent,
+          child: const _DragCursorFeedback(),
+        ),
+        childWhenDragging: Opacity(
+          opacity: 0.38,
+          child: _ComboLauncher(cards: selectedCards, totalCost: selectedCost),
+        ),
+        child: _ComboLauncher(
+          cards: selectedCards,
+          totalCost: selectedCost,
+          onClear: _clearSelection,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBattlefieldPanel({
+    required RoyaleRoomSnapshot room,
+    required RoyaleBattleView battle,
+    required String mySide,
+    required List<RoyaleCard> selectedCards,
+    required double boardWidth,
+    required double boardHeight,
+  }) {
+    return DragTarget<_ComboDragPayload>(
+      onAcceptWithDetails: _handleBattlefieldAccept,
+      onMove: _handleBattlefieldMove,
+      onLeave: (_) => _handleBattlefieldLeave(),
+      builder: (context, candidateItems, rejectedItems) {
+        final highlightDropZone = candidateItems.isNotEmpty;
+        return _GlassPanel(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            children: [
+              _buildBattlefieldHeader(
+                highlightDropZone: highlightDropZone,
+                selectedCards: selectedCards,
+                mySide: mySide,
+              ),
+              const SizedBox(height: 14),
+              _buildBattlefieldBoard(
+                room: room,
+                battle: battle,
+                mySide: mySide,
+                selectedCards: selectedCards,
+                boardWidth: boardWidth,
+                boardHeight: boardHeight,
+                highlightDropZone: highlightDropZone,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHandInfoChips(
+    RoyaleBattleView battle,
+    List<RoyaleCard> selectedCards,
+  ) {
+    final selectedCost = _selectedCardCost(selectedCards);
+    return Wrap(
+      spacing: 12,
+      runSpacing: 10,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text(
+          'Battle Hand',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        _InfoChip(
+          icon: Icons.bolt_rounded,
+          label:
+              '${_t.text('Current Elixir')} ${battle.yourElixir.toStringAsFixed(1)}',
+        ),
+        _InfoChip(
+          icon: Icons.arrow_forward_rounded,
+          label: battle.nextCardId == null
+              ? '${_t.text('Next Card')} ${_t.text('Unknown')}'
+              : '${_t.text('Next Card')} ${battle.nextCardId}',
+        ),
+        if (selectedCards.isNotEmpty)
+          _InfoChip(
+            icon: Icons.layers_rounded,
+            label:
+                '${_t.text('Selected Cards')} ${selectedCards.length} / $selectedCost',
+          ),
+      ],
+    );
+  }
+
+  Widget _buildHandCardList(RoyaleBattleView battle) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: battle.yourHand.map((card) {
+          final playable = battle.yourElixir >= card.elixirCost;
+          final selectionOrder = _selectedCardIds.indexOf(card.id);
+          final handCard = _HandCard(
+            card: card,
+            playable: playable,
+            selectedOrder: selectionOrder,
+            cardColor: _cardColor(card.type),
+            cardStats: _cardStats(card),
+            typeLabel: _cardTypeLabel(card),
+          );
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: GestureDetector(
+              onTap: () => _toggleCardSelection(card),
+              child: Draggable<_ComboDragPayload>(
+                data: _ComboDragPayload(cards: [card]),
+                maxSimultaneousDrags: playable ? 1 : 0,
+                dragAnchorStrategy: pointerDragAnchorStrategy,
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: const _DragCursorFeedback(),
+                ),
+                childWhenDragging: Opacity(opacity: 0.3, child: handCard),
+                child: handCard,
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  String _commandDeckHintText(bool compact) {
+    if (compact) {
+      return _t.text(
+        'Tap cards to build a combo, then drag a single card or combo onto the battlefield.',
+      );
+    }
+    return _t.text(
+      'Tap cards to build a combo first. Equipment cards apply to units cast together. Drag a single card or combo into your deployment zone.',
+    );
   }
 
   Widget _buildLobby(RoyaleRoomSnapshot room) {
@@ -855,23 +1374,12 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     final opponent = room.opponent;
     final mySide = room.viewerSide ?? 'left';
     final selectedCards = _selectedCards(battle);
-    final selectedCost = selectedCards.fold<int>(
-      0,
-      (sum, card) => sum + card.elixirCost,
-    );
+    final selectedCost = _selectedCardCost(selectedCards);
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 880;
-        final boardWidth =
-            constraints.maxWidth <
-                (compact
-                    ? _battlefieldPhoneMaxWidth
-                    : _battlefieldDesktopMaxWidth)
-            ? constraints.maxWidth
-            : (compact
-                  ? _battlefieldPhoneMaxWidth
-                  : _battlefieldDesktopMaxWidth);
+        final boardWidth = _boardWidthFor(constraints, compact);
         final boardHeight = boardWidth / _battlefieldAspectRatio;
         return Center(
           child: ConstrainedBox(
@@ -887,523 +1395,17 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                   simulationMode: room.simulationMode,
                 ),
                 const SizedBox(height: 16),
-                DragTarget<_ComboDragPayload>(
-                  onAcceptWithDetails: (details) {
-                    if (mounted) {
-                      setState(() {
-                        _dragTargetActive = false;
-                      });
-                    }
-                    final point = _normalizedDropPointForGlobalOffset(
-                      details.offset,
-                    );
-                    if (point == null) {
-                      return;
-                    }
-                    _castCards(
-                      details.data.cards,
-                      dropX: point.dx,
-                      dropY: point.dy,
-                    );
-                  },
-                  onMove: (details) {
-                    if (!_dragTargetActive) {
-                      setState(() {
-                        _dragTargetActive = true;
-                      });
-                    }
-                    _updateAimPoint(details.offset);
-                  },
-                  onLeave: (_) {
-                    setState(() {
-                      _dragTargetActive = false;
-                      if (_selectedCardIds.isEmpty) {
-                        _aimPoint = null;
-                      }
-                    });
-                  },
-                  builder: (context, candidateItems, rejectedItems) {
-                    final highlightDropZone = candidateItems.isNotEmpty;
-                    return _GlassPanel(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.grid_view_rounded,
-                                color: Colors.white70,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  highlightDropZone
-                                      ? _t.text(
-                                          'Release to cast all selected cards here',
-                                        )
-                                      : selectedCards.isNotEmpty
-                                      ? _t.text(
-                                          'Precision targeting enabled. Tap the battlefield to place cards.',
-                                        )
-                                      : _t.text(
-                                          'Drag a single card or combo, or select cards first then tap the 2D battlefield.',
-                                        ),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              _ArenaLegendChip(
-                                label: mySide == 'left'
-                                    ? _t.text('Your Left Base')
-                                    : _t.text('Your Right Base'),
-                                color: _sideColor(mySide),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          Align(
-                            child: SizedBox(
-                              width: boardWidth,
-                              height: boardHeight,
-                              child: Container(
-                                key: _arenaKey,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(30),
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFFDEF4FF),
-                                      Color(0xFF9DD6FF),
-                                      Color(0xFF7EC97D),
-                                      Color(0xFF5DAA4D),
-                                    ],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  ),
-                                  border: Border.all(
-                                    color: highlightDropZone
-                                        ? const Color(0xFFFFD166)
-                                        : Colors.white.withValues(alpha: 0.32),
-                                    width: highlightDropZone ? 2.4 : 1.2,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xFF07111F,
-                                      ).withValues(alpha: 0.28),
-                                      blurRadius: 28,
-                                      offset: const Offset(0, 18),
-                                    ),
-                                  ],
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(28),
-                                  child: MouseRegion(
-                                    onHover: (event) =>
-                                        _updateAimPoint(event.position),
-                                    onExit: (_) => _clearAimPoint(),
-                                    child: GestureDetector(
-                                      behavior: HitTestBehavior.opaque,
-                                      onTapDown: selectedCards.isEmpty
-                                          ? null
-                                          : (details) {
-                                              final point =
-                                                  _normalizedDropPointForGlobalOffset(
-                                                    details.globalPosition,
-                                                  );
-                                              if (point == null) {
-                                                return;
-                                              }
-                                              _castCards(
-                                                selectedCards,
-                                                dropX: point.dx,
-                                                dropY: point.dy,
-                                              );
-                                            },
-                                      child: LayoutBuilder(
-                                        builder: (context, board) {
-                                          return Stack(
-                                            children: [
-                                              Positioned.fill(
-                                                child: DecoratedBox(
-                                                  decoration: BoxDecoration(
-                                                    gradient: RadialGradient(
-                                                      center: const Alignment(
-                                                        0,
-                                                        -0.85,
-                                                      ),
-                                                      radius: 1.1,
-                                                      colors: [
-                                                        Colors.white.withValues(
-                                                          alpha: 0.44,
-                                                        ),
-                                                        Colors.transparent,
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              Positioned.fill(
-                                                child: CustomPaint(
-                                                  painter: _ArenaPainter(
-                                                    playerSide: mySide,
-                                                  ),
-                                                ),
-                                              ),
-                                              Positioned(
-                                                left: 18,
-                                                top: 18,
-                                                child: _FieldLabel(
-                                                  label: _t.text('Enemy Base'),
-                                                  color: const Color(
-                                                    0xFFE25555,
-                                                  ),
-                                                ),
-                                              ),
-                                              Positioned(
-                                                left: board.maxWidth * 0.5 - 42,
-                                                top: 18,
-                                                child: _FieldLabel(
-                                                  label: _t.text(
-                                                    'Central Bridge',
-                                                  ),
-                                                  color: const Color(
-                                                    0xFF2F7D87,
-                                                  ),
-                                                ),
-                                              ),
-                                              Positioned(
-                                                right: 18,
-                                                bottom: 18,
-                                                child: _FieldLabel(
-                                                  label: _t.text(
-                                                    'Your Deployment Zone',
-                                                  ),
-                                                  color: const Color(
-                                                    0xFF136F63,
-                                                  ),
-                                                ),
-                                              ),
-                                              Positioned(
-                                                left: board.maxWidth * 0.5 - 34,
-                                                top:
-                                                    (mySide == 'left'
-                                                        ? board.maxHeight * 0.95
-                                                        : board.maxHeight *
-                                                              0.05) -
-                                                    60,
-                                                child: _TowerToken(
-                                                  label: room.players
-                                                      .firstWhere(
-                                                        (p) => p.side == 'left',
-                                                      )
-                                                      .name,
-                                                  color: _sideColor('left'),
-                                                  towerHp: room.players
-                                                      .firstWhere(
-                                                        (p) => p.side == 'left',
-                                                      )
-                                                      .towerHp,
-                                                ),
-                                              ),
-                                              Positioned(
-                                                left: board.maxWidth * 0.5 - 34,
-                                                top:
-                                                    (mySide == 'left'
-                                                        ? board.maxHeight * 0.05
-                                                        : board.maxHeight *
-                                                              0.95) -
-                                                    60,
-                                                child: _TowerToken(
-                                                  label: room.players
-                                                      .firstWhere(
-                                                        (p) =>
-                                                            p.side == 'right',
-                                                        orElse: () =>
-                                                            RoyalePlayerView(
-                                                              userId: 0,
-                                                              name: _t.text(
-                                                                'Waiting for players',
-                                                              ),
-                                                              side: 'right',
-                                                              deckId: 0,
-                                                              deckName: '',
-                                                              deckCards:
-                                                                  const [],
-                                                              elixir: null,
-                                                              handCardIds:
-                                                                  const [],
-                                                              queueCardIds:
-                                                                  const [],
-                                                              ready: false,
-                                                              connected: false,
-                                                              towerHp: 0,
-                                                              maxTowerHp: 1,
-                                                            ),
-                                                      )
-                                                      .name,
-                                                  color: _sideColor('right'),
-                                                  towerHp: room.players
-                                                      .firstWhere(
-                                                        (p) =>
-                                                            p.side == 'right',
-                                                        orElse: () =>
-                                                            RoyalePlayerView(
-                                                              userId: 0,
-                                                              name: _t.text(
-                                                                'Waiting for players',
-                                                              ),
-                                                              side: 'right',
-                                                              deckId: 0,
-                                                              deckName: '',
-                                                              deckCards:
-                                                                  const [],
-                                                              elixir: null,
-                                                              handCardIds:
-                                                                  const [],
-                                                              queueCardIds:
-                                                                  const [],
-                                                              ready: false,
-                                                              connected: false,
-                                                              towerHp: 0,
-                                                              maxTowerHp: 1,
-                                                            ),
-                                                      )
-                                                      .towerHp,
-                                                ),
-                                              ),
-                                              if (_aimPoint != null &&
-                                                  _hasDeploymentTarget &&
-                                                  !_dragTargetActive)
-                                                Positioned(
-                                                  left:
-                                                      board.maxWidth *
-                                                          _aimPoint!.dx -
-                                                      28,
-                                                  top:
-                                                      board.maxHeight *
-                                                          _aimPoint!.dy -
-                                                      28,
-                                                  child: _AimMarker(
-                                                    point: _aimPoint!,
-                                                    active: selectedCards
-                                                        .isNotEmpty,
-                                                  ),
-                                                ),
-                                              ...battle.units.map((unit) {
-                                                final longitudinal =
-                                                    mySide == 'left'
-                                                    ? 1 -
-                                                          (unit.progress /
-                                                              _worldScale)
-                                                    : (unit.progress /
-                                                          _worldScale);
-                                                final depthFactor = longitudinal
-                                                    .clamp(0.0, 1.0);
-                                                final tokenSize =
-                                                    40 + (depthFactor * 8);
-                                                final left =
-                                                    board.maxWidth *
-                                                        (unit.lateralPosition /
-                                                            _worldScale) -
-                                                    tokenSize / 2;
-                                                final top =
-                                                    board.maxHeight *
-                                                        longitudinal -
-                                                    tokenSize * 0.62;
-                                                final attackIndicatorDiameter =
-                                                    board.maxHeight *
-                                                    (unit.attackRange /
-                                                        _worldScale) *
-                                                    2;
-                                                return Positioned(
-                                                  left: left,
-                                                  top: top,
-                                                  child: Stack(
-                                                    clipBehavior: Clip.none,
-                                                    children: [
-                                                      if (unit.attackRange > 0)
-                                                        Positioned(
-                                                          left:
-                                                              tokenSize / 2 -
-                                                              attackIndicatorDiameter /
-                                                                  2,
-                                                          top:
-                                                              tokenSize * 0.5 -
-                                                              attackIndicatorDiameter /
-                                                                  2,
-                                                          child: _AttackRangeIndicator(
-                                                            width:
-                                                                attackIndicatorDiameter,
-                                                            height:
-                                                                attackIndicatorDiameter,
-                                                            friendly:
-                                                                unit.side ==
-                                                                mySide,
-                                                          ),
-                                                        ),
-                                                      _UnitToken(
-                                                        unit: unit,
-                                                        friendly:
-                                                            unit.side == mySide,
-                                                        size: tokenSize,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                );
-                                              }),
-                                              if (battle.result != null)
-                                                Positioned.fill(
-                                                  child: Center(
-                                                    child: Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 28,
-                                                            vertical: 20,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color:
-                                                            const Color(
-                                                              0xFF07111F,
-                                                            ).withValues(
-                                                              alpha: 0.8,
-                                                            ),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              26,
-                                                            ),
-                                                        border: Border.all(
-                                                          color: Colors.white
-                                                              .withValues(
-                                                                alpha: 0.18,
-                                                              ),
-                                                        ),
-                                                      ),
-                                                      child: Column(
-                                                        mainAxisSize:
-                                                            MainAxisSize.min,
-                                                        children: [
-                                                          Text(
-                                                            _resultLabel(
-                                                              battle.result!,
-                                                              mySide,
-                                                            ),
-                                                            style:
-                                                                const TextStyle(
-                                                                  color: Colors
-                                                                      .white,
-                                                                  fontSize: 28,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w800,
-                                                                ),
-                                                          ),
-                                                          const SizedBox(
-                                                            height: 6,
-                                                          ),
-                                                          Text(
-                                                            _t.text(
-                                                              'Battle finished',
-                                                            ),
-                                                            style: TextStyle(
-                                                              color: Colors
-                                                                  .white
-                                                                  .withValues(
-                                                                    alpha: 0.72,
-                                                                  ),
-                                                            ),
-                                                          ),
-                                                          const SizedBox(
-                                                            height: 16,
-                                                          ),
-                                                          FilledButton.icon(
-                                                            onPressed:
-                                                                _rematchSubmitting
-                                                                ? null
-                                                                : _playAgain,
-                                                            style: FilledButton.styleFrom(
-                                                              backgroundColor:
-                                                                  const Color(
-                                                                    0xFFFFB703,
-                                                                  ),
-                                                              foregroundColor:
-                                                                  const Color(
-                                                                    0xFF1F2937,
-                                                                  ),
-                                                              padding:
-                                                                  const EdgeInsets.symmetric(
-                                                                    horizontal:
-                                                                        20,
-                                                                    vertical:
-                                                                        14,
-                                                                  ),
-                                                              shape: RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius.circular(
-                                                                      16,
-                                                                    ),
-                                                              ),
-                                                            ),
-                                                            icon: const Icon(
-                                                              Icons
-                                                                  .replay_rounded,
-                                                            ),
-                                                            label: Text(
-                                                              _rematchSubmitting
-                                                                  ? _t.text(
-                                                                      'Returning to room...',
-                                                                    )
-                                                                  : _t.text(
-                                                                      'Play Again',
-                                                                    ),
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                            ],
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                _buildBattlefieldPanel(
+                  room: room,
+                  battle: battle,
+                  mySide: mySide,
+                  selectedCards: selectedCards,
+                  boardWidth: boardWidth,
+                  boardHeight: boardHeight,
                 ),
                 const SizedBox(height: 16),
                 if (selectedCards.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Draggable<_ComboDragPayload>(
-                      data: _ComboDragPayload(cards: selectedCards),
-                      dragAnchorStrategy: pointerDragAnchorStrategy,
-                      feedback: Material(
-                        color: Colors.transparent,
-                        child: const _DragCursorFeedback(),
-                      ),
-                      childWhenDragging: Opacity(
-                        opacity: 0.38,
-                        child: _ComboLauncher(
-                          cards: selectedCards,
-                          totalCost: selectedCost,
-                        ),
-                      ),
-                      child: _ComboLauncher(
-                        cards: selectedCards,
-                        totalCost: selectedCost,
-                        onClear: _clearSelection,
-                      ),
-                    ),
-                  ),
+                  _buildSelectedComboLauncher(selectedCards, selectedCost),
                 _buildCommandDeck(
                   battle: battle,
                   compact: compact,
@@ -1539,95 +1541,38 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 12,
-            runSpacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(
-                'Battle Hand',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              _InfoChip(
-                icon: Icons.bolt_rounded,
-                label:
-                    '${_t.text('Current Elixir')} ${battle.yourElixir.toStringAsFixed(1)}',
-              ),
-              _InfoChip(
-                icon: Icons.arrow_forward_rounded,
-                label: battle.nextCardId == null
-                    ? '${_t.text('Next Card')} ${_t.text('Unknown')}'
-                    : '${_t.text('Next Card')} ${battle.nextCardId}',
-              ),
-              if (selectedCards.isNotEmpty)
-                _InfoChip(
-                  icon: Icons.layers_rounded,
-                  label:
-                      '${_t.text('Selected Cards')} ${selectedCards.length} / ${selectedCards.fold<int>(0, (sum, card) => sum + card.elixirCost)}',
-                ),
-            ],
-          ),
+          _buildHandInfoChips(battle, selectedCards),
           const SizedBox(height: 16),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: battle.yourHand.map((card) {
-                final playable = battle.yourElixir >= card.elixirCost;
-                final selectionOrder = _selectedCardIds.indexOf(card.id);
-                return Padding(
-                  padding: const EdgeInsets.only(right: 14),
-                  child: GestureDetector(
-                    onTap: () => _toggleCardSelection(card),
-                    child: Draggable<_ComboDragPayload>(
-                      data: _ComboDragPayload(cards: [card]),
-                      maxSimultaneousDrags: playable ? 1 : 0,
-                      dragAnchorStrategy: pointerDragAnchorStrategy,
-                      feedback: Material(
-                        color: Colors.transparent,
-                        child: const _DragCursorFeedback(),
-                      ),
-                      childWhenDragging: Opacity(
-                        opacity: 0.3,
-                        child: _HandCard(
-                          card: card,
-                          playable: playable,
-                          selectedOrder: selectionOrder,
-                          cardColor: _cardColor(card.type),
-                          cardStats: _cardStats(card),
-                          typeLabel: _cardTypeLabel(card),
-                        ),
-                      ),
-                      child: _HandCard(
-                        card: card,
-                        playable: playable,
-                        selectedOrder: selectionOrder,
-                        cardColor: _cardColor(card.type),
-                        cardStats: _cardStats(card),
-                        typeLabel: _cardTypeLabel(card),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
+          _buildHandCardList(battle),
           const SizedBox(height: 14),
           Text(
-            compact
-                ? _t.text(
-                    'Tap cards to build a combo, then drag a single card or combo onto the battlefield.',
-                  )
-                : _t.text(
-                    'Tap cards to build a combo first. Equipment cards apply to units cast together. Drag a single card or combo into your deployment zone.',
-                  ),
+            _commandDeckHintText(compact),
             style: TextStyle(color: Colors.white.withValues(alpha: 0.72)),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildPageContent(Map<String, String> t) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) {
+      return Center(
+        child: Text(_error!, style: const TextStyle(color: Colors.white)),
+      );
+    }
+    if (_room == null) {
+      return Center(
+        child: Text(
+          t.text('Room not found'),
+          style: const TextStyle(color: Colors.white),
+        ),
+      );
+    }
+
+    return _room!.status == 'lobby' ? _buildLobby(_room!) : _buildArena(_room!);
   }
 
   @override
@@ -1668,27 +1613,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                 color: const Color(0xFF5E60CE).withValues(alpha: 0.18),
               ),
             ),
-            SafeArea(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _error != null
-                  ? Center(
-                      child: Text(
-                        _error!,
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    )
-                  : _room == null
-                  ? Center(
-                      child: Text(
-                        t.text('Room not found'),
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    )
-                  : (_room!.status == 'lobby'
-                        ? _buildLobby(_room!)
-                        : _buildArena(_room!)),
-            ),
+            SafeArea(child: _buildPageContent(t)),
           ],
         ),
       ),

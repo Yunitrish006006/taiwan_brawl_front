@@ -236,20 +236,11 @@ class HostBattleEngine {
     }
 
     final player = _playerForSide(side);
-    final cards = <RoyaleCard>[];
-    final remainingHand = List<String>.from(player.hand);
-    for (final cardId in cardIds) {
-      final handIndex = remainingHand.indexOf(cardId);
-      if (handIndex == -1) {
-        return 'One of the selected cards is not in hand';
-      }
-      remainingHand.removeAt(handIndex);
-      final card = player.cardById(cardId);
-      if (card == null) {
-        return 'Unknown card';
-      }
-      cards.add(card);
+    final playableCards = _resolvePlayableCards(player, cardIds);
+    if (playableCards.error != null) {
+      return playableCards.error;
     }
+    final cards = playableCards.cards;
 
     final totalElixirCost = cards.fold<double>(
       0,
@@ -259,11 +250,7 @@ class HostBattleEngine {
       return 'Not enough elixir';
     }
 
-    final hasEquipment = cards.any((card) => card.type == 'equipment');
-    final hasUnit = cards.any(
-      (card) => card.type != 'equipment' && card.type != 'spell',
-    );
-    if (hasEquipment && !hasUnit) {
+    if (_isEquipmentOnlyCast(cards)) {
       return 'Equipment cards need at least one unit in the same cast';
     }
 
@@ -283,6 +270,40 @@ class HostBattleEngine {
 
     _emitSnapshot();
     return null;
+  }
+
+  _PlayableCardsResult _resolvePlayableCards(
+    _HostPlayer player,
+    List<String> cardIds,
+  ) {
+    final cards = <RoyaleCard>[];
+    final remainingHand = List<String>.from(player.hand);
+
+    for (final cardId in cardIds) {
+      final handIndex = remainingHand.indexOf(cardId);
+      if (handIndex == -1) {
+        return const _PlayableCardsResult(
+          error: 'One of the selected cards is not in hand',
+        );
+      }
+      remainingHand.removeAt(handIndex);
+
+      final card = player.cardById(cardId);
+      if (card == null) {
+        return const _PlayableCardsResult(error: 'Unknown card');
+      }
+      cards.add(card);
+    }
+
+    return _PlayableCardsResult(cards: cards);
+  }
+
+  bool _isEquipmentOnlyCast(List<RoyaleCard> cards) {
+    final hasEquipment = cards.any((card) => card.type == 'equipment');
+    final hasUnit = cards.any(
+      (card) => card.type != 'equipment' && card.type != 'spell',
+    );
+    return hasEquipment && !hasUnit;
   }
 
   Map<String, dynamic> _exportPlayerState(_HostPlayer player) {
@@ -956,6 +977,13 @@ class _DropPoint {
 
   final double progress;
   final double lateralPosition;
+}
+
+class _PlayableCardsResult {
+  const _PlayableCardsResult({this.cards = const <RoyaleCard>[], this.error});
+
+  final List<RoyaleCard> cards;
+  final String? error;
 }
 
 class _EquipmentEffect {

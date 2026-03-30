@@ -31,10 +31,19 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isUploadingAvatar = false;
   bool _isRemovingAvatar = false;
 
+  AuthService get _auth => context.read<AuthService>();
+  Map<String, String> get _t => context.read<LocaleProvider>().translation;
+
+  void _clearPendingAvatarSelection() {
+    _pendingAvatarBytes = null;
+    _pendingAvatarMimeType = null;
+    _pendingAvatarFileName = null;
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final user = context.read<AuthService>().user;
+    final user = _auth.user;
     if (user != null && _seededUserId != user.id) {
       _seededUserId = user.id;
       _nameController.text = user.name;
@@ -43,9 +52,7 @@ class _ProfilePageState extends State<ProfilePage> {
       _avatarSource = ['google', 'custom', 'upload'].contains(user.avatarSource)
           ? user.avatarSource!
           : 'google';
-      _pendingAvatarBytes = null;
-      _pendingAvatarMimeType = null;
-      _pendingAvatarFileName = null;
+      _clearPendingAvatarSelection();
     }
   }
 
@@ -58,28 +65,29 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _save() async {
-    final t = context.read<LocaleProvider>().translation;
-    final auth = context.read<AuthService>();
     try {
       if (_avatarSource == 'upload' && _pendingAvatarBytes != null) {
         await _uploadAvatarImage(showSuccessMessage: false);
       }
       if (!mounted) return;
-      final latestUser = auth.user;
+      final latestUser = _auth.user;
       if (_avatarSource == 'upload' &&
           (latestUser?.uploadedAvatarUrl == null ||
               latestUser!.uploadedAvatarUrl!.isEmpty)) {
-        showAppSnackBar(context, t.text('Please upload an avatar image first'));
+        showAppSnackBar(
+          context,
+          _t.text('Please upload an avatar image first'),
+        );
         return;
       }
-      await auth.updateProfile(
+      await _auth.updateProfile(
         name: _nameController.text.trim(),
         bio: _bioController.text.trim(),
         avatarSource: _avatarSource,
         customAvatarUrl: _customAvatarUrlController.text.trim(),
       );
       if (!mounted) return;
-      showAppSnackBar(context, t.text('Profile updated'));
+      showAppSnackBar(context, _t.text('Profile updated'));
     } on ApiException catch (e) {
       if (!mounted) return;
       showAppSnackBar(context, e.message);
@@ -101,6 +109,47 @@ class _ProfilePageState extends State<ProfilePage> {
     return (user.uploadedAvatarUrl ?? '').isNotEmpty;
   }
 
+  bool _canUseGoogleAvatar(AppUser user) {
+    return (user.googleAvatarUrl ?? '').isNotEmpty;
+  }
+
+  String _avatarSourceDescription(Map<String, String> t) {
+    switch (_avatarSource) {
+      case 'custom':
+        return t.text(
+          'Use your custom image URL. Future Google sign-ins will not overwrite it.',
+        );
+      case 'upload':
+        return t.text(
+          'Use an uploaded image stored in Taiwan Brawl. You can pick a file from your device and future Google sign-ins will not overwrite it.',
+        );
+      case 'google':
+      default:
+        return t.text(
+          'Use your Google sign-in avatar. It will sync again the next time you sign in.',
+        );
+    }
+  }
+
+  void _selectAvatarSource(String nextSource, AppUser user) {
+    if (nextSource == 'google' && !_canUseGoogleAvatar(user)) {
+      showAppSnackBar(
+        context,
+        _t.text('This account does not have an available Google avatar.'),
+      );
+      return;
+    }
+    if (nextSource == 'upload' &&
+        _pendingAvatarBytes == null &&
+        !_hasUploadedAvatar(user)) {
+      showAppSnackBar(context, _t.text('Please upload an avatar image first'));
+      return;
+    }
+    setState(() {
+      _avatarSource = nextSource;
+    });
+  }
+
   String? _detectImageMimeType(PlatformFile file) {
     final extension = file.extension?.toLowerCase();
     switch (extension) {
@@ -119,7 +168,6 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _pickAvatarImage() async {
-    final t = context.read<LocaleProvider>().translation;
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       withData: true,
@@ -132,18 +180,18 @@ class _ProfilePageState extends State<ProfilePage> {
     final file = result.files.single;
     final bytes = file.bytes;
     if (bytes == null || bytes.isEmpty) {
-      showAppSnackBar(context, t.text('Selected file has no readable bytes'));
+      showAppSnackBar(context, _t.text('Selected file has no readable bytes'));
       return;
     }
 
     final mimeType = _detectImageMimeType(file);
     if (mimeType == null) {
-      showAppSnackBar(context, t.text('Selected image is unsupported'));
+      showAppSnackBar(context, _t.text('Selected image is unsupported'));
       return;
     }
 
     if (bytes.length > 1024 * 1024) {
-      showAppSnackBar(context, t.text('Image must be 1 MB or smaller'));
+      showAppSnackBar(context, _t.text('Image must be 1 MB or smaller'));
       return;
     }
 
@@ -156,12 +204,14 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _uploadAvatarImage({bool showSuccessMessage = true}) async {
-    final t = context.read<LocaleProvider>().translation;
     final bytes = _pendingAvatarBytes;
     final mimeType = _pendingAvatarMimeType;
     if (bytes == null || mimeType == null) {
       if (showSuccessMessage && mounted) {
-        showAppSnackBar(context, t.text('Please upload an avatar image first'));
+        showAppSnackBar(
+          context,
+          _t.text('Please upload an avatar image first'),
+        );
       }
       return;
     }
@@ -171,20 +221,18 @@ class _ProfilePageState extends State<ProfilePage> {
     });
 
     try {
-      await context.read<AuthService>().uploadAvatarImage(
+      await _auth.uploadAvatarImage(
         bytesBase64: base64Encode(bytes),
         contentType: mimeType,
         fileName: _pendingAvatarFileName,
       );
       if (!mounted) return;
       setState(() {
-        _pendingAvatarBytes = null;
-        _pendingAvatarMimeType = null;
-        _pendingAvatarFileName = null;
+        _clearPendingAvatarSelection();
         _avatarSource = 'upload';
       });
       if (showSuccessMessage) {
-        showAppSnackBar(context, t.text('Avatar image uploaded successfully'));
+        showAppSnackBar(context, _t.text('Avatar image uploaded successfully'));
       }
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -199,26 +247,22 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _removeAvatarImage() async {
-    final t = context.read<LocaleProvider>().translation;
-    final auth = context.read<AuthService>();
     setState(() {
       _isRemovingAvatar = true;
     });
     try {
-      await auth.deleteAvatarImage();
+      await _auth.deleteAvatarImage();
       if (!mounted) return;
-      final latestUser = auth.user;
+      final latestUser = _auth.user;
       if (!mounted) return;
       setState(() {
-        _pendingAvatarBytes = null;
-        _pendingAvatarMimeType = null;
-        _pendingAvatarFileName = null;
+        _clearPendingAvatarSelection();
         _avatarSource =
             ['google', 'custom', 'upload'].contains(latestUser?.avatarSource)
             ? latestUser!.avatarSource!
             : 'google';
       });
-      showAppSnackBar(context, t.text('Avatar image removed successfully'));
+      showAppSnackBar(context, _t.text('Avatar image removed successfully'));
     } on ApiException catch (e) {
       if (!mounted) return;
       showAppSnackBar(context, e.message);
@@ -339,45 +383,12 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
                 selected: {_avatarSource},
                 onSelectionChanged: (selection) {
-                  final nextSource = selection.first;
-                  if (nextSource == 'google' &&
-                      (user.googleAvatarUrl == null ||
-                          user.googleAvatarUrl!.isEmpty)) {
-                    showAppSnackBar(
-                      context,
-                      t.text(
-                        'This account does not have an available Google avatar.',
-                      ),
-                    );
-                    return;
-                  }
-                  if (nextSource == 'upload' &&
-                      _pendingAvatarBytes == null &&
-                      !_hasUploadedAvatar(user)) {
-                    showAppSnackBar(
-                      context,
-                      t.text('Please upload an avatar image first'),
-                    );
-                    return;
-                  }
-                  setState(() {
-                    _avatarSource = nextSource;
-                  });
+                  _selectAvatarSource(selection.first, user);
                 },
               ),
               const SizedBox(height: 8),
               Text(
-                _avatarSource == 'google'
-                    ? t.text(
-                        'Use your Google sign-in avatar. It will sync again the next time you sign in.',
-                      )
-                    : _avatarSource == 'custom'
-                    ? t.text(
-                        'Use your custom image URL. Future Google sign-ins will not overwrite it.',
-                      )
-                    : t.text(
-                        'Use an uploaded image stored in Taiwan Brawl. You can pick a file from your device and future Google sign-ins will not overwrite it.',
-                      ),
+                _avatarSourceDescription(t),
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
