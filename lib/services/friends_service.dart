@@ -11,13 +11,16 @@ class FriendsService {
     return FriendsOverview.fromJson(res);
   }
 
-  Future<FriendSearchResult?> searchById(String playerId) async {
-    final res = await _apiClient.getJson('/api/friends/search?id=$playerId');
-    final result = res['result'] as Map<String, dynamic>?;
-    if (result == null) {
-      return null;
-    }
-    return FriendSearchResult.fromJson(result);
+  Future<List<FriendSearchResult>> searchByName(String query) async {
+    final encodedQuery = Uri.encodeQueryComponent(query);
+    final res = await _apiClient.getJson(
+      '/api/friends/search?query=$encodedQuery',
+    );
+    return (res['results'] as List<dynamic>? ?? const [])
+        .map(
+          (item) => FriendSearchResult.fromJson(item as Map<String, dynamic>),
+        )
+        .toList();
   }
 
   Future<void> sendFriendRequest(int targetUserId) async {

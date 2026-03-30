@@ -215,6 +215,8 @@ const Map<String, String> jaJP = {
   'Not friends yet': 'まだフレンドではありません',
   'Search Player ID': 'プレイヤー ID を検索',
   'Enter Player ID': 'プレイヤー ID を入力',
+  'Search Players by Name': 'プレイヤー名で検索',
+  'Enter Player Name': 'プレイヤー名を入力',
   'Searching...': '検索中...',
   'Relationship Status': '関係ステータス',
   'Add Friend': 'フレンド追加',

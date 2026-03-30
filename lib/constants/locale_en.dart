@@ -220,6 +220,8 @@ const Map<String, String> enUS = {
   'Not friends yet': 'Not friends yet',
   'Search Player ID': 'Search Player ID',
   'Enter Player ID': 'Enter Player ID',
+  'Search Players by Name': 'Search Players by Name',
+  'Enter Player Name': 'Enter Player Name',
   'Searching...': 'Searching...',
   'Relationship Status': 'Relationship Status',
   'Add Friend': 'Add Friend',
