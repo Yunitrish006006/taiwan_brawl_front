@@ -5,6 +5,8 @@ class RoyaleCard {
     required this.nameZhHant,
     required this.nameEn,
     required this.nameJa,
+    required this.imageUrl,
+    required this.imageVersion,
     required this.elixirCost,
     required this.type,
     required this.hp,
@@ -26,6 +28,8 @@ class RoyaleCard {
   final String nameZhHant;
   final String nameEn;
   final String nameJa;
+  final String? imageUrl;
+  final int imageVersion;
   final int elixirCost;
   final String type;
   final int hp;
@@ -64,6 +68,8 @@ class RoyaleCard {
           (json['nameZhHant'] as String?) ?? (json['name'] as String? ?? ''),
       nameEn: (json['nameEn'] as String?) ?? (json['name'] as String? ?? ''),
       nameJa: (json['nameJa'] as String?) ?? (json['name'] as String? ?? ''),
+      imageUrl: json['imageUrl'] as String?,
+      imageVersion: (json['imageVersion'] as num?)?.toInt() ?? 0,
       elixirCost: (json['elixirCost'] as num).toInt(),
       type: json['type'] as String,
       hp: (json['hp'] as num).toInt(),
@@ -156,6 +162,7 @@ class RoyaleUnitView {
     required this.nameZhHant,
     required this.nameEn,
     required this.nameJa,
+    required this.imageUrl,
     required this.side,
     required this.type,
     required this.progress,
@@ -173,6 +180,7 @@ class RoyaleUnitView {
   final String nameZhHant;
   final String nameEn;
   final String nameJa;
+  final String? imageUrl;
   final String side;
   final String type;
   final int progress;
@@ -205,6 +213,7 @@ class RoyaleUnitView {
           (json['nameZhHant'] as String?) ?? (json['name'] as String? ?? ''),
       nameEn: (json['nameEn'] as String?) ?? (json['name'] as String? ?? ''),
       nameJa: (json['nameJa'] as String?) ?? (json['name'] as String? ?? ''),
+      imageUrl: json['imageUrl'] as String?,
       side: json['side'] as String,
       type: json['type'] as String,
       progress: ((json['progress'] ?? json['x']) as num).toInt(),

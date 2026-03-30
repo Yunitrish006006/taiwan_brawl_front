@@ -1,7 +1,7 @@
 name: front
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.1.0+58
+version: 0.1.0+60
 
 environment:
   sdk: ^3.11.1
@@ -15,6 +15,7 @@ dependencies:
   google_sign_in_web: ^1.1.2
   package_info_plus: ^9.0.0
   web_socket_channel: ^3.0.3
+  file_picker: ^10.3.2
 
 dev_dependencies:
   flutter_test:

@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -58,9 +62,14 @@ class _CardManagementPageState extends State<CardManagementPage> {
   final TextEditingController _effectValueController = TextEditingController();
 
   List<RoyaleCard> _cards = const [];
+  Uint8List? _pendingImageBytes;
+  String? _pendingImageMimeType;
+  String? _pendingImageFileName;
   bool _isLoading = true;
   bool _isSaving = false;
   bool _isDeleting = false;
+  bool _isUploadingImage = false;
+  bool _isRemovingImage = false;
   bool _isCreatingNew = true;
   String? _selectedCardId;
   String _selectedType = _typeOptions.first;
@@ -164,6 +173,9 @@ class _CardManagementPageState extends State<CardManagementPage> {
       _spellRadiusController.text = card.spellRadius.toString();
       _spellDamageController.text = card.spellDamage.toString();
       _effectValueController.text = card.effectValue.toString();
+      _pendingImageBytes = null;
+      _pendingImageMimeType = null;
+      _pendingImageFileName = null;
     });
   }
 
@@ -189,7 +201,23 @@ class _CardManagementPageState extends State<CardManagementPage> {
       _spellRadiusController.text = '0';
       _spellDamageController.text = '0';
       _effectValueController.text = '0';
+      _pendingImageBytes = null;
+      _pendingImageMimeType = null;
+      _pendingImageFileName = null;
     });
+  }
+
+  RoyaleCard? _selectedCard() {
+    final cardId = _selectedCardId;
+    if (cardId == null) {
+      return null;
+    }
+    for (final card in _cards) {
+      if (card.id == cardId) {
+        return card;
+      }
+    }
+    return null;
   }
 
   int _parseIntField(TextEditingController controller, String label) {
@@ -333,6 +361,153 @@ class _CardManagementPageState extends State<CardManagementPage> {
     }
   }
 
+  String? _detectImageMimeType(PlatformFile file) {
+    final extension = (file.extension ?? '').toLowerCase();
+    switch (extension) {
+      case 'png':
+        return 'image/png';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'webp':
+        return 'image/webp';
+      case 'gif':
+        return 'image/gif';
+      default:
+        return null;
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+      withData: true,
+    );
+    if (!mounted || result == null || result.files.isEmpty) {
+      return;
+    }
+
+    final file = result.files.single;
+    final bytes = file.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      _showSnackBar(
+        context.read<LocaleProvider>().translation.text(
+          'Selected file has no readable bytes',
+        ),
+      );
+      return;
+    }
+
+    final mimeType = _detectImageMimeType(file);
+    if (mimeType == null) {
+      _showSnackBar(
+        context.read<LocaleProvider>().translation.text(
+          'Selected image is unsupported',
+        ),
+      );
+      return;
+    }
+
+    if (bytes.length > 1024 * 1024) {
+      _showSnackBar(
+        context.read<LocaleProvider>().translation.text(
+          'Image must be 1 MB or smaller',
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _pendingImageBytes = bytes;
+      _pendingImageMimeType = mimeType;
+      _pendingImageFileName = file.name;
+    });
+  }
+
+  Future<void> _uploadImage() async {
+    final card = _selectedCard();
+    if (card == null || _isCreatingNew) {
+      _showSnackBar(
+        context.read<LocaleProvider>().translation.text(
+          'Save the card first before uploading an image',
+        ),
+      );
+      return;
+    }
+    if (_pendingImageBytes == null || _pendingImageMimeType == null) {
+      return;
+    }
+
+    setState(() {
+      _isUploadingImage = true;
+    });
+
+    try {
+      final updated = await _adminService.uploadCardImage(
+        cardId: card.id,
+        bytesBase64: base64Encode(_pendingImageBytes!),
+        contentType: _pendingImageMimeType!,
+        fileName: _pendingImageFileName,
+      );
+      if (!mounted) {
+        return;
+      }
+      await _loadCards(preferCardId: updated.id);
+      if (!mounted) {
+        return;
+      }
+      _showSnackBar(
+        context.read<LocaleProvider>().translation.text(
+          'Image uploaded successfully',
+        ),
+      );
+    } on ApiException catch (error) {
+      _showSnackBar(error.message);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingImage = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _removeImage() async {
+    final card = _selectedCard();
+    if (card == null || _isCreatingNew) {
+      return;
+    }
+
+    setState(() {
+      _isRemovingImage = true;
+    });
+
+    try {
+      await _adminService.deleteCardImage(card.id);
+      if (!mounted) {
+        return;
+      }
+      await _loadCards(preferCardId: card.id);
+      if (!mounted) {
+        return;
+      }
+      _showSnackBar(
+        context.read<LocaleProvider>().translation.text(
+          'Image removed successfully',
+        ),
+      );
+    } on ApiException catch (error) {
+      _showSnackBar(error.message);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRemovingImage = false;
+        });
+      }
+    }
+  }
+
   void _showSnackBar(String message) {
     if (!mounted) {
       return;
@@ -437,6 +612,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
                       selectedTileColor: Theme.of(
                         context,
                       ).colorScheme.primaryContainer.withValues(alpha: 0.45),
+                      leading: _CardImageThumbnail(card: card),
                       title: Text(
                         card.localizedName(
                           context.read<LocaleProvider>().locale,
@@ -477,6 +653,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
   }
 
   Widget _buildForm(Map<String, String> t) {
+    final selectedCard = _selectedCard();
     final formIntro = _isCreatingNew
         ? t.text('Create a new card')
         : t.text(
@@ -565,6 +742,19 @@ class _CardManagementPageState extends State<CardManagementPage> {
               decoration: InputDecoration(
                 labelText: t.text('Card Name (Japanese)'),
               ),
+            ),
+            const SizedBox(height: 12),
+            _CardImageEditor(
+              card: selectedCard,
+              pendingImageBytes: _pendingImageBytes,
+              onPickImage: _pickImage,
+              onUploadImage: _uploadImage,
+              onRemoveImage: _removeImage,
+              isCreatingNew: _isCreatingNew,
+              isUploadingImage: _isUploadingImage,
+              isRemovingImage: _isRemovingImage,
+              hasPendingImage: _pendingImageBytes != null,
+              translation: t,
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -860,6 +1050,195 @@ class _CardManagementPageState extends State<CardManagementPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CardImageThumbnail extends StatelessWidget {
+  const _CardImageThumbnail({required this.card});
+
+  final RoyaleCard card;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: card.imageUrl != null && card.imageUrl!.isNotEmpty
+          ? Image.network(
+              card.imageUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => const Icon(Icons.image_not_supported),
+            )
+          : const Icon(Icons.person_outline_rounded),
+    );
+  }
+}
+
+class _CardImageEditor extends StatelessWidget {
+  const _CardImageEditor({
+    required this.card,
+    required this.pendingImageBytes,
+    required this.onPickImage,
+    required this.onUploadImage,
+    required this.onRemoveImage,
+    required this.isCreatingNew,
+    required this.isUploadingImage,
+    required this.isRemovingImage,
+    required this.hasPendingImage,
+    required this.translation,
+  });
+
+  final RoyaleCard? card;
+  final Uint8List? pendingImageBytes;
+  final VoidCallback onPickImage;
+  final VoidCallback onUploadImage;
+  final VoidCallback onRemoveImage;
+  final bool isCreatingNew;
+  final bool isUploadingImage;
+  final bool isRemovingImage;
+  final bool hasPendingImage;
+  final Map<String, String> translation;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final imageUrl = card?.imageUrl;
+    final hasSavedImage = imageUrl != null && imageUrl.isNotEmpty;
+
+    Widget preview;
+    if (pendingImageBytes != null && pendingImageBytes!.isNotEmpty) {
+      preview = Image.memory(pendingImageBytes!, fit: BoxFit.contain);
+    } else if (hasSavedImage) {
+      preview = Image.network(
+        imageUrl,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => const Icon(Icons.broken_image_outlined),
+      );
+    } else {
+      preview = Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.image_outlined,
+            size: 40,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            translation.text('No character image uploaded'),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.45,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            translation.text('Character Image'),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            translation.text('PNG, JPG, WEBP, or GIF up to 1 MB'),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            height: 220,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            alignment: Alignment.center,
+            clipBehavior: Clip.antiAlias,
+            child: preview,
+          ),
+          if (isCreatingNew) ...[
+            const SizedBox(height: 10),
+            Text(
+              translation.text('Save the card first before uploading an image'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              FilledButton.icon(
+                onPressed: isUploadingImage || isRemovingImage
+                    ? null
+                    : onPickImage,
+                icon: const Icon(Icons.image_search_outlined),
+                label: Text(translation.text('Choose Image')),
+              ),
+              OutlinedButton.icon(
+                onPressed:
+                    isCreatingNew ||
+                        !hasPendingImage ||
+                        isUploadingImage ||
+                        isRemovingImage
+                    ? null
+                    : onUploadImage,
+                icon: isUploadingImage
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.cloud_upload_outlined),
+                label: Text(translation.text('Upload Image')),
+              ),
+              TextButton.icon(
+                onPressed:
+                    isCreatingNew ||
+                        !hasSavedImage ||
+                        isUploadingImage ||
+                        isRemovingImage
+                    ? null
+                    : onRemoveImage,
+                icon: isRemovingImage
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.delete_outline_rounded),
+                label: Text(translation.text('Remove Image')),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

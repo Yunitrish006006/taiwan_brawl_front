@@ -36,6 +36,29 @@ class AdminService {
     return RoyaleCard.fromJson(res['card'] as Map<String, dynamic>);
   }
 
+  Future<RoyaleCard> uploadCardImage({
+    required String cardId,
+    required String bytesBase64,
+    required String contentType,
+    String? fileName,
+  }) async {
+    final res = await _apiClient.postJson('/api/admin/cards/$cardId/image', {
+      'bytesBase64': bytesBase64,
+      'contentType': contentType,
+      'fileName': fileName,
+    });
+    return RoyaleCard.fromJson(res['card'] as Map<String, dynamic>);
+  }
+
+  Future<RoyaleCard?> deleteCardImage(String cardId) async {
+    final res = await _apiClient.deleteJson('/api/admin/cards/$cardId/image');
+    final card = res['card'];
+    if (card is Map<String, dynamic>) {
+      return RoyaleCard.fromJson(card);
+    }
+    return null;
+  }
+
   Future<void> deleteCard(String cardId) async {
     await _apiClient.deleteJson('/api/admin/cards/$cardId');
   }
