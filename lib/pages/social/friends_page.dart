@@ -23,7 +23,7 @@ class _FriendsPageState extends State<FriendsPage> {
   final TextEditingController _searchController = TextEditingController();
 
   FriendsOverview? _overview;
-  FriendSearchResult? _searchResult;
+  List<FriendSearchResult> _searchResults = const [];
   bool _isLoading = true;
   String? _busyKey;
 
@@ -107,22 +107,22 @@ class _FriendsPageState extends State<FriendsPage> {
     }
   }
 
-  Future<void> _searchById() async {
+  Future<void> _searchByName() async {
     final input = _searchController.text.trim();
     if (input.isEmpty) {
       setState(() {
-        _searchResult = null;
+        _searchResults = const [];
       });
       return;
     }
 
     await _runAction('search', () async {
-      final result = await _friendsService.searchById(input);
+      final results = await _friendsService.searchByName(input);
       if (!mounted) {
         return;
       }
       setState(() {
-        _searchResult = result;
+        _searchResults = results;
       });
     });
   }
@@ -353,7 +353,7 @@ class _FriendsPageState extends State<FriendsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          t.text('Search Player ID'),
+                          t.text('Search Players by Name'),
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -365,19 +365,18 @@ class _FriendsPageState extends State<FriendsPage> {
                             Expanded(
                               child: TextField(
                                 controller: _searchController,
-                                keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
-                                  labelText: t.text('Enter Player ID'),
+                                  labelText: t.text('Enter Player Name'),
                                   border: OutlineInputBorder(),
                                 ),
-                                onSubmitted: (_) => _searchById(),
+                                onSubmitted: (_) => _searchByName(),
                               ),
                             ),
                             const SizedBox(width: 10),
                             FilledButton(
                               onPressed: _busyKey == 'search'
                                   ? null
-                                  : _searchById,
+                                  : _searchByName,
                               child: Text(
                                 _busyKey == 'search'
                                     ? t.text('Searching...')
@@ -386,66 +385,85 @@ class _FriendsPageState extends State<FriendsPage> {
                             ),
                           ],
                         ),
-                        if (_searchResult != null) ...[
+                        if (_searchController.text.trim().isNotEmpty &&
+                            _searchResults.isEmpty &&
+                            _busyKey != 'search') ...[
                           const SizedBox(height: 16),
-                          _buildUserTile(
-                            user: _searchResult!.user,
-                            subtitle:
-                                '${t.text('Relationship Status')}: ${_relationshipLabel(_searchResult!.relationshipStatus)}',
-                            actions: [
-                              if (_searchResult!.relationshipStatus == 'none')
-                                FilledButton.icon(
-                                  onPressed:
-                                      _busyKey ==
-                                          'send-${_searchResult!.user.userId}'
-                                      ? null
-                                      : () => _runAction(
-                                          'send-${_searchResult!.user.userId}',
-                                          () =>
-                                              _friendsService.sendFriendRequest(
-                                                _searchResult!.user.userId,
+                          Text(t.text('No matching players found')),
+                        ],
+                        if (_searchResults.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            '${_searchResults.length} ${t.text('people')}',
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          ..._searchResults.map(
+                            (result) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _buildUserTile(
+                                user: result.user,
+                                subtitle:
+                                    '${t.text('Relationship Status')}: ${_relationshipLabel(result.relationshipStatus)}',
+                                actions: [
+                                  if (result.relationshipStatus == 'none')
+                                    FilledButton.icon(
+                                      onPressed:
+                                          _busyKey ==
+                                              'send-${result.user.userId}'
+                                          ? null
+                                          : () => _runAction(
+                                              'send-${result.user.userId}',
+                                              () => _friendsService
+                                                  .sendFriendRequest(
+                                                    result.user.userId,
+                                                  ),
+                                              successMessage: t.text(
+                                                'Friend request sent',
                                               ),
-                                          successMessage: t.text(
-                                            'Friend request sent',
-                                          ),
-                                        ),
-                                  icon: const Icon(Icons.person_add_alt_1),
-                                  label: Text(t.text('Add Friend')),
-                                ),
-                              if (_searchResult!.relationshipStatus == 'friend')
-                                OutlinedButton.icon(
-                                  onPressed:
-                                      _busyKey ==
-                                          'invite-${_searchResult!.user.userId}'
-                                      ? null
-                                      : () => _inviteFriendToBattle(
-                                          _searchResult!.user,
-                                        ),
-                                  icon: const Icon(
-                                    Icons.sports_esports_outlined,
-                                  ),
-                                  label: Text(t.text('Invite Battle')),
-                                ),
-                              if (_searchResult!.relationshipStatus !=
-                                  'blocked')
-                                OutlinedButton.icon(
-                                  onPressed:
-                                      _busyKey ==
-                                          'block-${_searchResult!.user.userId}'
-                                      ? null
-                                      : () => _runAction(
-                                          'block-${_searchResult!.user.userId}',
-                                          () => _friendsService.blockUser(
-                                            _searchResult!.user.userId,
-                                          ),
-                                          successMessage: t.text(
-                                            'Player blocked',
-                                          ),
-                                        ),
-                                  icon: const Icon(Icons.block),
-                                  label: Text(t.text('Block')),
-                                ),
-                            ],
+                                            ),
+                                      icon: const Icon(Icons.person_add_alt_1),
+                                      label: Text(t.text('Add Friend')),
+                                    ),
+                                  if (result.relationshipStatus == 'friend')
+                                    OutlinedButton.icon(
+                                      onPressed:
+                                          _busyKey ==
+                                              'invite-${result.user.userId}'
+                                          ? null
+                                          : () => _inviteFriendToBattle(
+                                              result.user,
+                                            ),
+                                      icon: const Icon(
+                                        Icons.sports_esports_outlined,
+                                      ),
+                                      label: Text(t.text('Invite Battle')),
+                                    ),
+                                  if (result.relationshipStatus != 'blocked')
+                                    OutlinedButton.icon(
+                                      onPressed:
+                                          _busyKey ==
+                                              'block-${result.user.userId}'
+                                          ? null
+                                          : () => _runAction(
+                                              'block-${result.user.userId}',
+                                              () => _friendsService.blockUser(
+                                                result.user.userId,
+                                              ),
+                                              successMessage: t.text(
+                                                'Player blocked',
+                                              ),
+                                            ),
+                                      icon: const Icon(Icons.block),
+                                      label: Text(t.text('Block')),
+                                    ),
+                                ],
+                              ),
+                            ),
                           ),
                         ],
                       ],

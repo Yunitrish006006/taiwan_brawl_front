@@ -210,6 +210,8 @@ const Map<String, String> zhHant = {
   'Not friends yet': '尚未成為好友',
   'Search Player ID': '搜尋玩家 ID',
   'Enter Player ID': '輸入玩家 ID',
+  'Search Players by Name': '搜尋玩家名稱',
+  'Enter Player Name': '輸入玩家名稱',
   'Searching...': '搜尋中...',
   'Relationship Status': '關係狀態',
   'Add Friend': '加好友',
