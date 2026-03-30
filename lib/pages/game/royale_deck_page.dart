@@ -286,6 +286,29 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                             children: [
                               Row(
                                 children: [
+                                  if (card.imageUrl != null &&
+                                      card.imageUrl!.isNotEmpty) ...[
+                                    Container(
+                                      width: 42,
+                                      height: 42,
+                                      margin: const EdgeInsets.only(right: 10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.12,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: Image.network(
+                                        card.imageUrl!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) => const Icon(
+                                          Icons.image_not_supported_outlined,
+                                          color: Colors.white70,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                   Expanded(
                                     child: Text(
                                       card.localizedName(

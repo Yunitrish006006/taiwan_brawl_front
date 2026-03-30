@@ -2264,17 +2264,36 @@ class _UnitToken extends StatelessWidget {
                 ],
               ),
               alignment: Alignment.center,
-              child: Text(
-                unit
-                    .localizedName(context.watch<LocaleProvider>().locale)
-                    .characters
-                    .first,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: labelFontSize,
-                ),
-              ),
+              clipBehavior: Clip.antiAlias,
+              child: unit.imageUrl != null && unit.imageUrl!.isNotEmpty
+                  ? Image.network(
+                      unit.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Text(
+                        unit
+                            .localizedName(
+                              context.watch<LocaleProvider>().locale,
+                            )
+                            .characters
+                            .first,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: labelFontSize,
+                        ),
+                      ),
+                    )
+                  : Text(
+                      unit
+                          .localizedName(context.watch<LocaleProvider>().locale)
+                          .characters
+                          .first,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: labelFontSize,
+                      ),
+                    ),
             ),
             const SizedBox(height: 4),
             Container(
@@ -2630,6 +2649,23 @@ class _HandCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 14),
+                if (card.imageUrl != null && card.imageUrl!.isNotEmpty) ...[
+                  Container(
+                    width: double.infinity,
+                    height: 72,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.network(
+                      card.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
                 Text(
                   card.localizedName(context.watch<LocaleProvider>().locale),
                   maxLines: 1,

@@ -370,6 +370,7 @@ class HostBattleEngine {
           nameZhHant: card.nameZhHant,
           nameEn: card.nameEn,
           nameJa: card.nameJa,
+          imageUrl: card.imageUrl,
           type: card.type,
           side: side,
           progress: dropPoint.progress,
@@ -740,6 +741,7 @@ class HostBattleEngine {
                 nameZhHant: unit.nameZhHant,
                 nameEn: unit.nameEn,
                 nameJa: unit.nameJa,
+                imageUrl: unit.imageUrl,
                 side: unit.side,
                 type: unit.type,
                 progress: unit.progress.round(),
@@ -811,6 +813,7 @@ class _HostUnit {
     required this.nameZhHant,
     required this.nameEn,
     required this.nameJa,
+    required this.imageUrl,
     required this.type,
     required this.side,
     required this.progress,
@@ -833,6 +836,7 @@ class _HostUnit {
   final String nameZhHant;
   final String nameEn;
   final String nameJa;
+  final String? imageUrl;
   final String type;
   final String side;
   double progress;
