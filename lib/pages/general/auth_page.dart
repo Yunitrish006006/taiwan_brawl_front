@@ -126,6 +126,250 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 
+  Widget _buildLoginGuide(ThemeData theme, Map<String, String> t) {
+    final guideTexts = [
+      t.text(
+        'Taiwan Brawl Portal uses Google sign-in and keeps your session with a secure cookie.',
+      ),
+      t.text('Automatically restore your login state and personal preferences'),
+      t.text('Verify the current session directly via /api/me'),
+      t.text(
+        'Legacy username/password login and registration are no longer available',
+      ),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            t.text('Login Guide'),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (final text in guideTexts) ...[
+            Text(text, style: theme.textTheme.bodyMedium),
+            if (text != guideTexts.last) const SizedBox(height: 10),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDisabledGoogleButton({
+    required Widget child,
+    required VoidCallback? onPressed,
+    IconData? icon,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: icon == null
+          ? OutlinedButton(onPressed: onPressed, child: child)
+          : OutlinedButton.icon(
+              onPressed: onPressed,
+              icon: Icon(icon),
+              label: child,
+            ),
+    );
+  }
+
+  Widget _buildGoogleWebButton(
+    bool loading,
+    double frameWidth,
+    google_web.GSIButtonTheme googleButtonTheme,
+  ) {
+    return IgnorePointer(
+      ignoring: loading,
+      child: Opacity(
+        opacity: loading ? 0.7 : 1,
+        child: SizedBox(
+          height: 56,
+          child: Center(
+            child: google_web.renderButton(
+              configuration: google_web.GSIButtonConfiguration(
+                theme: googleButtonTheme,
+                text: google_web.GSIButtonText.signinWith,
+                size: google_web.GSIButtonSize.large,
+                shape: google_web.GSIButtonShape.rectangular,
+                minimumWidth: frameWidth,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGoogleSignInButton(
+    ThemeData theme,
+    Map<String, String> t,
+    bool loading,
+    double frameWidth,
+    google_web.GSIButtonTheme googleButtonTheme,
+  ) {
+    if (!kIsWeb) {
+      return _buildDisabledGoogleButton(
+        onPressed: null,
+        icon: Icons.desktop_windows_outlined,
+        child: Text(
+          t.text('Google sign-in is currently available on web only'),
+        ),
+      );
+    }
+
+    if (_googleErrorMessage != null) {
+      return Column(
+        children: [
+          _buildDisabledGoogleButton(
+            onPressed: null,
+            icon: Icons.error_outline,
+            child: Text(t.text('Google sign-in is currently unavailable')),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _googleErrorMessage!,
+            style: TextStyle(color: theme.colorScheme.error, fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      );
+    }
+
+    if (!_isGoogleReady) {
+      return _buildDisabledGoogleButton(
+        onPressed: null,
+        child: Text(t.text('Google sign-in is loading...')),
+      );
+    }
+
+    return _buildGoogleWebButton(loading, frameWidth, googleButtonTheme);
+  }
+
+  Widget _buildAuthCard(
+    ThemeData theme,
+    Map<String, String> t,
+    bool loading,
+    double frameWidth,
+    google_web.GSIButtonTheme googleButtonTheme,
+  ) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface.withValues(alpha: 0.86),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.shadow.withValues(alpha: 0.08),
+                blurRadius: 28,
+                offset: const Offset(0, 14),
+              ),
+            ],
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                t.text('Sign in with Google'),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                t.text('Sign in to continue to the portal and game pages.'),
+                style: theme.textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              _buildGoogleSignInButton(
+                theme,
+                t,
+                loading,
+                frameWidth,
+                googleButtonTheme,
+              ),
+              if (loading) ...[
+                const SizedBox(height: 12),
+                Text(
+                  t.text('Verifying Google sign-in...'),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              const SizedBox(height: 12),
+              Text(
+                t.text(
+                  'Your session will be kept with a secure cookie after login',
+                ),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAuthBody(
+    ThemeData theme,
+    Map<String, String> t,
+    bool loading,
+    bool isSmallScreen,
+    double frameWidth,
+    google_web.GSIButtonTheme googleButtonTheme,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            theme.colorScheme.surface,
+            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
+        child: Column(
+          children: [
+            _buildLoginGuide(theme, t),
+            Expanded(
+              child: _buildAuthCard(
+                theme,
+                t,
+                loading,
+                frameWidth,
+                googleButtonTheme,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.watch<LocaleProvider>().translation;
@@ -144,221 +388,13 @@ class _AuthPageState extends State<AuthPage> {
 
     return Scaffold(
       appBar: AppBar(title: Text(AppConstants.appName)),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              theme.colorScheme.surface,
-              theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
-          child: Column(
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(18),
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface.withValues(alpha: 0.72),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: theme.colorScheme.outlineVariant.withValues(
-                      alpha: 0.5,
-                    ),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      t.text('Login Guide'),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      t.text(
-                        'Taiwan Brawl Portal uses Google sign-in and keeps your session with a secure cookie.',
-                      ),
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      t.text(
-                        'Automatically restore your login state and personal preferences',
-                      ),
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    Text(
-                      t.text('Verify the current session directly via /api/me'),
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    Text(
-                      t.text(
-                        'Legacy username/password login and registration are no longer available',
-                      ),
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 440),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface.withValues(
-                          alpha: 0.86,
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: theme.colorScheme.shadow.withValues(
-                              alpha: 0.08,
-                            ),
-                            blurRadius: 28,
-                            offset: const Offset(0, 14),
-                          ),
-                        ],
-                        border: Border.all(
-                          color: theme.colorScheme.outlineVariant.withValues(
-                            alpha: 0.45,
-                          ),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            t.text('Sign in with Google'),
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            t.text(
-                              'Sign in to continue to the portal and game pages.',
-                            ),
-                            style: theme.textTheme.bodyMedium,
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 20),
-                          if (!kIsWeb)
-                            SizedBox(
-                              width: double.infinity,
-                              height: 56,
-                              child: OutlinedButton.icon(
-                                onPressed: null,
-                                icon: const Icon(
-                                  Icons.desktop_windows_outlined,
-                                ),
-                                label: Text(
-                                  t.text(
-                                    'Google sign-in is currently available on web only',
-                                  ),
-                                ),
-                              ),
-                            )
-                          else if (_googleErrorMessage != null)
-                            Column(
-                              children: [
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 56,
-                                  child: OutlinedButton.icon(
-                                    onPressed: null,
-                                    icon: const Icon(Icons.error_outline),
-                                    label: Text(
-                                      t.text(
-                                        'Google sign-in is currently unavailable',
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _googleErrorMessage!,
-                                  style: TextStyle(
-                                    color: theme.colorScheme.error,
-                                    fontSize: 13,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            )
-                          else if (!_isGoogleReady)
-                            SizedBox(
-                              width: double.infinity,
-                              height: 56,
-                              child: OutlinedButton(
-                                onPressed: null,
-                                child: Text(
-                                  t.text('Google sign-in is loading...'),
-                                ),
-                              ),
-                            )
-                          else
-                            IgnorePointer(
-                              ignoring: loading,
-                              child: Opacity(
-                                opacity: loading ? 0.7 : 1,
-                                child: SizedBox(
-                                  height: 56,
-                                  child: Center(
-                                    child: google_web.renderButton(
-                                      configuration:
-                                          google_web.GSIButtonConfiguration(
-                                            theme: googleButtonTheme,
-                                            text: google_web
-                                                .GSIButtonText
-                                                .signinWith,
-                                            size:
-                                                google_web.GSIButtonSize.large,
-                                            shape: google_web
-                                                .GSIButtonShape
-                                                .rectangular,
-                                            minimumWidth: frameWidth,
-                                          ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          if (loading) ...[
-                            const SizedBox(height: 12),
-                            Text(
-                              t.text('Verifying Google sign-in...'),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                          const SizedBox(height: 12),
-                          Text(
-                            t.text(
-                              'Your session will be kept with a secure cookie after login',
-                            ),
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      body: _buildAuthBody(
+        theme,
+        t,
+        loading,
+        isSmallScreen,
+        frameWidth,
+        googleButtonTheme,
       ),
     );
   }

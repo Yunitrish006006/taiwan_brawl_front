@@ -14,8 +14,8 @@ class _SplashPageState extends State<SplashPage> {
   @override
   void initState() {
     super.initState();
+    final auth = context.read<AuthService>();
     Future.microtask(() async {
-      final auth = context.read<AuthService>();
       await auth.init();
       if (!mounted) return;
       Navigator.of(

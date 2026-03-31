@@ -322,6 +322,197 @@ class _FriendsPageState extends State<FriendsPage> {
     );
   }
 
+  Widget _buildTileColumn<T>(List<T> items, Widget Function(T item) builder) {
+    return Column(
+      children: items
+          .map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: builder(item),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildSearchCard(Map<String, String> t) {
+    final hasSearchInput = _searchController.text.trim().isNotEmpty;
+    final showEmptySearchResult =
+        hasSearchInput && _searchResults.isEmpty && _busyKey != 'search';
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              t.text('Search Players by Name'),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      labelText: t.text('Enter Player Name'),
+                      border: const OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) => _searchByName(),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                FilledButton(
+                  onPressed: _busyKey == 'search' ? null : _searchByName,
+                  child: Text(
+                    _busyKey == 'search'
+                        ? t.text('Searching...')
+                        : t.text('Search'),
+                  ),
+                ),
+              ],
+            ),
+            if (showEmptySearchResult) ...[
+              const SizedBox(height: 16),
+              Text(t.text('No matching players found')),
+            ],
+            if (_searchResults.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(
+                '${_searchResults.length} ${t.text('people')}',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildTileColumn<FriendSearchResult>(
+                _searchResults,
+                (result) => _buildUserTile(
+                  user: result.user,
+                  subtitle:
+                      '${t.text('Relationship Status')}: ${_relationshipLabel(result.relationshipStatus)}',
+                  actions: _buildSearchActions(result),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInviteSection(FriendsOverview overview, Map<String, String> t) {
+    return _buildSection(
+      t.text('Room Invites'),
+      overview.roomInvites.isEmpty
+          ? Text(t.text('No new room invites'))
+          : _buildTileColumn<RoomInviteItem>(
+              overview.roomInvites,
+              (invite) => _buildUserTile(
+                user: invite.inviter,
+                subtitle:
+                    '${t.text('invites you to join room')} ${invite.roomCode}',
+                actions: _buildRoomInviteActions(invite),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildIncomingRequestSection(
+    FriendsOverview overview,
+    Map<String, String> t,
+  ) {
+    return _buildSection(
+      t.text('Friend Requests'),
+      overview.incomingRequests.isEmpty
+          ? Text(t.text('No new friend requests'))
+          : _buildTileColumn<FriendRequestItem>(
+              overview.incomingRequests,
+              (item) => _buildUserTile(
+                user: item.user,
+                actions: _buildIncomingRequestActions(item),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildOutgoingRequestSection(
+    FriendsOverview overview,
+    Map<String, String> t,
+  ) {
+    return _buildSection(
+      t.text('Sent Requests'),
+      overview.outgoingRequests.isEmpty
+          ? Text(t.text('No pending requests'))
+          : _buildTileColumn<FriendRequestItem>(
+              overview.outgoingRequests,
+              (item) => _buildUserTile(
+                user: item.user,
+                subtitle: t.text('Waiting for confirmation'),
+                actions: _buildOutgoingRequestActions(item),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildFriendListSection(
+    FriendsOverview overview,
+    Map<String, String> t,
+  ) {
+    return _buildSection(
+      t.text('Friend List'),
+      overview.friends.isEmpty
+          ? Text(t.text('You do not have any friends yet. Go add a few.'))
+          : _buildTileColumn<SocialUser>(
+              overview.friends,
+              (friend) => _buildUserTile(
+                user: friend,
+                actions: _buildFriendActions(friend),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildBlockedUsersSection(
+    FriendsOverview overview,
+    Map<String, String> t,
+  ) {
+    return _buildSection(
+      t.text('Blocked Users'),
+      overview.blockedUsers.isEmpty
+          ? Text(t.text('No blocked players'))
+          : _buildTileColumn<SocialUser>(
+              overview.blockedUsers,
+              (user) => _buildUserTile(
+                user: user,
+                subtitle: t.text('Blocked'),
+                actions: _buildBlockedUserActions(user),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildOverviewBody(FriendsOverview overview, Map<String, String> t) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _buildSearchCard(t),
+        const SizedBox(height: 20),
+        _buildInviteSection(overview, t),
+        const SizedBox(height: 20),
+        _buildIncomingRequestSection(overview, t),
+        const SizedBox(height: 20),
+        _buildOutgoingRequestSection(overview, t),
+        const SizedBox(height: 20),
+        _buildFriendListSection(overview, t),
+        const SizedBox(height: 20),
+        _buildBlockedUsersSection(overview, t),
+      ],
+    );
+  }
+
   List<Widget> _buildSearchActions(FriendSearchResult result) {
     final user = result.user;
     return [
@@ -487,171 +678,7 @@ class _FriendsPageState extends State<FriendsPage> {
           ? const Center(child: CircularProgressIndicator())
           : overview == null
           ? Center(child: Text(t.text('Failed to load friend data')))
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          t.text('Search Players by Name'),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _searchController,
-                                decoration: InputDecoration(
-                                  labelText: t.text('Enter Player Name'),
-                                  border: OutlineInputBorder(),
-                                ),
-                                onSubmitted: (_) => _searchByName(),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            FilledButton(
-                              onPressed: _busyKey == 'search'
-                                  ? null
-                                  : _searchByName,
-                              child: Text(
-                                _busyKey == 'search'
-                                    ? t.text('Searching...')
-                                    : t.text('Search'),
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (_searchController.text.trim().isNotEmpty &&
-                            _searchResults.isEmpty &&
-                            _busyKey != 'search') ...[
-                          const SizedBox(height: 16),
-                          Text(t.text('No matching players found')),
-                        ],
-                        if (_searchResults.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          Text(
-                            '${_searchResults.length} ${t.text('people')}',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          ..._searchResults.map(
-                            (result) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _buildUserTile(
-                                user: result.user,
-                                subtitle:
-                                    '${t.text('Relationship Status')}: ${_relationshipLabel(result.relationshipStatus)}',
-                                actions: _buildSearchActions(result),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _buildSection(
-                  t.text('Room Invites'),
-                  overview.roomInvites.isEmpty
-                      ? Text(t.text('No new room invites'))
-                      : Column(
-                          children: overview.roomInvites
-                              .map(
-                                (invite) => _buildUserTile(
-                                  user: invite.inviter,
-                                  subtitle:
-                                      '${t.text('invites you to join room')} ${invite.roomCode}',
-                                  actions: _buildRoomInviteActions(invite),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                ),
-                const SizedBox(height: 20),
-                _buildSection(
-                  t.text('Friend Requests'),
-                  overview.incomingRequests.isEmpty
-                      ? Text(t.text('No new friend requests'))
-                      : Column(
-                          children: overview.incomingRequests
-                              .map(
-                                (item) => _buildUserTile(
-                                  user: item.user,
-                                  actions: _buildIncomingRequestActions(item),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                ),
-                const SizedBox(height: 20),
-                _buildSection(
-                  t.text('Sent Requests'),
-                  overview.outgoingRequests.isEmpty
-                      ? Text(t.text('No pending requests'))
-                      : Column(
-                          children: overview.outgoingRequests
-                              .map(
-                                (item) => _buildUserTile(
-                                  user: item.user,
-                                  subtitle: t.text('Waiting for confirmation'),
-                                  actions: _buildOutgoingRequestActions(item),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                ),
-                const SizedBox(height: 20),
-                _buildSection(
-                  t.text('Friend List'),
-                  overview.friends.isEmpty
-                      ? Text(
-                          t.text(
-                            'You do not have any friends yet. Go add a few.',
-                          ),
-                        )
-                      : Column(
-                          children: overview.friends
-                              .map(
-                                (friend) => _buildUserTile(
-                                  user: friend,
-                                  actions: _buildFriendActions(friend),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                ),
-                const SizedBox(height: 20),
-                _buildSection(
-                  t.text('Blocked Users'),
-                  overview.blockedUsers.isEmpty
-                      ? Text(t.text('No blocked players'))
-                      : Column(
-                          children: overview.blockedUsers
-                              .map(
-                                (user) => _buildUserTile(
-                                  user: user,
-                                  subtitle: t.text('Blocked'),
-                                  actions: _buildBlockedUserActions(user),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                ),
-              ],
-            ),
+          : _buildOverviewBody(overview, t),
     );
   }
 }
