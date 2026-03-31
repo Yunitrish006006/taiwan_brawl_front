@@ -1,5 +1,6 @@
 // 繁體中文翻譯檔案
 const Map<String, String> zhHant = {
+  'Taiwan Brawl Portal': '鬼島亂鬥入口',
   'Display Settings': '顯示設定',
   'Theme Mode': '主題模式',
   'Follow System': '跟隨系統',

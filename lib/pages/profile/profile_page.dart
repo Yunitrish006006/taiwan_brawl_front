@@ -275,6 +275,17 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Widget _buildLoadingActionIcon(bool isLoading, IconData icon) {
+    if (isLoading) {
+      return const SizedBox(
+        width: 16,
+        height: 16,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+    return Icon(icon);
+  }
+
   Widget _buildAvatarPreview(AppUser user, Map<String, String> t) {
     final avatarUrl = _previewAvatarUrl(user);
     final hasPendingAvatar =
@@ -326,6 +337,172 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Widget _buildAvatarSourceSection(AppUser user, Map<String, String> t) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          t.text('Avatar Source'),
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        SegmentedButton<String>(
+          segments: [
+            const ButtonSegment<String>(
+              value: 'google',
+              icon: Icon(Icons.account_circle_outlined),
+              label: Text('Google'),
+            ),
+            ButtonSegment<String>(
+              value: 'custom',
+              icon: const Icon(Icons.edit_outlined),
+              label: Text(t.text('Custom')),
+            ),
+            ButtonSegment<String>(
+              value: 'upload',
+              icon: const Icon(Icons.photo_library_outlined),
+              label: Text(t.text('Upload')),
+            ),
+          ],
+          selected: {_avatarSource},
+          onSelectionChanged: (selection) {
+            _selectAvatarSource(selection.first, user);
+          },
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _avatarSourceDescription(t),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _customAvatarUrlController,
+          keyboardType: TextInputType.url,
+          enabled: _avatarSource == 'custom',
+          decoration: InputDecoration(
+            labelText: t.text('Custom Avatar URL'),
+            hintText: 'https://example.com/avatar.png',
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUploadedAvatarCard(AppUser user, Map<String, String> t) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              t.text('Uploaded Avatar Image'),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              t.text('PNG, JPG, WEBP, or GIF up to 1 MB'),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _pickAvatarImage,
+                  icon: const Icon(Icons.image_outlined),
+                  label: Text(t.text('Choose Avatar Image')),
+                ),
+                FilledButton.icon(
+                  onPressed: _isUploadingAvatar || _pendingAvatarBytes == null
+                      ? null
+                      : () => _uploadAvatarImage(),
+                  icon: _buildLoadingActionIcon(
+                    _isUploadingAvatar,
+                    Icons.cloud_upload_outlined,
+                  ),
+                  label: Text(t.text('Upload Selected Image')),
+                ),
+                OutlinedButton.icon(
+                  onPressed:
+                      _isRemovingAvatar ||
+                          (!_hasUploadedAvatar(user) &&
+                              _pendingAvatarBytes == null)
+                      ? null
+                      : _removeAvatarImage,
+                  icon: _buildLoadingActionIcon(
+                    _isRemovingAvatar,
+                    Icons.delete_outline,
+                  ),
+                  label: Text(t.text('Remove Uploaded Image')),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _pendingAvatarFileName != null
+                  ? '${t.text('Selected file')}: $_pendingAvatarFileName'
+                  : _hasUploadedAvatar(user)
+                  ? t.text('An uploaded avatar image is ready to use')
+                  : t.text('No uploaded avatar image yet'),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileBody(AppUser user, Map<String, String> t) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text('Email: ${user.email}'),
+            const SizedBox(height: 20),
+            Center(child: _buildAvatarPreview(user, t)),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).pushNamed('/friends'),
+              icon: const Icon(Icons.group_outlined),
+              label: Text(t.text('Open Friends')),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(labelText: t.text('Name')),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            _buildAvatarSourceSection(user, t),
+            const SizedBox(height: 12),
+            _buildUploadedAvatarCard(user, t),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _bioController,
+              maxLines: 4,
+              decoration: InputDecoration(labelText: t.text('Bio')),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(onPressed: _save, child: Text(t.text('Save'))),
+            const SizedBox(height: 24),
+            const SettingsPanel(),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthService>().user;
@@ -336,169 +513,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return Scaffold(
       appBar: AppBar(title: Text(t.text('Profile'))),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Text('Email: ${user.email}'),
-              const SizedBox(height: 20),
-              Center(child: _buildAvatarPreview(user, t)),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () => Navigator.of(context).pushNamed('/friends'),
-                icon: const Icon(Icons.group_outlined),
-                label: Text(t.text('Open Friends')),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _nameController,
-                decoration: InputDecoration(labelText: t.text('Name')),
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                t.text('Avatar Source'),
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              SegmentedButton<String>(
-                segments: [
-                  ButtonSegment<String>(
-                    value: 'google',
-                    icon: Icon(Icons.account_circle_outlined),
-                    label: Text('Google'),
-                  ),
-                  ButtonSegment<String>(
-                    value: 'custom',
-                    icon: Icon(Icons.edit_outlined),
-                    label: Text(t.text('Custom')),
-                  ),
-                  ButtonSegment<String>(
-                    value: 'upload',
-                    icon: Icon(Icons.photo_library_outlined),
-                    label: Text(t.text('Upload')),
-                  ),
-                ],
-                selected: {_avatarSource},
-                onSelectionChanged: (selection) {
-                  _selectAvatarSource(selection.first, user);
-                },
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _avatarSourceDescription(t),
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _customAvatarUrlController,
-                keyboardType: TextInputType.url,
-                enabled: _avatarSource == 'custom',
-                decoration: InputDecoration(
-                  labelText: t.text('Custom Avatar URL'),
-                  hintText: 'https://example.com/avatar.png',
-                ),
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 12),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        t.text('Uploaded Avatar Image'),
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        t.text('PNG, JPG, WEBP, or GIF up to 1 MB'),
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: _pickAvatarImage,
-                            icon: const Icon(Icons.image_outlined),
-                            label: Text(t.text('Choose Avatar Image')),
-                          ),
-                          FilledButton.icon(
-                            onPressed:
-                                _isUploadingAvatar ||
-                                    _pendingAvatarBytes == null
-                                ? null
-                                : () => _uploadAvatarImage(),
-                            icon: _isUploadingAvatar
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.cloud_upload_outlined),
-                            label: Text(t.text('Upload Selected Image')),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed:
-                                _isRemovingAvatar ||
-                                    (!_hasUploadedAvatar(user) &&
-                                        _pendingAvatarBytes == null)
-                                ? null
-                                : _removeAvatarImage,
-                            icon: _isRemovingAvatar
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.delete_outline),
-                            label: Text(t.text('Remove Uploaded Image')),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _pendingAvatarFileName != null
-                            ? '${t.text('Selected file')}: $_pendingAvatarFileName'
-                            : _hasUploadedAvatar(user)
-                            ? t.text('An uploaded avatar image is ready to use')
-                            : t.text('No uploaded avatar image yet'),
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _bioController,
-                maxLines: 4,
-                decoration: InputDecoration(labelText: t.text('Bio')),
-              ),
-              const SizedBox(height: 16),
-              FilledButton(onPressed: _save, child: Text(t.text('Save'))),
-              const SizedBox(height: 24),
-              // 顯示設定面板
-              const SettingsPanel(),
-            ],
-          ),
-        ),
-      ),
+      body: _buildProfileBody(user, t),
     );
   }
 }

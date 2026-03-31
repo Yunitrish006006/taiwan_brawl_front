@@ -68,12 +68,16 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
     }
   }
 
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _enterRoom(Future<RoyaleRoomSnapshot> Function() action) async {
     final t = context.read<LocaleProvider>().translation;
     if (_selectedDeck == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t.text('Please create a deck first'))),
-      );
+      _showSnackBar(t.text('Please create a deck first'));
       return;
     }
 
@@ -96,16 +100,12 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message)));
+      _showSnackBar(e.message);
     } catch (e) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('${t.text('Action failed')}: $e')));
+      _showSnackBar('${t.text('Action failed')}: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -121,6 +121,216 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
         : t.text('Server Simulation');
   }
 
+  InputDecoration _dropdownDecoration(String labelText) {
+    return InputDecoration(
+      labelText: labelText,
+      border: const OutlineInputBorder(),
+      filled: true,
+      fillColor: Colors.white,
+    );
+  }
+
+  Widget _buildDeckDropdown(Map<String, String> t) {
+    return DropdownButtonFormField<RoyaleDeck>(
+      key: ValueKey(_selectedDeck?.id),
+      initialValue: _selectedDeck,
+      dropdownColor: const Color(0xFF16324F),
+      decoration: _dropdownDecoration(t.text('Select Deck')),
+      items: _decks
+          .map(
+            (deck) => DropdownMenuItem<RoyaleDeck>(
+              value: deck,
+              child: Text('${deck.name} (${deck.cards.length}/8)'),
+            ),
+          )
+          .toList(),
+      onChanged: (value) {
+        setState(() {
+          _selectedDeck = value;
+        });
+      },
+    );
+  }
+
+  Widget _buildSimulationModeCard(Map<String, String> t) {
+    final description = _simulationMode == 'host'
+        ? t.text(
+            'Host simulation runs on the room host device. This experimental mode locks after battle starts.',
+          )
+        : t.text(
+            'Server simulation runs in the room server and is the default recommended mode.',
+          );
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            t.text('Simulation Mode'),
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          SegmentedButton<String>(
+            segments: [
+              ButtonSegment<String>(
+                value: 'server',
+                label: Text(_simulationModeLabel(t, 'server')),
+                icon: const Icon(Icons.cloud_done_outlined),
+              ),
+              ButtonSegment<String>(
+                value: 'host',
+                label: Text(_simulationModeLabel(t, 'host')),
+                icon: const Icon(Icons.memory_rounded),
+              ),
+            ],
+            selected: {_simulationMode},
+            onSelectionChanged: (selection) {
+              setState(() {
+                _simulationMode = selection.first;
+              });
+            },
+          ),
+          const SizedBox(height: 10),
+          Text(description, style: const TextStyle(color: Colors.white70)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCreateRoomButton(Map<String, String> t, {required bool vsBot}) {
+    final label = vsBot ? t.text('Create Bot Match') : t.text('Create Room');
+    final icon = vsBot
+        ? const Icon(Icons.smart_toy_outlined)
+        : const Icon(Icons.add_circle_outline);
+
+    return SizedBox(
+      width: double.infinity,
+      child: (vsBot ? FilledButton.icon : ElevatedButton.icon)(
+        onPressed: _isSubmitting || _selectedDeck == null
+            ? null
+            : () => _enterRoom(
+                () => _service.createRoom(
+                  deckId: _selectedDeck!.id,
+                  vsBot: vsBot,
+                  simulationMode: _simulationMode,
+                ),
+              ),
+        icon: icon,
+        label: Text(label),
+      ),
+    );
+  }
+
+  Widget _buildCreateRoomPanel(ThemeData theme, Map<String, String> t) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF16324F), Color(0xFF294C60), Color(0xFF3E7C59)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            t.text('Create a 1v1 Room'),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            t.text(
+              'Choose an 8-card deck. After creating the room, send the room code to your friend so both of you can get ready.',
+            ),
+            style: const TextStyle(color: Colors.white70),
+          ),
+          const SizedBox(height: 16),
+          _buildDeckDropdown(t),
+          const SizedBox(height: 16),
+          _buildSimulationModeCard(t),
+          const SizedBox(height: 16),
+          _buildCreateRoomButton(t, vsBot: false),
+          const SizedBox(height: 12),
+          _buildCreateRoomButton(t, vsBot: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildJoinRoomPanel(ThemeData theme, Map<String, String> t) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            t.text('Join a Friend\'s Room'),
+            style: theme.textTheme.titleLarge,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _roomCodeController,
+            textCapitalization: TextCapitalization.characters,
+            decoration: InputDecoration(
+              labelText: t.text('Enter a 6-character room code'),
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _isSubmitting || _selectedDeck == null
+                  ? null
+                  : () => _enterRoom(
+                      () => _service.joinRoom(
+                        roomCode: _roomCodeController.text.trim().toUpperCase(),
+                        deckId: _selectedDeck!.id,
+                      ),
+                    ),
+              icon: const Icon(Icons.login),
+              label: Text(t.text('Join Room')),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLobbyBody(ThemeData theme, Map<String, String> t) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _buildCreateRoomPanel(theme, t),
+        const SizedBox(height: 20),
+        _buildJoinRoomPanel(theme, t),
+        const SizedBox(height: 20),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).pushNamed('/royale-deck'),
+          icon: const Icon(Icons.style_outlined),
+          label: Text(t.text('Back to Deck Builder')),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -130,212 +340,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
       appBar: AppBar(title: Text(t.text('Mini Royale Lobby'))),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFF16324F),
-                        Color(0xFF294C60),
-                        Color(0xFF3E7C59),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        t.text('Create a 1v1 Room'),
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        t.text(
-                          'Choose an 8-card deck. After creating the room, send the room code to your friend so both of you can get ready.',
-                        ),
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<RoyaleDeck>(
-                        key: ValueKey(_selectedDeck?.id),
-                        initialValue: _selectedDeck,
-                        dropdownColor: const Color(0xFF16324F),
-                        decoration: InputDecoration(
-                          labelText: t.text('Select Deck'),
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        items: _decks
-                            .map(
-                              (deck) => DropdownMenuItem<RoyaleDeck>(
-                                value: deck,
-                                child: Text(
-                                  '${deck.name} (${deck.cards.length}/8)',
-                                ),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedDeck = value;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              t.text('Simulation Mode'),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            SegmentedButton<String>(
-                              segments: [
-                                ButtonSegment<String>(
-                                  value: 'server',
-                                  label: Text(
-                                    _simulationModeLabel(t, 'server'),
-                                  ),
-                                  icon: const Icon(Icons.cloud_done_outlined),
-                                ),
-                                ButtonSegment<String>(
-                                  value: 'host',
-                                  label: Text(_simulationModeLabel(t, 'host')),
-                                  icon: const Icon(Icons.memory_rounded),
-                                ),
-                              ],
-                              selected: {_simulationMode},
-                              onSelectionChanged: (selection) {
-                                setState(() {
-                                  _simulationMode = selection.first;
-                                });
-                              },
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              _simulationMode == 'host'
-                                  ? t.text(
-                                      'Host simulation runs on the room host device. This experimental mode locks after battle starts.',
-                                    )
-                                  : t.text(
-                                      'Server simulation runs in the room server and is the default recommended mode.',
-                                    ),
-                              style: const TextStyle(color: Colors.white70),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: _isSubmitting || _selectedDeck == null
-                              ? null
-                              : () => _enterRoom(
-                                  () => _service.createRoom(
-                                    deckId: _selectedDeck!.id,
-                                    simulationMode: _simulationMode,
-                                  ),
-                                ),
-                          icon: const Icon(Icons.add_circle_outline),
-                          label: Text(t.text('Create Room')),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _isSubmitting || _selectedDeck == null
-                              ? null
-                              : () => _enterRoom(
-                                  () => _service.createRoom(
-                                    deckId: _selectedDeck!.id,
-                                    vsBot: true,
-                                    simulationMode: _simulationMode,
-                                  ),
-                                ),
-                          icon: const Icon(Icons.smart_toy_outlined),
-                          label: Text(t.text('Create Bot Match')),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest.withValues(
-                      alpha: 0.7,
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        t.text('Join a Friend\'s Room'),
-                        style: theme.textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _roomCodeController,
-                        textCapitalization: TextCapitalization.characters,
-                        decoration: InputDecoration(
-                          labelText: t.text('Enter a 6-character room code'),
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _isSubmitting || _selectedDeck == null
-                              ? null
-                              : () => _enterRoom(
-                                  () => _service.joinRoom(
-                                    roomCode: _roomCodeController.text
-                                        .trim()
-                                        .toUpperCase(),
-                                    deckId: _selectedDeck!.id,
-                                  ),
-                                ),
-                          icon: const Icon(Icons.login),
-                          label: Text(t.text('Join Room')),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                OutlinedButton.icon(
-                  onPressed: () =>
-                      Navigator.of(context).pushNamed('/royale-deck'),
-                  icon: const Icon(Icons.style_outlined),
-                  label: Text(t.text('Back to Deck Builder')),
-                ),
-              ],
-            ),
+          : _buildLobbyBody(theme, t),
     );
   }
 }

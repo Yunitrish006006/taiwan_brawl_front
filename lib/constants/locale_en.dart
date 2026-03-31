@@ -1,5 +1,6 @@
 // English translations for Taiwan Brawl Portal
 const Map<String, String> enUS = {
+  'Taiwan Brawl Portal': 'Taiwan Brawl Portal',
   'Display Settings': 'Display Settings',
   'Theme Mode': 'Theme Mode',
   'Follow System': 'Follow System',
