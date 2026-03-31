@@ -3,24 +3,34 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../constants/app_constants.dart';
 import '../models/royale_models.dart';
 import 'api_client.dart';
+import 'service_utils.dart';
 
 class RoyaleService {
   RoyaleService(this._apiClient);
 
   final ApiClient _apiClient;
 
+  RoyaleRoomSnapshot _roomFromResponse(Map<String, dynamic> response) {
+    return jsonModel(response, 'room', RoyaleRoomSnapshot.fromJson);
+  }
+
+  Future<RoyaleRoomSnapshot> _postRoomAction(
+    String roomCode,
+    String action,
+    Map<String, dynamic> body,
+  ) async {
+    final res = await _apiClient.postJson('/api/rooms/$roomCode/$action', body);
+    return _roomFromResponse(res);
+  }
+
   Future<List<RoyaleCard>> fetchCards() async {
     final res = await _apiClient.getJson('/api/cards');
-    return (res['cards'] as List<dynamic>)
-        .map((card) => RoyaleCard.fromJson(card as Map<String, dynamic>))
-        .toList();
+    return jsonModelList(res, 'cards', RoyaleCard.fromJson);
   }
 
   Future<List<RoyaleDeck>> fetchDecks() async {
     final res = await _apiClient.getJson('/api/decks');
-    return (res['decks'] as List<dynamic>)
-        .map((deck) => RoyaleDeck.fromJson(deck as Map<String, dynamic>))
-        .toList();
+    return jsonModelList(res, 'decks', RoyaleDeck.fromJson);
   }
 
   Future<RoyaleDeck> saveDeck({
@@ -33,7 +43,7 @@ class RoyaleService {
       'slot': slot,
       'cardIds': cardIds,
     });
-    return RoyaleDeck.fromJson(res['deck'] as Map<String, dynamic>);
+    return jsonModel(res, 'deck', RoyaleDeck.fromJson);
   }
 
   Future<RoyaleRoomSnapshot> createRoom({
@@ -46,27 +56,22 @@ class RoyaleService {
       'vsBot': vsBot,
       'simulationMode': simulationMode,
     });
-    return RoyaleRoomSnapshot.fromJson(res['room'] as Map<String, dynamic>);
+    return _roomFromResponse(res);
   }
 
   Future<RoyaleRoomSnapshot> joinRoom({
     required String roomCode,
     required int deckId,
   }) async {
-    final res = await _apiClient.postJson('/api/rooms/$roomCode/join', {
-      'deckId': deckId,
-    });
-    return RoyaleRoomSnapshot.fromJson(res['room'] as Map<String, dynamic>);
+    return _postRoomAction(roomCode, 'join', {'deckId': deckId});
   }
 
   Future<RoyaleRoomSnapshot> readyRoom(String roomCode) async {
-    final res = await _apiClient.postJson('/api/rooms/$roomCode/ready', {});
-    return RoyaleRoomSnapshot.fromJson(res['room'] as Map<String, dynamic>);
+    return _postRoomAction(roomCode, 'ready', {});
   }
 
   Future<RoyaleRoomSnapshot> rematchRoom(String roomCode) async {
-    final res = await _apiClient.postJson('/api/rooms/$roomCode/rematch', {});
-    return RoyaleRoomSnapshot.fromJson(res['room'] as Map<String, dynamic>);
+    return _postRoomAction(roomCode, 'rematch', {});
   }
 
   Future<RoyaleRoomSnapshot> hostFinishRoom({
@@ -76,18 +81,17 @@ class RoyaleService {
     required int leftTowerHp,
     required int rightTowerHp,
   }) async {
-    final res = await _apiClient.postJson('/api/rooms/$roomCode/host-finish', {
+    return _postRoomAction(roomCode, 'host-finish', {
       'winnerSide': winnerSide,
       'reason': reason,
       'leftTowerHp': leftTowerHp,
       'rightTowerHp': rightTowerHp,
     });
-    return RoyaleRoomSnapshot.fromJson(res['room'] as Map<String, dynamic>);
   }
 
   Future<RoyaleRoomSnapshot> fetchRoomState(String roomCode) async {
     final res = await _apiClient.getJson('/api/rooms/$roomCode/state');
-    return RoyaleRoomSnapshot.fromJson(res['room'] as Map<String, dynamic>);
+    return _roomFromResponse(res);
   }
 
   WebSocketChannel connectToRoom(String roomCode) {
