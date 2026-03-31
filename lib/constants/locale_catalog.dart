@@ -1,16 +1,12 @@
-import 'locale_en.dart';
-import 'locale_ja.dart';
-import 'locale_zh_hant.dart';
+import 'generated/locale_catalog.g.dart';
 
-const String defaultLocaleCode = 'zh-Hant';
-const String englishLocaleCode = 'en';
+const String defaultLocaleCode = generatedDefaultLocaleCode;
+const String englishLocaleCode = generatedEnglishLocaleCode;
 
-const Map<String, Map<String, String>> localeCatalog = {
-  'en': enUS,
-  'ja': jaJP,
-  'zh-Hant': zhHant,
-};
+final Map<String, Map<String, String>> localeCatalog = generatedLocaleCatalog;
 
+// Regenerate this catalog after editing assets/i18n/*.json:
+// dart run tool/generate_locale_catalog.dart
 Map<String, String> translationForLocale(String locale) {
   return localeCatalog[locale] ?? localeCatalog[defaultLocaleCode]!;
 }

@@ -1,5 +1,6 @@
 import '../models/friends_models.dart';
 import 'api_client.dart';
+import 'service_utils.dart';
 
 class FriendsService {
   FriendsService(this._apiClient);
@@ -12,15 +13,10 @@ class FriendsService {
   }
 
   Future<List<FriendSearchResult>> searchByName(String query) async {
-    final encodedQuery = Uri.encodeQueryComponent(query);
     final res = await _apiClient.getJson(
-      '/api/friends/search?query=$encodedQuery',
+      buildApiPath('/api/friends/search', queryParameters: {'query': query}),
     );
-    return (res['results'] as List<dynamic>? ?? const [])
-        .map(
-          (item) => FriendSearchResult.fromJson(item as Map<String, dynamic>),
-        )
-        .toList();
+    return jsonModelList(res, 'results', FriendSearchResult.fromJson);
   }
 
   Future<void> sendFriendRequest(int targetUserId) async {

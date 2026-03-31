@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/app_user.dart';
 import 'api_client.dart';
+import 'service_utils.dart';
 
 class AuthService extends ChangeNotifier {
   AuthService(this._apiClient);
@@ -20,6 +21,17 @@ class AuthService extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isLoggedIn => _user != null;
 
+  AppUser _readUser(Map<String, dynamic> response) {
+    return jsonModel(response, 'user', AppUser.fromJson);
+  }
+
+  Future<void> _writeAndRefresh(
+    Future<Map<String, dynamic>> Function() request,
+  ) async {
+    await request();
+    await refreshMe(silent: true);
+  }
+
   Future<void> init() async {
     await refreshMe(silent: true);
   }
@@ -28,7 +40,7 @@ class AuthService extends ChangeNotifier {
     _setLoading(!silent);
     try {
       final res = await _apiClient.getJson('/api/me');
-      _user = AppUser.fromJson(res['user'] as Map<String, dynamic>);
+      _user = _readUser(res);
     } catch (_) {
       _user = null;
     } finally {
@@ -58,13 +70,14 @@ class AuthService extends ChangeNotifier {
     required String avatarSource,
     required String customAvatarUrl,
   }) async {
-    await _apiClient.putJson('/api/users/me', {
-      'name': name,
-      'bio': bio,
-      'avatar_source': avatarSource,
-      'custom_avatar_url': customAvatarUrl,
-    });
-    await refreshMe(silent: true);
+    await _writeAndRefresh(
+      () => _apiClient.putJson('/api/users/me', {
+        'name': name,
+        'bio': bio,
+        'avatar_source': avatarSource,
+        'custom_avatar_url': customAvatarUrl,
+      }),
+    );
   }
 
   Future<void> uploadAvatarImage({
@@ -72,31 +85,35 @@ class AuthService extends ChangeNotifier {
     required String contentType,
     String? fileName,
   }) async {
-    await _apiClient.postJson('/api/users/me/avatar-image', {
-      'bytesBase64': bytesBase64,
-      'contentType': contentType,
-      'fileName': fileName,
-    });
-    await refreshMe(silent: true);
+    await _writeAndRefresh(
+      () => _apiClient.postJson('/api/users/me/avatar-image', {
+        'bytesBase64': bytesBase64,
+        'contentType': contentType,
+        'fileName': fileName,
+      }),
+    );
   }
 
   Future<void> deleteAvatarImage() async {
-    await _apiClient.deleteJson('/api/users/me/avatar-image');
-    await refreshMe(silent: true);
+    await _writeAndRefresh(
+      () => _apiClient.deleteJson('/api/users/me/avatar-image'),
+    );
   }
 
   Future<void> updateThemeMode(String themeMode) async {
-    await _apiClient.putJson('/api/users/theme-mode', {
-      'theme_mode': themeMode,
-    });
-    await refreshMe(silent: true);
+    await _writeAndRefresh(
+      () => _apiClient.putJson('/api/users/theme-mode', {
+        'theme_mode': themeMode,
+      }),
+    );
   }
 
   Future<void> updateFontSizeScale(double scale) async {
-    await _apiClient.putJson('/api/users/ui-preferences', {
-      'font_size_scale': scale,
-    });
-    await refreshMe(silent: true);
+    await _writeAndRefresh(
+      () => _apiClient.putJson('/api/users/ui-preferences', {
+        'font_size_scale': scale,
+      }),
+    );
   }
 
   Future<void> logout() async {
@@ -110,7 +127,7 @@ class AuthService extends ChangeNotifier {
   }
 
   void _saveUser(Map<String, dynamic> response) {
-    _user = AppUser.fromJson(response['user'] as Map<String, dynamic>);
+    _user = _readUser(response);
     notifyListeners();
   }
 
