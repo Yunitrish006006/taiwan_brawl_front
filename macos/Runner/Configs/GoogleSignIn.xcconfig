@@ -1,0 +1,4 @@
+// Replace these with the macOS OAuth client values if you create a dedicated
+// macOS app in Google Cloud or Firebase.
+GOOGLE_MACOS_CLIENT_ID = 310421071956-2ajqfsj4pl3v4ein8esbnov8hsbo70kn.apps.googleusercontent.com
+GOOGLE_MACOS_REVERSED_CLIENT_ID = com.googleusercontent.apps.310421071956-2ajqfsj4pl3v4ein8esbnov8hsbo70kn
