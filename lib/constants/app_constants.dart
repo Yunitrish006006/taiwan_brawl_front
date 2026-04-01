@@ -14,4 +14,11 @@ class AppConstants {
     defaultValue:
         '310421071956-1ctfspu1f772ehkatigsgd2vq1ui4bks.apps.googleusercontent.com',
   );
+
+  // 後端若需要 Google ID token，可讓 mobile / web 共用同一個 server client ID。
+  static const String googleServerClientId = String.fromEnvironment(
+    'GOOGLE_SERVER_CLIENT_ID',
+    defaultValue:
+        '310421071956-1ctfspu1f772ehkatigsgd2vq1ui4bks.apps.googleusercontent.com',
+  );
 }

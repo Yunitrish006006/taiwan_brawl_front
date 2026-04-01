@@ -1,9 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:google_sign_in_web/web_only.dart' as google_web;
 import 'package:provider/provider.dart';
 
 import '../../services/api_client.dart';
@@ -11,6 +10,7 @@ import '../../services/auth_service.dart';
 import '../../services/locale_provider.dart';
 import '../../constants/app_constants.dart';
 import '../../utils/snackbar.dart';
+import '../../widgets/google_sign_in_web_button.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -23,16 +23,14 @@ class _AuthPageState extends State<AuthPage> {
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
   StreamSubscription<GoogleSignInAuthenticationEvent>? _googleAuthSubscription;
-  bool _isGoogleReady = !kIsWeb;
+  bool _isGoogleReady = false;
   bool _isGoogleSigningIn = false;
   String? _googleErrorMessage;
 
   @override
   void initState() {
     super.initState();
-    if (kIsWeb) {
-      unawaited(_initializeGoogleSignIn());
-    }
+    unawaited(_initializeGoogleSignIn());
   }
 
   @override
@@ -45,12 +43,13 @@ class _AuthPageState extends State<AuthPage> {
     final t = context.read<LocaleProvider>().translation;
     try {
       await _googleSignIn.initialize(
-        clientId: AppConstants.googleWebClientId.isEmpty
-            ? null
-            : AppConstants.googleWebClientId,
+        clientId: kIsWeb
+            ? _nonEmptyOrNull(AppConstants.googleWebClientId)
+            : null,
+        serverClientId: _nonEmptyOrNull(AppConstants.googleServerClientId),
       );
 
-      _googleAuthSubscription = _googleSignIn.authenticationEvents.listen((
+      _googleAuthSubscription ??= _googleSignIn.authenticationEvents.listen((
         event,
       ) {
         if (event is GoogleSignInAuthenticationEventSignIn) {
@@ -70,6 +69,36 @@ class _AuthPageState extends State<AuthPage> {
         _googleErrorMessage =
             '${t.text('Google sign-in initialization failed')}: $e';
       });
+    }
+  }
+
+  String? _nonEmptyOrNull(String value) {
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  bool get _supportsNativeGoogleSignIn =>
+      !kIsWeb && _googleSignIn.supportsAuthenticate();
+
+  Future<void> _startNativeGoogleSignIn() async {
+    final t = context.read<LocaleProvider>().translation;
+    try {
+      await _googleSignIn.authenticate();
+    } on GoogleSignInException catch (e) {
+      if (!mounted) return;
+      if (e.code == GoogleSignInExceptionCode.canceled) {
+        return;
+      }
+      final description = e.description?.trim();
+      showAppSnackBar(
+        context,
+        description == null || description.isEmpty
+            ? t.text('Google sign-in is currently unavailable')
+            : '${t.text('Google sign-in error')}: $description',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showAppSnackBar(context, '${t.text('Google sign-in error')}: $e');
     }
   }
 
@@ -186,50 +215,13 @@ class _AuthPageState extends State<AuthPage> {
     );
   }
 
-  Widget _buildGoogleWebButton(
-    bool loading,
-    double frameWidth,
-    google_web.GSIButtonTheme googleButtonTheme,
-  ) {
-    return IgnorePointer(
-      ignoring: loading,
-      child: Opacity(
-        opacity: loading ? 0.7 : 1,
-        child: SizedBox(
-          height: 56,
-          child: Center(
-            child: google_web.renderButton(
-              configuration: google_web.GSIButtonConfiguration(
-                theme: googleButtonTheme,
-                text: google_web.GSIButtonText.signinWith,
-                size: google_web.GSIButtonSize.large,
-                shape: google_web.GSIButtonShape.rectangular,
-                minimumWidth: frameWidth,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildGoogleSignInButton(
     ThemeData theme,
     Map<String, String> t,
     bool loading,
     double frameWidth,
-    google_web.GSIButtonTheme googleButtonTheme,
+    bool useDarkTheme,
   ) {
-    if (!kIsWeb) {
-      return _buildDisabledGoogleButton(
-        onPressed: null,
-        icon: Icons.desktop_windows_outlined,
-        child: Text(
-          t.text('Google sign-in is currently available on web only'),
-        ),
-      );
-    }
-
     if (_googleErrorMessage != null) {
       return Column(
         children: [
@@ -255,7 +247,29 @@ class _AuthPageState extends State<AuthPage> {
       );
     }
 
-    return _buildGoogleWebButton(loading, frameWidth, googleButtonTheme);
+    if (_supportsNativeGoogleSignIn) {
+      return _buildDisabledGoogleButton(
+        onPressed: loading ? null : () => unawaited(_startNativeGoogleSignIn()),
+        icon: Icons.login,
+        child: Text(t.text('Continue with Google')),
+      );
+    }
+
+    if (!kIsWeb) {
+      return _buildDisabledGoogleButton(
+        onPressed: null,
+        icon: Icons.error_outline,
+        child: Text(
+          t.text('Google sign-in is not configured for this platform'),
+        ),
+      );
+    }
+
+    return buildGoogleSignInWebButton(
+      loading: loading,
+      frameWidth: frameWidth,
+      useDarkTheme: useDarkTheme,
+    );
   }
 
   Widget _buildAuthCard(
@@ -263,7 +277,7 @@ class _AuthPageState extends State<AuthPage> {
     Map<String, String> t,
     bool loading,
     double frameWidth,
-    google_web.GSIButtonTheme googleButtonTheme,
+    bool useDarkTheme,
   ) {
     return Center(
       child: ConstrainedBox(
@@ -307,7 +321,7 @@ class _AuthPageState extends State<AuthPage> {
                 t,
                 loading,
                 frameWidth,
-                googleButtonTheme,
+                useDarkTheme,
               ),
               if (loading) ...[
                 const SizedBox(height: 12),
@@ -337,7 +351,7 @@ class _AuthPageState extends State<AuthPage> {
     bool loading,
     bool isSmallScreen,
     double frameWidth,
-    google_web.GSIButtonTheme googleButtonTheme,
+    bool useDarkTheme,
   ) {
     return Container(
       decoration: BoxDecoration(
@@ -361,7 +375,7 @@ class _AuthPageState extends State<AuthPage> {
                 t,
                 loading,
                 frameWidth,
-                googleButtonTheme,
+                useDarkTheme,
               ),
             ),
           ],
@@ -381,10 +395,7 @@ class _AuthPageState extends State<AuthPage> {
         .clamp(220.0, 400.0)
         .toDouble();
     final isSmallScreen = screenWidth < 720;
-    final brightness = theme.brightness;
-    final googleButtonTheme = brightness == Brightness.dark
-        ? google_web.GSIButtonTheme.filledBlack
-        : google_web.GSIButtonTheme.outline;
+    final useDarkTheme = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(title: Text(AppConstants.appName)),
@@ -394,7 +405,7 @@ class _AuthPageState extends State<AuthPage> {
         loading,
         isSmallScreen,
         frameWidth,
-        googleButtonTheme,
+        useDarkTheme,
       ),
     );
   }
