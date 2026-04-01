@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../constants/app_constants.dart';
@@ -20,13 +21,21 @@ class ApiClient {
   ApiClient({http.Client? client}) : _client = client ?? createHttpClient();
 
   final http.Client _client;
+  static String? _mobileSessionId;
 
   Uri _buildUri(String path) {
     return Uri.parse('${AppConstants.apiBaseUrl}$path');
   }
 
   Map<String, String> _headers() {
-    return <String, String>{'Content-Type': 'application/json'};
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (!kIsWeb) {
+      final sessionId = _mobileSessionId;
+      if (sessionId != null && sessionId.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $sessionId';
+      }
+    }
+    return headers;
   }
 
   Future<Map<String, dynamic>> getJson(String path) async {
@@ -63,10 +72,23 @@ class ApiClient {
     return _parseResponse(response);
   }
 
+  static void clearMobileSession() {
+    _mobileSessionId = null;
+  }
+
   Map<String, dynamic> _parseResponse(http.Response response) {
     final decoded = response.body.isEmpty
         ? <String, dynamic>{}
         : (jsonDecode(response.body) as Map<String, dynamic>);
+
+    if (!kIsWeb) {
+      final sessionId = decoded['session_id'];
+      if (sessionId is String && sessionId.isNotEmpty) {
+        _mobileSessionId = sessionId;
+      } else if (response.statusCode == 401) {
+        _mobileSessionId = null;
+      }
+    }
 
     if (response.statusCode >= 400) {
       throw ApiException(

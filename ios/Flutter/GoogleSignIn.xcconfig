@@ -1,0 +1,3 @@
+// Fill these with the iOS OAuth client values from Google Cloud or Firebase.
+GOOGLE_IOS_CLIENT_ID = 310421071956-2ajqfsj4pl3v4ein8esbnov8hsbo70kn.apps.googleusercontent.com
+GOOGLE_IOS_REVERSED_CLIENT_ID = com.googleusercontent.apps.310421071956-2ajqfsj4pl3v4ein8esbnov8hsbo70kn

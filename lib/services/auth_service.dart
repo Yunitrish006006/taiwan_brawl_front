@@ -57,6 +57,7 @@ class AuthService extends ChangeNotifier {
       });
       _saveUser(res);
     } catch (_) {
+      ApiClient.clearMobileSession();
       _user = null;
       rethrow;
     } finally {
@@ -122,6 +123,7 @@ class AuthService extends ChangeNotifier {
     } catch (_) {
       // Ignore API failures when logging out locally.
     }
+    ApiClient.clearMobileSession();
     _user = null;
     notifyListeners();
   }
