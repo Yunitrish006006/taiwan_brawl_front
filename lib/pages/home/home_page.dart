@@ -7,6 +7,7 @@ import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 import '../../services/friends_service.dart';
 import '../../services/locale_provider.dart';
+import '../../constants/app_constants.dart';
 import '../../widgets/app_version_text.dart';
 
 part 'home_page_layout.dart';
@@ -92,7 +93,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       drawer: _buildDrawer(user),
       appBar: AppBar(
-        title: Text(t.text('Taiwan Brawl Portal')),
+        title: const Text(AppConstants.appName),
         actions: [
           IconButton(
             onPressed: () => Navigator.of(context).pushNamed('/profile'),
