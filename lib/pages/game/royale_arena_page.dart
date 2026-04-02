@@ -23,6 +23,9 @@ const double _battlefieldAspectRatio = battle_rules.fieldAspectRatio;
 const double _battlefieldPhoneMaxWidth = 430;
 const double _battlefieldDesktopMaxWidth = 520;
 const int _worldScale = battle_rules.worldScale;
+const Duration _hostStateSyncInterval = Duration(milliseconds: 500);
+const Duration _socketReconnectDelay = Duration(seconds: 2);
+const int _socketFailureSnackbarThreshold = 3;
 
 class RoyaleArenaPage extends StatefulWidget {
   const RoyaleArenaPage({super.key, required this.roomCode});
@@ -43,6 +46,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _socketSubscription;
   Timer? _pingTimer;
+  Timer? _roomStatePollTimer;
+  Timer? _hostStateSyncTimer;
+  Timer? _socketReconnectTimer;
   RoyaleRoomSnapshot? _room;
   bool _isLoading = true;
   bool _readySubmitting = false;
@@ -53,6 +59,11 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   String? _error;
   Offset? _aimPoint;
   HostBattleEngine? _hostBattleEngine;
+  bool _isPollingRoomState = false;
+  bool _isConnectingSocket = false;
+  int _socketFailureCount = 0;
+  DateTime? _lastHostStateSyncAt;
+  Map<String, dynamic>? _pendingHostState;
 
   Map<String, String> get _t => context.read<LocaleProvider>().translation;
 
@@ -68,6 +79,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   @override
   void dispose() {
     _pingTimer?.cancel();
+    _roomStatePollTimer?.cancel();
+    _hostStateSyncTimer?.cancel();
+    _socketReconnectTimer?.cancel();
     _socketSubscription?.cancel();
     _channel?.sink.close();
     _hostBattleEngine?.dispose();
@@ -86,7 +100,11 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         _syncSelectionWithRoom(room);
         _isLoading = false;
       });
-      _connectSocket();
+      if (_shouldUseLiveSocket(room)) {
+        _connectSocket();
+      } else {
+        _startRoomStatePolling();
+      }
       if (_usesHostSimulation(room)) {
         await _initializeHostBattle(room);
       }
@@ -116,6 +134,96 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         current?.hostUserId == current?.me?.userId;
   }
 
+  bool _isLocalOnlyHostBotBattle([RoyaleRoomSnapshot? room]) {
+    final current = room ?? _room;
+    if (!_usesHostSimulation(current) || current == null) {
+      return false;
+    }
+
+    return current.players.any(
+      (player) => player.side == 'right' && player.userId <= 0,
+    );
+  }
+
+  bool _hasRemoteHumanOpponent([RoyaleRoomSnapshot? room]) {
+    final current = room ?? _room;
+    if (current == null) {
+      return false;
+    }
+
+    return current.players.any(
+      (player) => player.side == 'right' && player.userId > 0,
+    );
+  }
+
+  bool _shouldUseLiveSocket([RoyaleRoomSnapshot? room]) {
+    final current = room ?? _room;
+    if (current == null) {
+      return false;
+    }
+    if (_isLocalOnlyHostBotBattle(current)) {
+      return false;
+    }
+    if (_usesHostSimulation(current) && !_hasRemoteHumanOpponent(current)) {
+      return false;
+    }
+    return true;
+  }
+
+  void _startRoomStatePolling() {
+    if (_roomStatePollTimer != null) {
+      return;
+    }
+
+    _roomStatePollTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      unawaited(_pollRoomState());
+    });
+  }
+
+  void _stopRoomStatePolling() {
+    _roomStatePollTimer?.cancel();
+    _roomStatePollTimer = null;
+  }
+
+  Future<void> _pollRoomState() async {
+    if (!mounted || _isPollingRoomState) {
+      return;
+    }
+    final room = _room;
+    if (room == null) {
+      return;
+    }
+    if (_shouldUseLiveSocket(room)) {
+      _stopRoomStatePolling();
+      if (_channel == null) {
+        _connectSocket();
+      }
+      return;
+    }
+
+    _isPollingRoomState = true;
+    try {
+      final latestRoom = await _service.fetchRoomState(widget.roomCode);
+      if (!mounted) {
+        return;
+      }
+      _applyRoomSnapshot(latestRoom);
+      if (_usesHostSimulation(latestRoom)) {
+        await _initializeHostBattle(latestRoom);
+      }
+      if (_shouldUseLiveSocket(latestRoom)) {
+        _stopRoomStatePolling();
+        if (_channel == null) {
+          _connectSocket();
+        }
+      }
+    } on ApiException {
+      // Ignore transient polling errors while waiting in the lobby.
+    } finally {
+      _isPollingRoomState = false;
+    }
+  }
+
   void _showSnackBar(String message) {
     if (!mounted) {
       return;
@@ -130,6 +238,14 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       _room = room;
       _syncSelectionWithRoom(room);
     });
+    if (_shouldUseLiveSocket(room)) {
+      _stopRoomStatePolling();
+      if (_channel == null) {
+        _connectSocket();
+      }
+    } else {
+      _startRoomStatePolling();
+    }
   }
 
   Future<void> _initializeHostBattle(RoyaleRoomSnapshot room) async {
@@ -151,13 +267,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
             _room = snapshot;
             _syncSelectionWithRoom(snapshot);
           });
-          _channel?.sink.add(
-            jsonEncode({
-              'type': 'host_state',
-              'state': engine.exportBattleState(),
-            }),
-          );
+          _scheduleHostStateSync(engine.exportBattleState());
           if (snapshot.battle?.result != null) {
+            _flushHostStateSync();
             unawaited(_reportHostFinish(snapshot));
           }
         },
@@ -171,6 +283,108 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     } catch (e) {
       _showSnackBar('${_t.text('Action failed')}: $e');
     }
+  }
+
+  void _scheduleHostStateSync(
+    Map<String, dynamic> state, {
+    bool immediate = false,
+  }) {
+    _pendingHostState = state;
+
+    if (immediate) {
+      _flushHostStateSync();
+      return;
+    }
+
+    final lastSyncAt = _lastHostStateSyncAt;
+    if (lastSyncAt == null) {
+      _flushHostStateSync();
+      return;
+    }
+
+    final remaining =
+        _hostStateSyncInterval - DateTime.now().difference(lastSyncAt);
+    if (remaining <= Duration.zero) {
+      _flushHostStateSync();
+      return;
+    }
+
+    if (_hostStateSyncTimer != null) {
+      return;
+    }
+
+    _hostStateSyncTimer = Timer(remaining, () {
+      _hostStateSyncTimer = null;
+      _flushHostStateSync();
+    });
+  }
+
+  void _flushHostStateSync() {
+    _hostStateSyncTimer?.cancel();
+    _hostStateSyncTimer = null;
+
+    final state = _pendingHostState;
+    final channel = _channel;
+    if (state == null || channel == null) {
+      return;
+    }
+
+    _pendingHostState = null;
+    _lastHostStateSyncAt = DateTime.now();
+    channel.sink.add(jsonEncode({'type': 'host_state', 'state': state}));
+  }
+
+  void _handleSocketDisconnected() {
+    final channel = _channel;
+    final closeCode = channel?.closeCode;
+    final closeReason = channel?.closeReason;
+
+    _pingTimer?.cancel();
+    _pingTimer = null;
+    _socketSubscription?.cancel();
+    _socketSubscription = null;
+    _channel = null;
+    if (channel != null) {
+      try {
+        channel.sink.close();
+      } catch (_) {}
+    }
+
+    debugPrint(
+      'Room socket disconnected. closeCode=$closeCode closeReason=$closeReason',
+    );
+    _registerSocketFailure(
+      'disconnect(closeCode=$closeCode, closeReason=$closeReason)',
+    );
+    if (_room != null) {
+      _startRoomStatePolling();
+      _scheduleSocketReconnect();
+    }
+  }
+
+  void _registerSocketFailure(String reason) {
+    _socketFailureCount += 1;
+    debugPrint('Room socket failure #$_socketFailureCount: $reason');
+    if (!mounted || _socketFailureCount < _socketFailureSnackbarThreshold) {
+      return;
+    }
+    _showSnackBar(_t.text('Live connection lost. Please refresh the page.'));
+  }
+
+  void _scheduleSocketReconnect() {
+    if (!mounted || !_shouldUseLiveSocket()) {
+      return;
+    }
+    if (_socketReconnectTimer != null ||
+        _channel != null ||
+        _isConnectingSocket) {
+      return;
+    }
+
+    _socketReconnectTimer = Timer(_socketReconnectDelay, () {
+      _socketReconnectTimer = null;
+      _connectSocket();
+    });
   }
 
   Future<void> _reportHostFinish(RoyaleRoomSnapshot snapshot) async {
@@ -247,26 +461,42 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   }
 
   void _connectSocket() {
-    if (_channel != null) {
+    if (_channel != null || _isConnectingSocket) {
       return;
     }
-    _channel = _service.connectToRoom(widget.roomCode);
-    _socketSubscription = _channel!.stream.listen(
-      (message) async {
-        final data = jsonDecode(message as String) as Map<String, dynamic>;
-        await _handleSocketPayload(data);
-      },
-      onError: (_) => _showSnackBar(
-        _t.text('Live connection lost. Please refresh the page.'),
-      ),
-    );
+    _socketReconnectTimer?.cancel();
+    _socketReconnectTimer = null;
+    _isConnectingSocket = true;
 
-    _pingTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      _channel?.sink.add(jsonEncode({'type': 'ping'}));
-    });
+    try {
+      _channel = _service.connectToRoom(widget.roomCode);
+      _flushHostStateSync();
+      _socketSubscription = _channel!.stream.listen(
+        (message) async {
+          final data = jsonDecode(message as String) as Map<String, dynamic>;
+          await _handleSocketPayload(data);
+        },
+        onError: (_) => _handleSocketDisconnected(),
+        onDone: _handleSocketDisconnected,
+      );
+
+      _pingTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+        _channel?.sink.add(jsonEncode({'type': 'ping'}));
+      });
+    } catch (error, stackTrace) {
+      debugPrint('Room socket connect failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      _channel = null;
+      _startRoomStatePolling();
+      _scheduleSocketReconnect();
+      _registerSocketFailure(error.toString());
+    } finally {
+      _isConnectingSocket = false;
+    }
   }
 
   Future<void> _handleSocketPayload(Map<String, dynamic> data) async {
+    _socketFailureCount = 0;
     final type = data['type'] as String?;
     if (type == 'pong') {
       return;
@@ -584,11 +814,15 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       if (!mounted) {
         return;
       }
+      _hostStateSyncTimer?.cancel();
+      _socketReconnectTimer?.cancel();
       setState(() {
         _hostBattleEngine?.dispose();
         _hostBattleEngine = null;
         _hostFinishSubmitting = false;
         _hostFinishSent = false;
+        _pendingHostState = null;
+        _lastHostStateSyncAt = null;
         _room = room;
         _syncSelectionWithRoom(room);
       });

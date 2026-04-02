@@ -1,3 +1,5 @@
+import '../utils/remote_image_url.dart';
+
 class AppUser {
   const AppUser({
     required this.id,
@@ -40,10 +42,16 @@ class AppUser {
       email: json['email'] as String,
       role: json['role'] as String? ?? 'player',
       bio: json['bio'] as String?,
-      avatarUrl: json['avatar_url'] as String?,
-      googleAvatarUrl: json['google_avatar_url'] as String?,
-      customAvatarUrl: json['custom_avatar_url'] as String?,
-      uploadedAvatarUrl: json['uploaded_avatar_url'] as String?,
+      avatarUrl: resolveRemoteImageUrl(json['avatar_url'] as String?),
+      googleAvatarUrl: resolveRemoteImageUrl(
+        json['google_avatar_url'] as String?,
+      ),
+      customAvatarUrl: resolveRemoteImageUrl(
+        json['custom_avatar_url'] as String?,
+      ),
+      uploadedAvatarUrl: resolveRemoteImageUrl(
+        json['uploaded_avatar_url'] as String?,
+      ),
       uploadedAvatarVersion: (json['uploaded_avatar_version'] as num?)?.toInt(),
       avatarSource: json['avatar_source'] as String?,
       lastActiveAt: json['last_active_at'] as String?,

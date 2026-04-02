@@ -72,7 +72,6 @@ class HostBattleEngine {
       _viewerSide = room.viewerSide ?? 'left' {
     _leftPlayer = _buildPlayer(room, 'left');
     _rightPlayer = _buildPlayer(room, 'right');
-    _emitSnapshot();
   }
 
   final String _code;

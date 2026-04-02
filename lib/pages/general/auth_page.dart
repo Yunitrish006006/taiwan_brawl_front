@@ -24,6 +24,7 @@ class _AuthPageState extends State<AuthPage> {
 
   StreamSubscription<GoogleSignInAuthenticationEvent>? _googleAuthSubscription;
   bool _isGoogleReady = false;
+  bool _usesNativeGoogleSignIn = false;
   bool _isGoogleSigningIn = false;
   String? _googleErrorMessage;
 
@@ -60,12 +61,14 @@ class _AuthPageState extends State<AuthPage> {
       if (!mounted) return;
       setState(() {
         _isGoogleReady = true;
+        _usesNativeGoogleSignIn = _platformUsesNativeGoogleSignIn;
         _googleErrorMessage = null;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isGoogleReady = false;
+        _usesNativeGoogleSignIn = false;
         _googleErrorMessage =
             '${t.text('Google sign-in initialization failed')}: $e';
       });
@@ -77,12 +80,29 @@ class _AuthPageState extends State<AuthPage> {
     return trimmed.isEmpty ? null : trimmed;
   }
 
-  bool get _supportsNativeGoogleSignIn =>
-      !kIsWeb && _googleSignIn.supportsAuthenticate();
+  bool get _platformUsesNativeGoogleSignIn {
+    if (kIsWeb) {
+      return false;
+    }
 
-  Future<void> _startNativeGoogleSignIn() async {
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android => true,
+      TargetPlatform.iOS => true,
+      TargetPlatform.macOS => true,
+      _ => false,
+    };
+  }
+
+  bool _isLocalEngineInitializationError(Object error) {
+    return error.toString().contains('Local Engine has not been initialized');
+  }
+
+  Future<void> _startNativeGoogleSignIn({bool allowRetry = true}) async {
     final t = context.read<LocaleProvider>().translation;
     try {
+      if (!_isGoogleReady) {
+        await _initializeGoogleSignIn();
+      }
       await _googleSignIn.authenticate();
     } on GoogleSignInException catch (e) {
       if (!mounted) return;
@@ -97,6 +117,12 @@ class _AuthPageState extends State<AuthPage> {
             : '${t.text('Google sign-in error')}: $description',
       );
     } catch (e) {
+      if (allowRetry && _isLocalEngineInitializationError(e)) {
+        await _initializeGoogleSignIn();
+        if (!mounted) return;
+        await _startNativeGoogleSignIn(allowRetry: false);
+        return;
+      }
       if (!mounted) return;
       showAppSnackBar(context, '${t.text('Google sign-in error')}: $e');
     }
@@ -247,7 +273,7 @@ class _AuthPageState extends State<AuthPage> {
       );
     }
 
-    if (_supportsNativeGoogleSignIn) {
+    if (_usesNativeGoogleSignIn) {
       return _buildDisabledGoogleButton(
         onPressed: loading ? null : () => unawaited(_startNativeGoogleSignIn()),
         icon: Icons.login,

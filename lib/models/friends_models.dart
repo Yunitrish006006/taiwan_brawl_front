@@ -1,3 +1,5 @@
+import '../utils/remote_image_url.dart';
+
 class SocialUser {
   const SocialUser({
     required this.userId,
@@ -20,7 +22,7 @@ class SocialUser {
       userId: (json['userId'] as num).toInt(),
       name: json['name'] as String? ?? 'Unknown',
       bio: json['bio'] as String? ?? '',
-      avatarUrl: json['avatarUrl'] as String?,
+      avatarUrl: resolveRemoteImageUrl(json['avatarUrl'] as String?),
       lastActiveAt: json['lastActiveAt'] as String?,
       isOnline: json['isOnline'] as bool? ?? false,
     );
