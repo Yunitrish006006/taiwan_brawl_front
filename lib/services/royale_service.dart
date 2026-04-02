@@ -3,6 +3,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../constants/app_constants.dart';
 import '../models/royale_models.dart';
 import 'api_client.dart';
+import 'room_socket_channel.dart';
 import 'service_utils.dart';
 
 class RoyaleService {
@@ -102,6 +103,6 @@ class RoyaleService {
       path: '/api/rooms/$roomCode/ws',
       query: '',
     );
-    return WebSocketChannel.connect(uri);
+    return connectRoomSocket(uri, headers: _apiClient.webSocketHeaders());
   }
 }

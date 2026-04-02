@@ -1,3 +1,5 @@
+import '../utils/remote_image_url.dart';
+
 class RoyaleCard {
   const RoyaleCard({
     required this.id,
@@ -68,7 +70,7 @@ class RoyaleCard {
           (json['nameZhHant'] as String?) ?? (json['name'] as String? ?? ''),
       nameEn: (json['nameEn'] as String?) ?? (json['name'] as String? ?? ''),
       nameJa: (json['nameJa'] as String?) ?? (json['name'] as String? ?? ''),
-      imageUrl: json['imageUrl'] as String?,
+      imageUrl: resolveRemoteImageUrl(json['imageUrl'] as String?),
       imageVersion: (json['imageVersion'] as num?)?.toInt() ?? 0,
       elixirCost: (json['elixirCost'] as num).toInt(),
       type: json['type'] as String,
@@ -231,7 +233,7 @@ class RoyaleUnitView {
           (json['nameZhHant'] as String?) ?? (json['name'] as String? ?? ''),
       nameEn: (json['nameEn'] as String?) ?? (json['name'] as String? ?? ''),
       nameJa: (json['nameJa'] as String?) ?? (json['name'] as String? ?? ''),
-      imageUrl: json['imageUrl'] as String?,
+      imageUrl: resolveRemoteImageUrl(json['imageUrl'] as String?),
       side: json['side'] as String,
       type: json['type'] as String,
       progress: ((json['progress'] ?? json['x']) as num).toInt(),

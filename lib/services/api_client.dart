@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -22,6 +23,7 @@ class ApiClient {
 
   final http.Client _client;
   static String? _mobileSessionId;
+  static const Duration _requestTimeout = Duration(seconds: 12);
 
   Uri _buildUri(String path) {
     return Uri.parse('${AppConstants.apiBaseUrl}$path');
@@ -38,8 +40,23 @@ class ApiClient {
     return headers;
   }
 
+  Map<String, dynamic>? webSocketHeaders() {
+    if (kIsWeb) {
+      return null;
+    }
+
+    final sessionId = _mobileSessionId;
+    if (sessionId == null || sessionId.isEmpty) {
+      return null;
+    }
+
+    return {'Authorization': 'Bearer $sessionId'};
+  }
+
   Future<Map<String, dynamic>> getJson(String path) async {
-    final response = await _client.get(_buildUri(path), headers: _headers());
+    final response = await _runWithTimeout(
+      () => _client.get(_buildUri(path), headers: _headers()),
+    );
     return _parseResponse(response);
   }
 
@@ -47,10 +64,12 @@ class ApiClient {
     String path,
     Map<String, dynamic> body,
   ) async {
-    final response = await _client.post(
-      _buildUri(path),
-      headers: _headers(),
-      body: jsonEncode(body),
+    final response = await _runWithTimeout(
+      () => _client.post(
+        _buildUri(path),
+        headers: _headers(),
+        body: jsonEncode(body),
+      ),
     );
     return _parseResponse(response);
   }
@@ -59,21 +78,35 @@ class ApiClient {
     String path,
     Map<String, dynamic> body,
   ) async {
-    final response = await _client.put(
-      _buildUri(path),
-      headers: _headers(),
-      body: jsonEncode(body),
+    final response = await _runWithTimeout(
+      () => _client.put(
+        _buildUri(path),
+        headers: _headers(),
+        body: jsonEncode(body),
+      ),
     );
     return _parseResponse(response);
   }
 
   Future<Map<String, dynamic>> deleteJson(String path) async {
-    final response = await _client.delete(_buildUri(path), headers: _headers());
+    final response = await _runWithTimeout(
+      () => _client.delete(_buildUri(path), headers: _headers()),
+    );
     return _parseResponse(response);
   }
 
   static void clearMobileSession() {
     _mobileSessionId = null;
+  }
+
+  Future<http.Response> _runWithTimeout(
+    Future<http.Response> Function() request,
+  ) async {
+    try {
+      return await request().timeout(_requestTimeout);
+    } on TimeoutException {
+      throw ApiException('Request timed out');
+    }
   }
 
   Map<String, dynamic> _parseResponse(http.Response response) {
