@@ -230,6 +230,312 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     );
   }
 
+  Widget _buildFloatingArenaActionButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF07111F).withValues(alpha: 0.74),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF020817).withValues(alpha: 0.28),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Icon(icon, color: Colors.white, size: 22),
+          ),
+        ),
+      ),
+    );
+  }
+
+  double _immersiveArenaTopReservedHeight(BuildContext context) {
+    return MediaQuery.paddingOf(context).top + 108;
+  }
+
+  double _immersiveArenaBottomReservedHeight(BuildContext context) {
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
+    const trayHeight = 188.0;
+    return safeBottom + 10 + trayHeight;
+  }
+
+  Widget _buildImmersiveArenaTopOverlay({
+    required RoyaleRoomSnapshot room,
+    required RoyaleBattleView battle,
+    required List<RoyaleCard> selectedCards,
+  }) {
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Builder(
+                  builder: (context) => _buildFloatingArenaActionButton(
+                    icon: Icons.groups_rounded,
+                    onTap: () => Scaffold.of(context).openDrawer(),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _GlassPanel(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF07111F).withValues(alpha: 0.84),
+                        const Color(0xFF14253A).withValues(alpha: 0.7),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _formatTime(battle.timeRemainingMs),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${_t.text('Room')} ${room.code}',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.7),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _buildFloatingArenaActionButton(
+                  icon: Icons.home_outlined,
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pushNamedAndRemoveUntil('/home', (_) => false),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _GlassPanel(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF07111F).withValues(alpha: 0.82),
+                  const Color(0xFF102030).withValues(alpha: 0.62),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.touch_app_rounded,
+                    color: Color(0xFFFFD166),
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _battlefieldHintText(
+                        _dragTargetActive,
+                        selectedCards,
+                        compact: true,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImmersiveArenaBottomOverlay({
+    required RoyaleBattleView battle,
+    required List<RoyaleCard> selectedCards,
+    required int selectedCost,
+  }) {
+    final nextCardText = battle.nextCardId == null
+        ? '${_t.text('Next Card')} ${_t.text('Unknown')}'
+        : '${_t.text('Next Card')} ${battle.nextCardId}';
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 188,
+              child: _GlassPanel(
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF07111F).withValues(alpha: 0.9),
+                    const Color(0xFF0D1B2A).withValues(alpha: 0.84),
+                    const Color(0xFF17324A).withValues(alpha: 0.86),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _t.text('Battle Hand'),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                nextCardText,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.72),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _ElixirMeter(value: battle.yourElixir, compact: true),
+                        if (selectedCards.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          _InfoChip(
+                            icon: Icons.layers_rounded,
+                            label:
+                                '${_t.text('Selected Cards')} ${selectedCards.length} / $selectedCost',
+                            compact: true,
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: _buildHandCardList(battle, compact: true),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImmersiveArena({
+    required RoyaleRoomSnapshot room,
+    required RoyaleBattleView battle,
+    required String mySide,
+    required List<RoyaleCard> selectedCards,
+    required int selectedCost,
+    required BoxConstraints constraints,
+  }) {
+    final fallbackHeight = MediaQuery.sizeOf(context).height;
+    final topReservedHeight = _immersiveArenaTopReservedHeight(context);
+    final bottomReservedHeight = _immersiveArenaBottomReservedHeight(context);
+    final availableHeight = constraints.maxHeight.isFinite
+        ? constraints.maxHeight
+        : fallbackHeight;
+    var boardHeight =
+        availableHeight - topReservedHeight - bottomReservedHeight;
+    if (boardHeight < 0) {
+      boardHeight = 0;
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          top: topReservedHeight,
+          left: 0,
+          right: 0,
+          bottom: bottomReservedHeight,
+          child: _buildBattlefieldPanel(
+            room: room,
+            battle: battle,
+            mySide: mySide,
+            selectedCards: selectedCards,
+            boardWidth: constraints.maxWidth,
+            boardHeight: boardHeight,
+            compact: true,
+            fullscreen: true,
+          ),
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: _buildImmersiveArenaTopOverlay(
+            room: room,
+            battle: battle,
+            selectedCards: selectedCards,
+          ),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: _buildImmersiveArenaBottomOverlay(
+            battle: battle,
+            selectedCards: selectedCards,
+            selectedCost: selectedCost,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildLobby(RoyaleRoomSnapshot room) {
     final myUserId = room.me?.userId;
     final isHostMode = room.simulationMode == 'host';
@@ -416,29 +722,29 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 880;
         final compactPhone = constraints.maxWidth < 600;
-        final boardWidth = _boardWidthFor(constraints, compact);
-        double boardHeight = boardWidth / _battlefieldAspectRatio;
-        if (compactPhone && constraints.maxHeight.isFinite) {
-          final maxBoardHeight = constraints.maxHeight * 0.38;
-          if (boardHeight > maxBoardHeight) {
-            boardHeight = maxBoardHeight;
-          }
-          if (boardHeight < 260) {
-            boardHeight = 260;
-          }
+        if (compactPhone) {
+          return _buildImmersiveArena(
+            room: room,
+            battle: battle,
+            mySide: mySide,
+            selectedCards: selectedCards,
+            selectedCost: selectedCost,
+            constraints: constraints,
+          );
         }
-        final contentPadding = compactPhone ? 10.0 : (compact ? 14.0 : 20.0);
+        final boardWidth = _boardWidthFor(constraints, compact);
+        final boardHeight = boardWidth / _battlefieldAspectRatio;
+        final contentPadding = compact ? 14.0 : 20.0;
         final children = <Widget>[
-          if (!compactPhone)
-            _buildHudSection(
-              battle: battle,
-              me: me,
-              opponent: opponent,
-              mySide: mySide,
-              simulationMode: room.simulationMode,
-              compact: false,
-            ),
-          if (!compactPhone) const SizedBox(height: 16),
+          _buildHudSection(
+            battle: battle,
+            me: me,
+            opponent: opponent,
+            mySide: mySide,
+            simulationMode: room.simulationMode,
+            compact: compact,
+          ),
+          const SizedBox(height: 16),
           _buildBattlefieldPanel(
             room: room,
             battle: battle,
@@ -446,24 +752,12 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
             selectedCards: selectedCards,
             boardWidth: boardWidth,
             boardHeight: boardHeight,
-            compact: compactPhone,
+            compact: compact,
           ),
           const SizedBox(height: 12),
-          if (compactPhone)
-            _buildHudSection(
-              battle: battle,
-              me: me,
-              opponent: opponent,
-              mySide: mySide,
-              simulationMode: room.simulationMode,
-              compact: true,
-            ),
-          if (compactPhone) const SizedBox(height: 12),
-          if (selectedCards.isNotEmpty)
-            _buildSelectedComboLauncher(selectedCards, selectedCost, compactPhone),
           _buildCommandDeck(
             battle: battle,
-            compact: compactPhone,
+            compact: compact,
             selectedCards: selectedCards,
           ),
         ];

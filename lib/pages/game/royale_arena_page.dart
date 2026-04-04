@@ -1073,25 +1073,31 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     final friendsOverview = context
         .watch<FriendsOverviewSyncService>()
         .overview;
+    final isImmersiveBattle =
+        MediaQuery.sizeOf(context).width < 600 &&
+        _room != null &&
+        _room!.status != 'lobby';
     return Scaffold(
       backgroundColor: const Color(0xFF07111F),
       drawer: _buildRoomFriendDrawer(friendsOverview),
-      appBar: AppBar(
-        title: Text('${t.text('Room')} ${widget.roomCode}'),
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: () => Navigator.of(
-              context,
-            ).pushNamedAndRemoveUntil('/home', (_) => false),
-            icon: const Icon(Icons.home_outlined),
-            tooltip: AppConstants.appName,
-          ),
-        ],
-      ),
-      extendBodyBehindAppBar: true,
+      appBar: isImmersiveBattle
+          ? null
+          : AppBar(
+              title: Text('${t.text('Room')} ${widget.roomCode}'),
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              actions: [
+                IconButton(
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).pushNamedAndRemoveUntil('/home', (_) => false),
+                  icon: const Icon(Icons.home_outlined),
+                  tooltip: AppConstants.appName,
+                ),
+              ],
+            ),
+      extendBodyBehindAppBar: !isImmersiveBattle,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -1118,7 +1124,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
                 color: const Color(0xFF5E60CE).withValues(alpha: 0.18),
               ),
             ),
-            SafeArea(child: _buildPageContent(t)),
+            isImmersiveBattle
+                ? _buildPageContent(t)
+                : SafeArea(child: _buildPageContent(t)),
           ],
         ),
       ),

@@ -166,8 +166,8 @@ class _HandCard extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           Container(
-            width: compact ? 118 : 156,
-            padding: EdgeInsets.all(compact ? 10 : 14),
+            width: compact ? 102 : 156,
+            padding: EdgeInsets.all(compact ? 8 : 14),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [cardColor, cardColor.withValues(alpha: 0.78)],
@@ -196,8 +196,8 @@ class _HandCard extends StatelessWidget {
                   children: [
                     Container(
                       padding: EdgeInsets.symmetric(
-                        horizontal: compact ? 6 : 8,
-                        vertical: compact ? 4 : 5,
+                        horizontal: compact ? 5 : 8,
+                        vertical: compact ? 3 : 5,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.16),
@@ -208,31 +208,31 @@ class _HandCard extends StatelessWidget {
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
-                          fontSize: compact ? 9 : 11,
+                          fontSize: compact ? 8 : 11,
                         ),
                       ),
                     ),
                     const Spacer(),
                     CircleAvatar(
-                      radius: compact ? 14 : 16,
+                      radius: compact ? 13 : 16,
                       backgroundColor: Colors.white.withValues(alpha: 0.18),
                       child: Text(
                         '${card.elixirCost}',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
-                          fontSize: compact ? 12 : 14,
+                          fontSize: compact ? 11 : 14,
                         ),
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: compact ? 10 : 14),
+                SizedBox(height: compact ? 8 : 14),
                 if (card.imageUrl != null && card.imageUrl!.isNotEmpty) ...[
                   Container(
                     width: double.infinity,
-                    height: compact ? 48 : 72,
-                    margin: EdgeInsets.only(bottom: compact ? 8 : 10),
+                    height: compact ? 40 : 72,
+                    margin: EdgeInsets.only(bottom: compact ? 6 : 10),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(14),
@@ -252,18 +252,18 @@ class _HandCard extends StatelessWidget {
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
-                    fontSize: compact ? 14 : 18,
+                    fontSize: compact ? 13 : 18,
                   ),
                 ),
-                SizedBox(height: compact ? 6 : 8),
+                SizedBox(height: compact ? 4 : 8),
                 Text(
                   cardStats,
-                  maxLines: 2,
+                  maxLines: compact ? 1 : 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.white70,
                     height: 1.3,
-                    fontSize: compact ? 11 : 13,
+                    fontSize: compact ? 10 : 13,
                   ),
                 ),
               ],

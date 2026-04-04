@@ -49,19 +49,25 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
     required bool compact,
   }) {
     final isLeftSide = player.side == 'left';
-    final topOffset = compact ? 48.0 : 60.0;
-    final top =
-        (mySide == 'left'
-            ? board.maxHeight * (isLeftSide ? 0.95 : 0.05)
-            : board.maxHeight * (isLeftSide ? 0.05 : 0.95)) -
-        topOffset;
+    final shellWidth = compact ? 96.0 : 120.0;
+    final tokenHeight = compact ? 68.0 : 84.0;
+    final topMargin = compact ? 34.0 : 42.0;
+    final bottomMargin = compact ? 56.0 : 72.0;
+    final top = mySide == 'left'
+        ? (isLeftSide
+              ? board.maxHeight - tokenHeight - bottomMargin
+              : topMargin)
+        : (isLeftSide
+              ? topMargin
+              : board.maxHeight - tokenHeight - bottomMargin);
     return Positioned(
-      left: board.maxWidth * 0.5 - 34,
+      left: board.maxWidth * 0.5 - shellWidth / 2,
       top: top,
       child: _TowerToken(
         label: player.name,
         color: _sideColor(player.side),
         towerHp: player.towerHp,
+        maxTowerHp: player.maxTowerHp,
         compact: compact,
       ),
     );
@@ -191,9 +197,12 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
     required double boardHeight,
     required bool highlightDropZone,
     required bool compact,
+    bool fullscreen = false,
   }) {
     final leftPlayer = _playerBySideOrPlaceholder(room, 'left');
     final rightPlayer = _playerBySideOrPlaceholder(room, 'right');
+    final outerRadius = fullscreen ? 0.0 : 30.0;
+    final innerRadius = fullscreen ? 0.0 : 28.0;
 
     return Align(
       child: SizedBox(
@@ -202,7 +211,7 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
         child: Container(
           key: _arenaKey,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(outerRadius),
             gradient: const LinearGradient(
               colors: [
                 Color(0xFFDEF4FF),
@@ -216,19 +225,23 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
             border: Border.all(
               color: highlightDropZone
                   ? const Color(0xFFFFD166)
+                  : fullscreen
+                  ? Colors.transparent
                   : Colors.white.withValues(alpha: 0.32),
-              width: highlightDropZone ? 2.4 : 1.2,
+              width: highlightDropZone ? 2.4 : (fullscreen ? 0 : 1.2),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF07111F).withValues(alpha: 0.28),
-                blurRadius: 28,
-                offset: const Offset(0, 18),
-              ),
-            ],
+            boxShadow: fullscreen
+                ? const []
+                : [
+                    BoxShadow(
+                      color: const Color(0xFF07111F).withValues(alpha: 0.28),
+                      blurRadius: 28,
+                      offset: const Offset(0, 18),
+                    ),
+                  ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(innerRadius),
             child: MouseRegion(
               onHover: (event) => _updateAimPoint(event.position),
               onExit: (_) => _clearAimPoint(),
@@ -266,7 +279,7 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
                             painter: _ArenaPainter(playerSide: mySide),
                           ),
                         ),
-                        if (!compact)
+                        if (!compact && !fullscreen)
                           Positioned(
                             left: 18,
                             top: 18,
@@ -275,7 +288,7 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
                               color: const Color(0xFFE25555),
                             ),
                           ),
-                        if (!compact)
+                        if (!compact && !fullscreen)
                           Positioned(
                             left: board.maxWidth * 0.5 - 42,
                             top: 18,
@@ -284,15 +297,16 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
                               color: const Color(0xFF2F7D87),
                             ),
                           ),
-                        Positioned(
-                          right: 18,
-                          bottom: 18,
-                          child: _FieldLabel(
-                            label: _t.text('Your Deployment Zone'),
-                            color: const Color(0xFF136F63),
-                            compact: compact,
+                        if (!fullscreen)
+                          Positioned(
+                            right: 18,
+                            bottom: 18,
+                            child: _FieldLabel(
+                              label: _t.text('Your Deployment Zone'),
+                              color: const Color(0xFF136F63),
+                              compact: compact,
+                            ),
                           ),
-                        ),
                         _buildTowerToken(
                           board: board,
                           mySide: mySide,
@@ -334,38 +348,6 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
     );
   }
 
-  Widget _buildSelectedComboLauncher(
-    List<RoyaleCard> selectedCards,
-    int selectedCost,
-    bool compact,
-  ) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: compact ? 12 : 16),
-      child: Draggable<_ComboDragPayload>(
-        data: _ComboDragPayload(cards: selectedCards),
-        dragAnchorStrategy: pointerDragAnchorStrategy,
-        feedback: Material(
-          color: Colors.transparent,
-          child: const _DragCursorFeedback(),
-        ),
-        childWhenDragging: Opacity(
-          opacity: 0.38,
-          child: _ComboLauncher(
-            cards: selectedCards,
-            totalCost: selectedCost,
-            compact: compact,
-          ),
-        ),
-        child: _ComboLauncher(
-          cards: selectedCards,
-          totalCost: selectedCost,
-          onClear: _clearSelection,
-          compact: compact,
-        ),
-      ),
-    );
-  }
-
   Widget _buildBattlefieldPanel({
     required RoyaleRoomSnapshot room,
     required RoyaleBattleView battle,
@@ -374,6 +356,7 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
     required double boardWidth,
     required double boardHeight,
     required bool compact,
+    bool fullscreen = false,
   }) {
     return DragTarget<_ComboDragPayload>(
       onAcceptWithDetails: _handleBattlefieldAccept,
@@ -381,6 +364,19 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
       onLeave: (_) => _handleBattlefieldLeave(),
       builder: (context, candidateItems, rejectedItems) {
         final highlightDropZone = candidateItems.isNotEmpty;
+        if (fullscreen) {
+          return _buildBattlefieldBoard(
+            room: room,
+            battle: battle,
+            mySide: mySide,
+            selectedCards: selectedCards,
+            boardWidth: boardWidth,
+            boardHeight: boardHeight,
+            highlightDropZone: highlightDropZone,
+            compact: compact,
+            fullscreen: true,
+          );
+        }
         return _GlassPanel(
           padding: EdgeInsets.all(compact ? 10 : 14),
           child: Column(
@@ -401,6 +397,7 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
                 boardHeight: boardHeight,
                 highlightDropZone: highlightDropZone,
                 compact: compact,
+                fullscreen: false,
               ),
             ],
           ),
