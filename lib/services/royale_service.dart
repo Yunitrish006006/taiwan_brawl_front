@@ -52,10 +52,11 @@ class RoyaleService {
     bool vsBot = false,
     String simulationMode = 'server',
   }) async {
+    final effectiveSimulationMode = vsBot ? 'host' : simulationMode;
     final res = await _apiClient.postJson('/api/rooms', {
       'deckId': deckId,
       'vsBot': vsBot,
-      'simulationMode': simulationMode,
+      'simulationMode': effectiveSimulationMode,
     });
     return _roomFromResponse(res);
   }
