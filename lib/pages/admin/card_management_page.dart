@@ -73,6 +73,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
   bool _isUploadingImage = false;
   bool _isRemovingImage = false;
   bool _isCreatingNew = true;
+  bool _showMobileEditor = false;
   String? _selectedCardId;
   String _selectedType = _typeOptions.first;
   String _selectedTargetRule = _targetRuleOptions.first;
@@ -219,6 +220,35 @@ class _CardManagementPageState extends State<CardManagementPage> {
     });
   }
 
+  void _openMobileEditorForCard(RoyaleCard card) {
+    _applyCard(card);
+    if (_showMobileEditor) {
+      return;
+    }
+    setState(() {
+      _showMobileEditor = true;
+    });
+  }
+
+  void _openMobileEditorForNewCard() {
+    _applyNewCardDefaults();
+    if (_showMobileEditor) {
+      return;
+    }
+    setState(() {
+      _showMobileEditor = true;
+    });
+  }
+
+  void _closeMobileEditor() {
+    if (!_showMobileEditor) {
+      return;
+    }
+    setState(() {
+      _showMobileEditor = false;
+    });
+  }
+
   RoyaleCard? _selectedCard() {
     final cardId = _selectedCardId;
     if (cardId == null) {
@@ -351,6 +381,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
       if (!mounted) {
         return;
       }
+      _closeMobileEditor();
       _showSnackBar(_t.text('Card deleted successfully'));
     } on ApiException catch (error) {
       _showSnackBar(error.message);
@@ -566,6 +597,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
   Widget build(BuildContext context) {
     final viewer = context.watch<AuthService>().user;
     final t = context.watch<LocaleProvider>().translation;
+    final phoneLayout = MediaQuery.sizeOf(context).width < 700;
     if (viewer == null) {
       return Scaffold(body: Center(child: Text(t.text('Please log in first'))));
     }
@@ -580,18 +612,40 @@ class _CardManagementPageState extends State<CardManagementPage> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(t.text('Card Management')),
-        actions: [
-          IconButton(
-            onPressed: _isLoading ? null : () => _loadCards(),
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: t.text('Refresh'),
+    return WillPopScope(
+      onWillPop: () async {
+        if (phoneLayout && _showMobileEditor) {
+          _closeMobileEditor();
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: phoneLayout && _showMobileEditor
+              ? IconButton(
+                  onPressed: _closeMobileEditor,
+                  icon: const Icon(Icons.arrow_back),
+                  tooltip: t.text('Back'),
+                )
+              : null,
+          title: Text(
+            phoneLayout && _showMobileEditor
+                ? (_isCreatingNew
+                      ? t.text('Create a new card')
+                      : t.text('Edit Card'))
+                : t.text('Card Management'),
           ),
-        ],
+          actions: [
+            IconButton(
+              onPressed: _isLoading ? null : () => _loadCards(),
+              icon: const Icon(Icons.refresh_rounded),
+              tooltip: t.text('Refresh'),
+            ),
+          ],
+        ),
+        body: _buildPageContent(t),
       ),
-      body: _buildPageContent(t),
     );
   }
 }

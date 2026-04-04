@@ -1,7 +1,7 @@
 part of 'card_management_page.dart';
 
 extension _CardManagementFormLayout on _CardManagementPageState {
-  Widget _buildCardList(Map<String, String> t) {
+  Widget _buildCardList(Map<String, String> t, {bool phoneLayout = false}) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -17,7 +17,9 @@ extension _CardManagementFormLayout on _CardManagementPageState {
                   ),
                 ),
                 FilledButton.icon(
-                  onPressed: _applyNewCardDefaults,
+                  onPressed: phoneLayout
+                      ? _openMobileEditorForNewCard
+                      : _applyNewCardDefaults,
                   icon: const Icon(Icons.add_rounded),
                   label: Text(t.text('New Card')),
                 ),
@@ -58,7 +60,9 @@ extension _CardManagementFormLayout on _CardManagementPageState {
                         '${card.id} · ${_typeLabel(t, card.type)} · ${t.text('Elixir Cost')} ${card.elixirCost}',
                       ),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => _applyCard(card),
+                      onTap: () => phoneLayout
+                          ? _openMobileEditorForCard(card)
+                          : _applyCard(card),
                     );
                   },
                 ),
@@ -381,7 +385,22 @@ extension _CardManagementFormLayout on _CardManagementPageState {
           padding: const EdgeInsets.all(16),
           child: LayoutBuilder(
             builder: (context, constraints) {
+              final phoneLayout = constraints.maxWidth < 700;
               final vertical = constraints.maxWidth < 1100;
+              if (phoneLayout) {
+                if (_showMobileEditor) {
+                  return ListView(
+                    children: [
+                      _buildForm(t),
+                    ],
+                  );
+                }
+                return ListView(
+                  children: [
+                    _buildCardList(t, phoneLayout: true),
+                  ],
+                );
+              }
               if (vertical) {
                 return ListView(
                   children: [
