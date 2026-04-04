@@ -346,7 +346,10 @@ extension _HomePageLayout on _HomePageState {
     );
   }
 
-  Widget _buildDrawerFriendList(FriendsOverview? overview) {
+  Widget _buildDrawerFriendList(
+    FriendsOverview? overview, {
+    required bool isLoadingFriends,
+  }) {
     final roomInvites = overview?.roomInvites ?? const <RoomInviteItem>[];
     final incomingRequests = overview?.incomingRequests ?? const <FriendRequestItem>[];
     final friends = overview?.friends ?? const <SocialUser>[];
@@ -354,7 +357,7 @@ extension _HomePageLayout on _HomePageState {
       for (final invite in roomInvites) invite.inviter.userId: invite,
     };
 
-    if (_isLoadingFriends && overview == null) {
+    if (isLoadingFriends && overview == null) {
       return const Center(child: CircularProgressIndicator());
     }
     if (overview == null) {
@@ -432,9 +435,11 @@ extension _HomePageLayout on _HomePageState {
     );
   }
 
-  Drawer _buildDrawer(AppUser user) {
-    final overview = _friendsOverview;
-
+  Drawer _buildDrawer(
+    AppUser user, {
+    required FriendsOverview? overview,
+    required bool isLoadingFriends,
+  }) {
     return Drawer(
       child: SafeArea(
         child: Column(
@@ -466,10 +471,17 @@ extension _HomePageLayout on _HomePageState {
             ListTile(
               leading: const Icon(Icons.refresh_rounded),
               title: Text(_t.text('Refresh Friends List')),
-              onTap: _loadFriends,
+              onTap: () {
+                unawaited(_refreshFriendsOverview(silent: false));
+              },
             ),
             _buildDrawerFriendHeader(),
-            Expanded(child: _buildDrawerFriendList(overview)),
+            Expanded(
+              child: _buildDrawerFriendList(
+                overview,
+                isLoadingFriends: isLoadingFriends,
+              ),
+            ),
           ],
         ),
       ),

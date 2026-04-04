@@ -69,8 +69,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     );
   }
 
-  Widget _buildRoomFriendDrawer() {
-    final overview = _friendsOverview;
+  Widget _buildRoomFriendDrawer(FriendsOverview? overview) {
     final friends = overview?.friends ?? const <SocialUser>[];
 
     return Drawer(
