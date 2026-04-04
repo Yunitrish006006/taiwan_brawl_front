@@ -23,8 +23,8 @@ const double _battlefieldAspectRatio = battle_rules.fieldAspectRatio;
 const double _battlefieldPhoneMaxWidth = 430;
 const double _battlefieldDesktopMaxWidth = 520;
 const int _worldScale = battle_rules.worldScale;
-const Duration _hostStateSyncInterval = Duration(milliseconds: 500);
-const Duration _socketReconnectDelay = Duration(seconds: 2);
+const Duration _hostStateSyncInterval = Duration(milliseconds: 250);
+const Duration _socketReconnectDelay = Duration(milliseconds: 500);
 const int _socketFailureSnackbarThreshold = 3;
 
 class RoyaleArenaPage extends StatefulWidget {
