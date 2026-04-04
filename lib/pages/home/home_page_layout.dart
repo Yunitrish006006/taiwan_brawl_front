@@ -388,9 +388,24 @@ extension _HomePageLayout on _HomePageState {
   Widget _buildDrawerFriendHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
-      child: Text(
-        _t.text('Friend List'),
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              _t.text('Friend List'),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            ),
+          ),
+          FilledButton.icon(
+            onPressed: _openFriendSearchDialog,
+            icon: const Icon(Icons.person_search_rounded, size: 18),
+            label: Text(_t.text('Search players')),
+            style: FilledButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -451,11 +466,6 @@ extension _HomePageLayout on _HomePageState {
               label: _t.text('Edit Profile'),
               onTap: () => _openRoute('/profile', closeDrawer: true),
             ),
-            _buildDrawerNavigationTile(
-              icon: Icons.group_outlined,
-              label: _t.text('Friends'),
-              onTap: () => _openRoute('/friends', closeDrawer: true),
-            ),
             if (_canManageCards(user))
               _buildDrawerNavigationTile(
                 icon: Icons.style_outlined,
@@ -468,13 +478,6 @@ extension _HomePageLayout on _HomePageState {
                 label: _t.text('Role Management'),
                 onTap: () => _openRoute('/admin/roles', closeDrawer: true),
               ),
-            ListTile(
-              leading: const Icon(Icons.refresh_rounded),
-              title: Text(_t.text('Refresh Friends List')),
-              onTap: () {
-                unawaited(_refreshFriendsOverview(silent: false));
-              },
-            ),
             _buildDrawerFriendHeader(),
             Expanded(
               child: _buildDrawerFriendList(

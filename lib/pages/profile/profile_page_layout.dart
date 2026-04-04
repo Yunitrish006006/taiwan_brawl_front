@@ -187,12 +187,6 @@ extension _ProfilePageLayout on _ProfilePageState {
             const SizedBox(height: 20),
             Center(child: _buildAvatarPreview(user, t)),
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).pushNamed('/friends'),
-              icon: const Icon(Icons.group_outlined),
-              label: Text(t.text('Open Friends')),
-            ),
-            const SizedBox(height: 12),
             TextField(
               controller: _nameController,
               decoration: InputDecoration(labelText: t.text('Name')),
