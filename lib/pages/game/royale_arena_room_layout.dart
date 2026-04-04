@@ -138,16 +138,20 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
   Widget _buildHandInfoChips(
     RoyaleBattleView battle,
     List<RoyaleCard> selectedCards,
+    bool compact,
   ) {
     final selectedCost = _selectedCardCost(selectedCards);
     return Wrap(
-      spacing: 12,
-      runSpacing: 10,
+      spacing: compact ? 8 : 12,
+      runSpacing: compact ? 8 : 10,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Text(
-          'Battle Hand',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          _t.text('Battle Hand'),
+          style: (compact
+                  ? Theme.of(context).textTheme.titleMedium
+                  : Theme.of(context).textTheme.titleLarge)
+              ?.copyWith(
             color: Colors.white,
             fontWeight: FontWeight.w800,
           ),
@@ -156,24 +160,27 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
           icon: Icons.bolt_rounded,
           label:
               '${_t.text('Current Elixir')} ${battle.yourElixir.toStringAsFixed(1)}',
+          compact: compact,
         ),
         _InfoChip(
           icon: Icons.arrow_forward_rounded,
           label: battle.nextCardId == null
               ? '${_t.text('Next Card')} ${_t.text('Unknown')}'
               : '${_t.text('Next Card')} ${battle.nextCardId}',
+          compact: compact,
         ),
         if (selectedCards.isNotEmpty)
           _InfoChip(
             icon: Icons.layers_rounded,
             label:
                 '${_t.text('Selected Cards')} ${selectedCards.length} / $selectedCost',
+            compact: compact,
           ),
       ],
     );
   }
 
-  Widget _buildHandCardList(RoyaleBattleView battle) {
+  Widget _buildHandCardList(RoyaleBattleView battle, {required bool compact}) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -187,14 +194,15 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
             cardColor: _cardColor(card.type),
             cardStats: _cardStats(card),
             typeLabel: _cardTypeLabel(card),
+            compact: compact,
           );
 
           return Padding(
-            padding: const EdgeInsets.only(right: 14),
+            padding: EdgeInsets.only(right: compact ? 10 : 14),
             child: GestureDetector(
               onTap: () => _toggleCardSelection(card),
               child: Draggable<_ComboDragPayload>(
-                data: _ComboDragPayload(cards: [card]),
+                data: _dragPayloadForHandCard(battle, card),
                 maxSimultaneousDrags: playable ? 1 : 0,
                 dragAnchorStrategy: pointerDragAnchorStrategy,
                 feedback: Material(
@@ -407,39 +415,64 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 880;
+        final compactPhone = constraints.maxWidth < 600;
         final boardWidth = _boardWidthFor(constraints, compact);
-        final boardHeight = boardWidth / _battlefieldAspectRatio;
+        double boardHeight = boardWidth / _battlefieldAspectRatio;
+        if (compactPhone && constraints.maxHeight.isFinite) {
+          final maxBoardHeight = constraints.maxHeight * 0.38;
+          if (boardHeight > maxBoardHeight) {
+            boardHeight = maxBoardHeight;
+          }
+          if (boardHeight < 260) {
+            boardHeight = 260;
+          }
+        }
+        final contentPadding = compactPhone ? 10.0 : (compact ? 14.0 : 20.0);
+        final children = <Widget>[
+          if (!compactPhone)
+            _buildHudSection(
+              battle: battle,
+              me: me,
+              opponent: opponent,
+              mySide: mySide,
+              simulationMode: room.simulationMode,
+              compact: false,
+            ),
+          if (!compactPhone) const SizedBox(height: 16),
+          _buildBattlefieldPanel(
+            room: room,
+            battle: battle,
+            mySide: mySide,
+            selectedCards: selectedCards,
+            boardWidth: boardWidth,
+            boardHeight: boardHeight,
+            compact: compactPhone,
+          ),
+          const SizedBox(height: 12),
+          if (compactPhone)
+            _buildHudSection(
+              battle: battle,
+              me: me,
+              opponent: opponent,
+              mySide: mySide,
+              simulationMode: room.simulationMode,
+              compact: true,
+            ),
+          if (compactPhone) const SizedBox(height: 12),
+          if (selectedCards.isNotEmpty)
+            _buildSelectedComboLauncher(selectedCards, selectedCost, compactPhone),
+          _buildCommandDeck(
+            battle: battle,
+            compact: compactPhone,
+            selectedCards: selectedCards,
+          ),
+        ];
         return Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1200),
             child: ListView(
-              padding: EdgeInsets.all(compact ? 14 : 20),
-              children: [
-                _buildHudSection(
-                  battle: battle,
-                  me: me,
-                  opponent: opponent,
-                  mySide: mySide,
-                  simulationMode: room.simulationMode,
-                ),
-                const SizedBox(height: 16),
-                _buildBattlefieldPanel(
-                  room: room,
-                  battle: battle,
-                  mySide: mySide,
-                  selectedCards: selectedCards,
-                  boardWidth: boardWidth,
-                  boardHeight: boardHeight,
-                ),
-                const SizedBox(height: 16),
-                if (selectedCards.isNotEmpty)
-                  _buildSelectedComboLauncher(selectedCards, selectedCost),
-                _buildCommandDeck(
-                  battle: battle,
-                  compact: compact,
-                  selectedCards: selectedCards,
-                ),
-              ],
+              padding: EdgeInsets.all(contentPadding),
+              children: children,
             ),
           ),
         );
@@ -453,11 +486,88 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     required RoyalePlayerView? opponent,
     required String mySide,
     required String simulationMode,
+    required bool compact,
   }) {
     return _GlassPanel(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(compact ? 12 : 16),
       child: Column(
         children: [
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            alignment: WrapAlignment.center,
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 14 : 18,
+                  vertical: compact ? 8 : 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.14),
+                  ),
+                ),
+                child: Text(
+                  _formatTime(battle.timeRemainingMs),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: compact ? 22 : 28,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+              _ElixirMeter(value: battle.yourElixir, compact: compact),
+              _ArenaLegendChip(
+                label: simulationMode == 'host'
+                    ? _t.text('Host Simulation (Experimental)')
+                    : _t.text('Server Simulation'),
+                color: simulationMode == 'host'
+                    ? const Color(0xFFB084F5)
+                    : const Color(0xFF48C7F4),
+                compact: compact,
+              ),
+              if (opponent != null &&
+                  _shouldShowAddFriendButton(opponent, me?.userId))
+                ActionChip(
+                  avatar: Icon(
+                    Icons.person_add_alt_1,
+                    size: compact ? 16 : 18,
+                  ),
+                  label: Text(
+                    '${_t.text('Add')} ${opponent.name} ${_t.text('as a friend')}',
+                    style: TextStyle(fontSize: compact ? 11 : 13),
+                  ),
+                  onPressed: () => _sendFriendRequestToPlayer(opponent),
+                  visualDensity: compact
+                      ? const VisualDensity(
+                          horizontal: -2,
+                          vertical: -2,
+                        )
+                      : VisualDensity.standard,
+                  materialTapTargetSize: compact
+                      ? MaterialTapTargetSize.shrinkWrap
+                      : MaterialTapTargetSize.padded,
+                ),
+              if (!compact) ...[
+                _ArenaLegendChip(
+                  label: _t.text('Single Lane Battle'),
+                  color: const Color(0xFF46C2CB),
+                ),
+                _ArenaLegendChip(
+                  label: _t.text('Up to 3-card combo'),
+                  color: const Color(0xFFFFB703),
+                ),
+                _ArenaLegendChip(
+                  label: _t.text('Equipment can stack'),
+                  color: const Color(0xFF9B5DE5),
+                ),
+              ],
+            ],
+          ),
+          SizedBox(height: compact ? 10 : 14),
           Row(
             children: [
               Expanded(
@@ -468,39 +578,10 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                   maxTowerHp: me?.maxTowerHp ?? 1,
                   color: _sideColor(mySide),
                   alignEnd: false,
+                  compact: compact,
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.14),
-                        ),
-                      ),
-                      child: Text(
-                        _formatTime(battle.timeRemainingMs),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    _ElixirMeter(value: battle.yourElixir),
-                  ],
-                ),
-              ),
+              SizedBox(width: compact ? 8 : 14),
               Expanded(
                 child: _PlayerHudCard(
                   title: opponent?.name ?? _t.text('Opponent'),
@@ -509,44 +590,9 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                   maxTowerHp: opponent?.maxTowerHp ?? 1,
                   color: _sideColor(opponent?.side ?? 'right'),
                   alignEnd: true,
+                  compact: compact,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _ArenaLegendChip(
-                label: _t.text('Single Lane Battle'),
-                color: const Color(0xFF46C2CB),
-              ),
-              _ArenaLegendChip(
-                label: _t.text('Up to 3-card combo'),
-                color: const Color(0xFFFFB703),
-              ),
-              _ArenaLegendChip(
-                label: _t.text('Equipment can stack'),
-                color: const Color(0xFF9B5DE5),
-              ),
-              _ArenaLegendChip(
-                label: simulationMode == 'host'
-                    ? _t.text('Host Simulation (Experimental)')
-                    : _t.text('Server Simulation'),
-                color: simulationMode == 'host'
-                    ? const Color(0xFFB084F5)
-                    : const Color(0xFF48C7F4),
-              ),
-              if (opponent != null &&
-                  _shouldShowAddFriendButton(opponent, me?.userId))
-                ActionChip(
-                  avatar: const Icon(Icons.person_add_alt_1, size: 18),
-                  label: Text(
-                    '${_t.text('Add')} ${opponent.name} ${_t.text('as a friend')}',
-                  ),
-                  onPressed: () => _sendFriendRequestToPlayer(opponent),
-                ),
             ],
           ),
         ],
@@ -560,7 +606,12 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     required List<RoyaleCard> selectedCards,
   }) {
     return _GlassPanel(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+      padding: EdgeInsets.fromLTRB(
+        compact ? 12 : 16,
+        compact ? 12 : 16,
+        compact ? 12 : 16,
+        compact ? 14 : 18,
+      ),
       gradient: const LinearGradient(
         colors: [Color(0xFF0D1B2A), Color(0xFF132238), Color(0xFF1A2F48)],
         begin: Alignment.topLeft,
@@ -569,13 +620,18 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHandInfoChips(battle, selectedCards),
-          const SizedBox(height: 16),
-          _buildHandCardList(battle),
-          const SizedBox(height: 14),
+          _buildHandInfoChips(battle, selectedCards, compact),
+          SizedBox(height: compact ? 12 : 16),
+          _buildHandCardList(battle, compact: compact),
+          SizedBox(height: compact ? 10 : 14),
           Text(
             _commandDeckHintText(compact),
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.72)),
+            maxLines: compact ? 2 : 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: compact ? 11 : 13,
+            ),
           ),
         ],
       ),

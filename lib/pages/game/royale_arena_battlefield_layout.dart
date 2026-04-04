@@ -5,26 +5,39 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
     required bool highlightDropZone,
     required List<RoyaleCard> selectedCards,
     required String mySide,
+    required bool compact,
   }) {
     return Row(
       children: [
-        const Icon(Icons.grid_view_rounded, color: Colors.white70),
-        const SizedBox(width: 10),
+        Icon(
+          Icons.grid_view_rounded,
+          color: Colors.white70,
+          size: compact ? 18 : 24,
+        ),
+        SizedBox(width: compact ? 8 : 10),
         Expanded(
           child: Text(
-            _battlefieldHintText(highlightDropZone, selectedCards),
-            style: const TextStyle(
+            _battlefieldHintText(
+              highlightDropZone,
+              selectedCards,
+              compact: compact,
+            ),
+            maxLines: compact ? 2 : 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w700,
+              fontSize: compact ? 13 : 15,
             ),
           ),
         ),
-        _ArenaLegendChip(
-          label: mySide == 'left'
-              ? _t.text('Your Left Base')
-              : _t.text('Your Right Base'),
-          color: _sideColor(mySide),
-        ),
+        if (!compact)
+          _ArenaLegendChip(
+            label: mySide == 'left'
+                ? _t.text('Your Left Base')
+                : _t.text('Your Right Base'),
+            color: _sideColor(mySide),
+          ),
       ],
     );
   }
@@ -33,13 +46,15 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
     required BoxConstraints board,
     required String mySide,
     required RoyalePlayerView player,
+    required bool compact,
   }) {
     final isLeftSide = player.side == 'left';
+    final topOffset = compact ? 48.0 : 60.0;
     final top =
         (mySide == 'left'
             ? board.maxHeight * (isLeftSide ? 0.95 : 0.05)
             : board.maxHeight * (isLeftSide ? 0.05 : 0.95)) -
-        60;
+        topOffset;
     return Positioned(
       left: board.maxWidth * 0.5 - 34,
       top: top,
@@ -47,6 +62,7 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
         label: player.name,
         color: _sideColor(player.side),
         towerHp: player.towerHp,
+        compact: compact,
       ),
     );
   }
@@ -95,7 +111,11 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
     }).toList();
   }
 
-  Widget? _buildBattleResultOverlay(RoyaleBattleResult? result, String mySide) {
+  Widget? _buildBattleResultOverlay(
+    RoyaleBattleResult? result,
+    String mySide, {
+    required bool compact,
+  }) {
     if (result == null) {
       return null;
     }
@@ -103,10 +123,13 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
     return Positioned.fill(
       child: Center(
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 18 : 28,
+            vertical: compact ? 14 : 20,
+          ),
           decoration: BoxDecoration(
             color: const Color(0xFF07111F).withValues(alpha: 0.8),
-            borderRadius: BorderRadius.circular(26),
+            borderRadius: BorderRadius.circular(compact ? 22 : 26),
             border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
           ),
           child: Column(
@@ -114,32 +137,38 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
             children: [
               Text(
                 _resultLabel(result, mySide),
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 28,
+                  fontSize: compact ? 22 : 28,
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: compact ? 4 : 6),
               Text(
                 _t.text('Battle finished'),
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.72)),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.72),
+                  fontSize: compact ? 12 : 14,
+                ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: compact ? 12 : 16),
               FilledButton.icon(
                 onPressed: _rematchSubmitting ? null : _playAgain,
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFFFFB703),
                   foregroundColor: const Color(0xFF1F2937),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 14,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: compact ? 16 : 20,
+                    vertical: compact ? 10 : 14,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(compact ? 14 : 16),
                   ),
                 ),
-                icon: const Icon(Icons.replay_rounded),
+                icon: Icon(
+                  Icons.replay_rounded,
+                  size: compact ? 18 : 24,
+                ),
                 label: Text(
                   _rematchSubmitting
                       ? _t.text('Returning to room...')
@@ -161,6 +190,7 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
     required double boardWidth,
     required double boardHeight,
     required bool highlightDropZone,
+    required bool compact,
   }) {
     final leftPlayer = _playerBySideOrPlaceholder(room, 'left');
     final rightPlayer = _playerBySideOrPlaceholder(room, 'right');
@@ -213,6 +243,7 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
                     final resultOverlay = _buildBattleResultOverlay(
                       battle.result,
                       mySide,
+                      compact: compact,
                     );
                     return Stack(
                       children: [
@@ -235,39 +266,44 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
                             painter: _ArenaPainter(playerSide: mySide),
                           ),
                         ),
-                        Positioned(
-                          left: 18,
-                          top: 18,
-                          child: _FieldLabel(
-                            label: _t.text('Enemy Base'),
-                            color: const Color(0xFFE25555),
+                        if (!compact)
+                          Positioned(
+                            left: 18,
+                            top: 18,
+                            child: _FieldLabel(
+                              label: _t.text('Enemy Base'),
+                              color: const Color(0xFFE25555),
+                            ),
                           ),
-                        ),
-                        Positioned(
-                          left: board.maxWidth * 0.5 - 42,
-                          top: 18,
-                          child: _FieldLabel(
-                            label: _t.text('Central Bridge'),
-                            color: const Color(0xFF2F7D87),
+                        if (!compact)
+                          Positioned(
+                            left: board.maxWidth * 0.5 - 42,
+                            top: 18,
+                            child: _FieldLabel(
+                              label: _t.text('Central Bridge'),
+                              color: const Color(0xFF2F7D87),
+                            ),
                           ),
-                        ),
                         Positioned(
                           right: 18,
                           bottom: 18,
                           child: _FieldLabel(
                             label: _t.text('Your Deployment Zone'),
                             color: const Color(0xFF136F63),
+                            compact: compact,
                           ),
                         ),
                         _buildTowerToken(
                           board: board,
                           mySide: mySide,
                           player: leftPlayer,
+                          compact: compact,
                         ),
                         _buildTowerToken(
                           board: board,
                           mySide: mySide,
                           player: rightPlayer,
+                          compact: compact,
                         ),
                         if (_aimPoint != null &&
                             _hasDeploymentTarget &&
@@ -301,9 +337,10 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
   Widget _buildSelectedComboLauncher(
     List<RoyaleCard> selectedCards,
     int selectedCost,
+    bool compact,
   ) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.only(bottom: compact ? 12 : 16),
       child: Draggable<_ComboDragPayload>(
         data: _ComboDragPayload(cards: selectedCards),
         dragAnchorStrategy: pointerDragAnchorStrategy,
@@ -313,12 +350,17 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
         ),
         childWhenDragging: Opacity(
           opacity: 0.38,
-          child: _ComboLauncher(cards: selectedCards, totalCost: selectedCost),
+          child: _ComboLauncher(
+            cards: selectedCards,
+            totalCost: selectedCost,
+            compact: compact,
+          ),
         ),
         child: _ComboLauncher(
           cards: selectedCards,
           totalCost: selectedCost,
           onClear: _clearSelection,
+          compact: compact,
         ),
       ),
     );
@@ -331,6 +373,7 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
     required List<RoyaleCard> selectedCards,
     required double boardWidth,
     required double boardHeight,
+    required bool compact,
   }) {
     return DragTarget<_ComboDragPayload>(
       onAcceptWithDetails: _handleBattlefieldAccept,
@@ -339,15 +382,16 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
       builder: (context, candidateItems, rejectedItems) {
         final highlightDropZone = candidateItems.isNotEmpty;
         return _GlassPanel(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(compact ? 10 : 14),
           child: Column(
             children: [
               _buildBattlefieldHeader(
                 highlightDropZone: highlightDropZone,
                 selectedCards: selectedCards,
                 mySide: mySide,
+                compact: compact,
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: compact ? 10 : 14),
               _buildBattlefieldBoard(
                 room: room,
                 battle: battle,
@@ -356,6 +400,7 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
                 boardWidth: boardWidth,
                 boardHeight: boardHeight,
                 highlightDropZone: highlightDropZone,
+                compact: compact,
               ),
             ],
           ),

@@ -243,6 +243,45 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
 
   bool _isBusy(String key) => _busyKey == key;
 
+  bool _isCompactLayout(BuildContext context) =>
+      MediaQuery.sizeOf(context).width < 640;
+
+  bool _useStackedCardActions(BuildContext context) =>
+      MediaQuery.sizeOf(context).width < 560;
+
+  EdgeInsets _pagePadding(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    if (width < 420) {
+      return const EdgeInsets.fromLTRB(12, 12, 12, 24);
+    }
+    if (width < 900) {
+      return const EdgeInsets.fromLTRB(16, 16, 16, 28);
+    }
+    return const EdgeInsets.fromLTRB(20, 20, 20, 32);
+  }
+
+  ButtonStyle? _compactFilledButtonStyle(BuildContext context) {
+    if (!_isCompactLayout(context)) {
+      return null;
+    }
+    return FilledButton.styleFrom(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+  }
+
+  ButtonStyle? _compactOutlinedButtonStyle(BuildContext context) {
+    if (!_isCompactLayout(context)) {
+      return null;
+    }
+    return OutlinedButton.styleFrom(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+  }
+
   Widget _buildUserAvatar(SocialUser user) {
     if (user.avatarUrl != null && user.avatarUrl!.isNotEmpty) {
       return CircleAvatar(backgroundImage: NetworkImage(user.avatarUrl!));
@@ -276,8 +315,12 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
     required Color backgroundColor,
     required Color foregroundColor,
   }) {
+    final compact = _isCompactLayout(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 8 : 10,
+        vertical: compact ? 3 : 4,
+      ),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(999),
@@ -286,7 +329,7 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
         label,
         style: TextStyle(
           color: foregroundColor,
-          fontSize: 12,
+          fontSize: compact ? 11 : 12,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -336,172 +379,227 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
   }
 
   Widget _buildIncomingRequestCard(FriendRequestItem item) {
+    final compact = _useStackedCardActions(context);
     final isAcceptBusy = _isBusy('accept-${item.id}');
     final isRejectBusy = _isBusy('reject-${item.id}');
     final isBlockBusy = _isBusy('block-${item.user.userId}');
     final isActionLocked =
         _busyKey != null && !isAcceptBusy && !isRejectBusy && !isBlockBusy;
+    final blockAction = _buildCompactActionButton(
+      icon: Icons.block_rounded,
+      backgroundColor: const Color(0xFFF4E2E7),
+      foregroundColor: const Color(0xFF8C1D40),
+      onTap: isActionLocked
+          ? null
+          : () => _runAction(
+                'block-${item.user.userId}',
+                () => _friendsService.blockUser(item.user.userId),
+                successMessage: _t.text('Player blocked'),
+              ),
+      isLoading: isBlockBusy,
+    );
+    final rejectAction = _buildCompactActionButton(
+      icon: Icons.close_rounded,
+      backgroundColor: const Color(0xFFFFE1DE),
+      foregroundColor: const Color(0xFF9A2F22),
+      onTap: isActionLocked
+          ? null
+          : () => _runAction(
+                'reject-${item.id}',
+                () => _friendsService.rejectFriendRequest(item.id),
+              ),
+      isLoading: isRejectBusy,
+    );
+    final acceptAction = _buildCompactActionButton(
+      icon: Icons.check_rounded,
+      backgroundColor: const Color(0xFFDDF4E4),
+      foregroundColor: const Color(0xFF17663A),
+      onTap: isActionLocked
+          ? null
+          : () => _runAction(
+                'accept-${item.id}',
+                () => _friendsService.acceptFriendRequest(item.id),
+                successMessage: _t.text('You are now friends'),
+              ),
+      isLoading: isAcceptBusy,
+    );
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 10 : 12,
+        vertical: compact ? 10 : 12,
+      ),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF7E6),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFF2D28B)),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildAccentUserAvatar(item.user),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.user.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _t.text('They invited you'),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF8A5A00),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (item.user.bio.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    item.user.bio,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildAccentUserAvatar(item.user),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.user.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: compact ? 15 : 16,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _t.text('They invited you'),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF8A5A00),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (item.user.bio.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        item.user.bio,
+                        maxLines: compact ? 3 : 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (!compact) ...[
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 124,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      blockAction,
+                      const SizedBox(width: 8),
+                      rejectAction,
+                      const SizedBox(width: 8),
+                      acceptAction,
+                    ],
                   ),
+                ),
+              ],
+            ],
+          ),
+          if (compact) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  blockAction,
+                  rejectAction,
+                  acceptAction,
                 ],
-              ],
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 124,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                _buildCompactActionButton(
-                  icon: Icons.block_rounded,
-                  backgroundColor: const Color(0xFFF4E2E7),
-                  foregroundColor: const Color(0xFF8C1D40),
-                  onTap: isActionLocked
-                      ? null
-                      : () => _runAction(
-                            'block-${item.user.userId}',
-                            () => _friendsService.blockUser(item.user.userId),
-                            successMessage: _t.text('Player blocked'),
-                          ),
-                  isLoading: isBlockBusy,
-                ),
-                const SizedBox(width: 8),
-                _buildCompactActionButton(
-                  icon: Icons.close_rounded,
-                  backgroundColor: const Color(0xFFFFE1DE),
-                  foregroundColor: const Color(0xFF9A2F22),
-                  onTap: isActionLocked
-                      ? null
-                      : () => _runAction(
-                            'reject-${item.id}',
-                            () => _friendsService.rejectFriendRequest(item.id),
-                          ),
-                  isLoading: isRejectBusy,
-                ),
-                const SizedBox(width: 8),
-                _buildCompactActionButton(
-                  icon: Icons.check_rounded,
-                  backgroundColor: const Color(0xFFDDF4E4),
-                  foregroundColor: const Color(0xFF17663A),
-                  onTap: isActionLocked
-                      ? null
-                      : () => _runAction(
-                            'accept-${item.id}',
-                            () => _friendsService.acceptFriendRequest(item.id),
-                            successMessage: _t.text('You are now friends'),
-                          ),
-                  isLoading: isAcceptBusy,
-                ),
-              ],
-            ),
-          ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildFriendRoomInviteCard(SocialUser friend, RoomInviteItem invite) {
+    final compact = _useStackedCardActions(context);
     final isAcceptBusy = _isBusy('room-accept-${invite.id}');
     final isRejectBusy = _isBusy('room-reject-${invite.id}');
     final isActionLocked = _busyKey != null && !isAcceptBusy && !isRejectBusy;
+    final rejectAction = _buildCompactActionButton(
+      icon: Icons.close_rounded,
+      backgroundColor: const Color(0xFFFFE1DE),
+      foregroundColor: const Color(0xFF9A2F22),
+      onTap: isActionLocked
+          ? null
+          : () => _runAction(
+                'room-reject-${invite.id}',
+                () => _friendsService.rejectRoomInvite(invite.id),
+              ),
+      isLoading: isRejectBusy,
+    );
+    final acceptAction = _buildCompactActionButton(
+      icon: Icons.check_rounded,
+      backgroundColor: const Color(0xFFDDF4E4),
+      foregroundColor: const Color(0xFF17663A),
+      onTap: isActionLocked ? null : () => _acceptRoomInvite(invite),
+      isLoading: isAcceptBusy,
+    );
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
+        padding: EdgeInsets.all(compact ? 10 : 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildUserAvatar(friend),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    friend.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${_t.text('Room')} ${invite.roomCode}',
-                    style: const TextStyle(
-                      color: Color(0xFF184D8E),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            _buildCompactActionButton(
-              icon: Icons.close_rounded,
-              backgroundColor: const Color(0xFFFFE1DE),
-              foregroundColor: const Color(0xFF9A2F22),
-              onTap: isActionLocked
-                  ? null
-                  : () => _runAction(
-                        'room-reject-${invite.id}',
-                        () => _friendsService.rejectRoomInvite(invite.id),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildUserAvatar(friend),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        friend.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: compact ? 15 : 16,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-              isLoading: isRejectBusy,
+                      const SizedBox(height: 2),
+                      Text(
+                        '${_t.text('Room')} ${invite.roomCode}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF184D8E),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!compact) ...[
+                  const SizedBox(width: 12),
+                  rejectAction,
+                  const SizedBox(width: 8),
+                  acceptAction,
+                ],
+              ],
             ),
-            const SizedBox(width: 8),
-            _buildCompactActionButton(
-              icon: Icons.check_rounded,
-              backgroundColor: const Color(0xFFDDF4E4),
-              foregroundColor: const Color(0xFF17663A),
-              onTap: isActionLocked ? null : () => _acceptRoomInvite(invite),
-              isLoading: isAcceptBusy,
-            ),
+            if (compact) ...[
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [rejectAction, acceptAction],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -513,6 +611,7 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
     required List<Widget> actions,
     String? subtitle,
   }) {
+    final compact = _isCompactLayout(context);
     final t = context.watch<LocaleProvider>().translation;
     final statusText = user.isOnline
         ? t.text('Online')
@@ -522,10 +621,12 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(compact ? 10 : 12),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildUserAvatar(user),
                 const SizedBox(width: 12),
@@ -535,15 +636,20 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
                     children: [
                       Text(
                         user.name,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: compact ? 15 : 16,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         subtitle ?? statusText,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
+                          fontSize: compact ? 12 : 14,
                           color: user.isOnline
                               ? const Color(0xFF0F8B6D)
                               : Colors.grey.shade700,
@@ -555,11 +661,15 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
               ],
             ),
             if (user.bio.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Align(alignment: Alignment.centerLeft, child: Text(user.bio)),
+              SizedBox(height: compact ? 8 : 10),
+              Text(
+                user.bio,
+                maxLines: compact ? 3 : 4,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
             if (actions.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: compact ? 10 : 12),
               Wrap(spacing: 8, runSpacing: 8, children: actions),
             ],
           ],
@@ -569,14 +679,18 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
   }
 
   Widget _buildSection(String title, Widget child) {
+    final compact = _isCompactLayout(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            fontSize: compact ? 17 : 18,
+            fontWeight: FontWeight.w800,
+          ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: compact ? 8 : 10),
         child,
       ],
     );
@@ -596,43 +710,61 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
   }
 
   Widget _buildSearchCard(Map<String, String> t) {
+    final compact = _isCompactLayout(context);
     final hasSearchInput = _searchController.text.trim().isNotEmpty;
     final showEmptySearchResult =
         hasSearchInput && _searchResults.isEmpty && _busyKey != 'search';
+    final searchField = TextField(
+      controller: _searchController,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        labelText: t.text('Enter Player Name'),
+        border: const OutlineInputBorder(),
+      ),
+      onSubmitted: (_) => _searchByName(),
+    );
+    final searchButton = FilledButton(
+      onPressed: _busyKey == 'search' ? null : _searchByName,
+      style: _compactFilledButtonStyle(context),
+      child: Text(
+        _busyKey == 'search' ? t.text('Searching...') : t.text('Search'),
+      ),
+    );
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(compact ? 12 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               t.text('Search Players by Name'),
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                fontSize: compact ? 17 : 18,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      labelText: t.text('Enter Player Name'),
-                      border: const OutlineInputBorder(),
-                    ),
-                    onSubmitted: (_) => _searchByName(),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                FilledButton(
-                  onPressed: _busyKey == 'search' ? null : _searchByName,
-                  child: Text(
-                    _busyKey == 'search'
-                        ? t.text('Searching...')
-                        : t.text('Search'),
-                  ),
-                ),
-              ],
+            SizedBox(height: compact ? 10 : 12),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final stacked = compact || constraints.maxWidth < 520;
+                if (stacked) {
+                  return Column(
+                    children: [
+                      searchField,
+                      const SizedBox(height: 10),
+                      SizedBox(width: double.infinity, child: searchButton),
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: searchField),
+                    const SizedBox(width: 10),
+                    searchButton,
+                  ],
+                );
+              },
             ),
             if (showEmptySearchResult) ...[
               const SizedBox(height: 16),
@@ -757,23 +889,42 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
   }
 
   Widget _buildOverviewBody(FriendsOverview overview, Map<String, String> t) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildSearchCard(t),
-        const SizedBox(height: 20),
-        _buildIncomingRequestSection(overview, t),
-        const SizedBox(height: 20),
-        _buildOutgoingRequestSection(overview, t),
-        const SizedBox(height: 20),
-        _buildFriendListSection(overview, t),
-        const SizedBox(height: 20),
-        _buildBlockedUsersSection(overview, t),
-      ],
+    final compact = _isCompactLayout(context);
+    final sectionSpacing = compact ? 16.0 : 20.0;
+
+    return RefreshIndicator(
+      onRefresh: () => _refreshFriendsOverview(silent: false),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: _pagePadding(context),
+        children: [
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 920),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildSearchCard(t),
+                  SizedBox(height: sectionSpacing),
+                  _buildIncomingRequestSection(overview, t),
+                  SizedBox(height: sectionSpacing),
+                  _buildOutgoingRequestSection(overview, t),
+                  SizedBox(height: sectionSpacing),
+                  _buildFriendListSection(overview, t),
+                  SizedBox(height: sectionSpacing),
+                  _buildBlockedUsersSection(overview, t),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   List<Widget> _buildSearchActions(FriendSearchResult result) {
+    final compactFilledStyle = _compactFilledButtonStyle(context);
+    final compactOutlinedStyle = _compactOutlinedButtonStyle(context);
     final user = result.user;
     return [
       if (result.relationshipStatus == 'none')
@@ -785,6 +936,7 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
                   () => _friendsService.sendFriendRequest(user.userId),
                   successMessage: _t.text('Friend request sent'),
                 ),
+          style: compactFilledStyle,
           icon: const Icon(Icons.person_add_alt_1),
           label: Text(_t.text('Add Friend')),
         ),
@@ -797,6 +949,7 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
                   () => _friendsService.blockUser(user.userId),
                   successMessage: _t.text('Player blocked'),
                 ),
+          style: compactOutlinedStyle,
           icon: const Icon(Icons.block),
           label: Text(_t.text('Block')),
         ),
@@ -804,6 +957,7 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
   }
 
   List<Widget> _buildOutgoingRequestActions(FriendRequestItem item) {
+    final compactOutlinedStyle = _compactOutlinedButtonStyle(context);
     return [
       OutlinedButton(
         onPressed: _isBusy('cancel-${item.id}')
@@ -812,12 +966,14 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
                 'cancel-${item.id}',
                 () => _friendsService.cancelFriendRequest(item.id),
               ),
+        style: compactOutlinedStyle,
         child: Text(_t.text('Cancel')),
       ),
     ];
   }
 
   List<Widget> _buildFriendActions(SocialUser friend) {
+    final compactOutlinedStyle = _compactOutlinedButtonStyle(context);
     return [
       OutlinedButton.icon(
         onPressed: _isBusy('remove-${friend.userId}')
@@ -827,6 +983,7 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
                 () => _friendsService.removeFriend(friend.userId),
                 successMessage: _t.text('Friend removed'),
               ),
+        style: compactOutlinedStyle,
         icon: const Icon(Icons.person_remove_outlined),
         label: Text(_t.text('Remove Friend')),
       ),
@@ -838,6 +995,7 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
                 () => _friendsService.blockUser(friend.userId),
                 successMessage: _t.text('Player blocked'),
               ),
+        style: compactOutlinedStyle,
         icon: const Icon(Icons.block),
         label: Text(_t.text('Block')),
       ),
@@ -845,6 +1003,7 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
   }
 
   List<Widget> _buildBlockedUserActions(SocialUser user) {
+    final compactOutlinedStyle = _compactOutlinedButtonStyle(context);
     return [
       OutlinedButton(
         onPressed: _isBusy('unblock-${user.userId}')
@@ -854,6 +1013,7 @@ class _FriendsPageState extends State<FriendsPage> with RouteAware {
                 () => _friendsService.unblockUser(user.userId),
                 successMessage: _t.text('Unblocked'),
               ),
+        style: compactOutlinedStyle,
         child: Text(_t.text('Unblock')),
       ),
     ];

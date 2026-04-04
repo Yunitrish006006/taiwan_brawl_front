@@ -194,6 +194,7 @@ class _PlayerHudCard extends StatelessWidget {
     required this.maxTowerHp,
     required this.color,
     required this.alignEnd,
+    this.compact = false,
   });
 
   final String title;
@@ -202,12 +203,13 @@ class _PlayerHudCard extends StatelessWidget {
   final int maxTowerHp;
   final Color color;
   final bool alignEnd;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final progress = maxTowerHp == 0 ? 0.0 : towerHp / maxTowerHp;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(compact ? 12 : 16),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(22),
@@ -223,33 +225,37 @@ class _PlayerHudCard extends StatelessWidget {
             style: TextStyle(
               color: color.withValues(alpha: 0.9),
               fontWeight: FontWeight.w700,
+              fontSize: compact ? 11 : 13,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: compact ? 2 : 4),
           Text(
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w800,
-              fontSize: 18,
+              fontSize: compact ? 14 : 18,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: compact ? 8 : 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
               value: progress.clamp(0.0, 1.0),
-              minHeight: 12,
+              minHeight: compact ? 8 : 12,
               backgroundColor: Colors.white.withValues(alpha: 0.08),
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: compact ? 6 : 8),
           Text(
             '$towerHp / $maxTowerHp',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.86)),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.86),
+              fontSize: compact ? 11 : 13,
+            ),
           ),
         ],
       ),
@@ -258,15 +264,19 @@ class _PlayerHudCard extends StatelessWidget {
 }
 
 class _ElixirMeter extends StatelessWidget {
-  const _ElixirMeter({required this.value});
+  const _ElixirMeter({required this.value, this.compact = false});
 
   final double value;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final active = value.floor();
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 10 : 12,
+        vertical: compact ? 8 : 10,
+      ),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(18),
@@ -275,13 +285,17 @@ class _ElixirMeter extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.water_drop_rounded, color: Color(0xFFB388FF)),
-          const SizedBox(width: 8),
+          Icon(
+            Icons.water_drop_rounded,
+            color: const Color(0xFFB388FF),
+            size: compact ? 16 : 20,
+          ),
+          SizedBox(width: compact ? 6 : 8),
           ...List.generate(10, (index) {
             return Container(
-              width: 10,
-              height: 18,
-              margin: EdgeInsets.only(right: index == 9 ? 0 : 4),
+              width: compact ? 7 : 10,
+              height: compact ? 14 : 18,
+              margin: EdgeInsets.only(right: index == 9 ? 0 : (compact ? 3 : 4)),
               decoration: BoxDecoration(
                 color: index < active
                     ? const Color(0xFF9B5DE5)
@@ -297,15 +311,23 @@ class _ElixirMeter extends StatelessWidget {
 }
 
 class _ArenaLegendChip extends StatelessWidget {
-  const _ArenaLegendChip({required this.label, required this.color});
+  const _ArenaLegendChip({
+    required this.label,
+    required this.color,
+    this.compact = false,
+  });
 
   final String label;
   final Color color;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 10 : 12,
+        vertical: compact ? 6 : 8,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(999),
@@ -313,22 +335,34 @@ class _ArenaLegendChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w700,
+          fontSize: compact ? 11 : 13,
+        ),
       ),
     );
   }
 }
 
 class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.icon, required this.label});
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+    this.compact = false,
+  });
 
   final IconData icon;
   final String label;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 10 : 12,
+        vertical: compact ? 6 : 8,
+      ),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(999),
@@ -336,9 +370,15 @@ class _InfoChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: Colors.white70),
-          const SizedBox(width: 6),
-          Text(label, style: const TextStyle(color: Colors.white)),
+          Icon(icon, size: compact ? 14 : 16, color: Colors.white70),
+          SizedBox(width: compact ? 4 : 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: compact ? 11 : 13,
+            ),
+          ),
         ],
       ),
     );
@@ -346,15 +386,23 @@ class _InfoChip extends StatelessWidget {
 }
 
 class _FieldLabel extends StatelessWidget {
-  const _FieldLabel({required this.label, required this.color});
+  const _FieldLabel({
+    required this.label,
+    required this.color,
+    this.compact = false,
+  });
 
   final String label;
   final Color color;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 8 : 10,
+        vertical: compact ? 4 : 6,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(999),
@@ -362,7 +410,11 @@ class _FieldLabel extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w700,
+          fontSize: compact ? 11 : 13,
+        ),
       ),
     );
   }

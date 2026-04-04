@@ -186,62 +186,71 @@ class _TowerToken extends StatelessWidget {
     required this.label,
     required this.color,
     required this.towerHp,
+    this.compact = false,
   });
 
   final String label;
   final Color color;
   final int towerHp;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    final tokenWidth = compact ? 54.0 : 68.0;
+    final tokenHeight = compact ? 68.0 : 84.0;
+    final iconSize = compact ? 28.0 : 36.0;
+    final labelWidth = compact ? 76.0 : 98.0;
+
     return Column(
       children: [
         Container(
-          width: 68,
-          height: 84,
+          width: tokenWidth,
+          height: tokenHeight,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [color, color.withValues(alpha: 0.72)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(compact ? 18 : 22),
             border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
             boxShadow: [
               BoxShadow(
                 color: color.withValues(alpha: 0.32),
-                blurRadius: 18,
-                offset: const Offset(0, 10),
+                blurRadius: compact ? 12 : 18,
+                offset: Offset(0, compact ? 7 : 10),
               ),
             ],
           ),
           alignment: Alignment.center,
-          child: const Icon(
+          child: Icon(
             Icons.castle_rounded,
             color: Colors.white,
-            size: 36,
+            size: iconSize,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: compact ? 5 : 8),
         SizedBox(
-          width: 98,
+          width: labelWidth,
           child: Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               color: Color(0xFF102030),
               fontWeight: FontWeight.w700,
+              fontSize: compact ? 11 : 14,
             ),
           ),
         ),
-        const SizedBox(height: 2),
+        SizedBox(height: compact ? 1 : 2),
         Text(
           '$towerHp',
-          style: const TextStyle(
+          style: TextStyle(
             color: Color(0xFF102030),
             fontWeight: FontWeight.w800,
+            fontSize: compact ? 11 : 13,
           ),
         ),
       ],
