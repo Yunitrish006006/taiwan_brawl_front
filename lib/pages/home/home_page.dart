@@ -15,6 +15,7 @@ import '../../services/royale_service.dart';
 import '../../constants/app_constants.dart';
 import '../../main.dart';
 import '../../utils/snackbar.dart';
+import '../../widgets/friend_search_dialog.dart';
 import '../../widgets/app_version_text.dart';
 import '../game/royale_arena_page.dart';
 
@@ -233,6 +234,15 @@ class _HomePageState extends State<HomePage> with RouteAware {
     await _runDrawerFriendAction(
       'room-reject-${invite.id}',
       () => _friendsService.rejectRoomInvite(invite.id),
+    );
+  }
+
+  Future<void> _openFriendSearchDialog() async {
+    await showFriendSearchDialog(
+      context: context,
+      friendsService: _friendsService,
+      onRefreshFriends: _refreshFriendsOverview,
+      onMessage: _showSnackBar,
     );
   }
 

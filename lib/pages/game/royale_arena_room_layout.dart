@@ -87,13 +87,33 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
-                child: Text(
-                  _t.text('Friend List'),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _t.text('Friend List'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    FilledButton.icon(
+                      onPressed: _openFriendSearchDialog,
+                      icon: const Icon(Icons.person_search_rounded, size: 18),
+                      label: Text(_t.text('Search players')),
+                      style: FilledButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        backgroundColor: const Color(0xFFDDEBFF),
+                        foregroundColor: const Color(0xFF184D8E),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Padding(

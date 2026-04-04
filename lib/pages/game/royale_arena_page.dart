@@ -16,6 +16,7 @@ import '../../services/host_battle_engine.dart';
 import '../../services/locale_provider.dart';
 import '../../services/royale_battle_rules.dart' as battle_rules;
 import '../../services/royale_service.dart';
+import '../../widgets/friend_search_dialog.dart';
 
 part 'royale_arena_battlefield_layout.dart';
 part 'royale_arena_room_layout.dart';
@@ -310,6 +311,15 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         inviteeUserId: friend.userId,
       ),
       successMessage: _t.text('Battle invite sent'),
+    );
+  }
+
+  Future<void> _openFriendSearchDialog() async {
+    await showFriendSearchDialog(
+      context: context,
+      friendsService: _friendsService,
+      onRefreshFriends: _refreshFriendState,
+      onMessage: _showSnackBar,
     );
   }
 
@@ -688,15 +698,6 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
 
   bool get _hasDeploymentTarget {
     return _selectedCardIds.isNotEmpty || _dragTargetActive;
-  }
-
-  void _clearSelection() {
-    setState(() {
-      _selectedCardIds.clear();
-      if (!_dragTargetActive) {
-        _aimPoint = null;
-      }
-    });
   }
 
   Offset? _normalizedDropPointForGlobalOffset(Offset globalOffset) {

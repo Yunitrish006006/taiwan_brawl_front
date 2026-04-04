@@ -11,7 +11,6 @@ import 'pages/profile/profile_page.dart';
 import 'pages/game/archery_game_page.dart';
 import 'pages/game/royale_deck_page.dart';
 import 'pages/game/royale_lobby_page.dart';
-import 'pages/social/friends_page.dart';
 import 'services/api_client.dart';
 import 'services/auth_service.dart';
 import 'services/friends_overview_sync_service.dart';
@@ -100,7 +99,6 @@ class MainApp extends StatelessWidget {
             '/login': (_) => const AuthPage(),
             '/home': (_) => const HomePage(),
             '/profile': (_) => const ProfilePage(),
-            '/friends': (_) => const FriendsPage(),
             '/admin/cards': (_) => const CardManagementPage(),
             '/admin/roles': (_) => const RoleManagementPage(),
             '/archery': (_) => const ArcheryGamePage(),

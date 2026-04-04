@@ -612,13 +612,12 @@ class _CardManagementPageState extends State<CardManagementPage> {
       );
     }
 
-    return WillPopScope(
-      onWillPop: () async {
-        if (phoneLayout && _showMobileEditor) {
+    return PopScope<void>(
+      canPop: !(phoneLayout && _showMobileEditor),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && phoneLayout && _showMobileEditor) {
           _closeMobileEditor();
-          return false;
         }
-        return true;
       },
       child: Scaffold(
         appBar: AppBar(
