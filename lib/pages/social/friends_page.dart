@@ -8,7 +8,6 @@ import '../../services/friends_service.dart';
 import '../../services/locale_provider.dart';
 import '../../services/royale_service.dart';
 import '../game/royale_arena_page.dart';
-import '../game/royale_lobby_page.dart';
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({super.key});
@@ -196,14 +195,20 @@ class _FriendsPageState extends State<FriendsPage> {
 
   Future<void> _acceptRoomInvite(RoomInviteItem invite) async {
     await _runAction('room-accept-${invite.id}', () async {
+      final deck = await _pickDeck();
+      if (deck == null) {
+        return;
+      }
       final result = await _friendsService.acceptRoomInvite(invite.id);
+      final room = await _royaleService.joinRoom(
+        roomCode: result.roomCode,
+        deckId: deck.id,
+      );
       if (!mounted) {
         return;
       }
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => RoyaleLobbyPage(initialRoomCode: result.roomCode),
-        ),
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => RoyaleArenaPage(roomCode: room.code)),
       );
     });
   }
