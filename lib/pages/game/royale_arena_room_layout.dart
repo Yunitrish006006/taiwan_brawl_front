@@ -536,6 +536,108 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     );
   }
 
+  Widget _buildWideDesktopArena({
+    required RoyaleRoomSnapshot room,
+    required RoyaleBattleView battle,
+    required RoyalePlayerView? me,
+    required RoyalePlayerView? opponent,
+    required String mySide,
+    required List<RoyaleCard> selectedCards,
+    required BoxConstraints constraints,
+  }) {
+    final viewportHeight = constraints.maxHeight.isFinite
+        ? constraints.maxHeight
+        : MediaQuery.sizeOf(context).height;
+    final maxContentWidth = constraints.maxWidth < 1380
+        ? constraints.maxWidth
+        : 1380.0;
+    final pagePadding = constraints.maxWidth < 1280 ? 16.0 : 20.0;
+    final columnGap = constraints.maxWidth < 1280 ? 16.0 : 20.0;
+    final sidebarWidth = constraints.maxWidth >= 1360 ? 392.0 : 352.0;
+    final battlefieldCompact =
+        viewportHeight < 820 || constraints.maxWidth < 1320;
+    final panelHorizontalChrome = battlefieldCompact ? 20.0 : 28.0;
+    final panelVerticalChrome = battlefieldCompact ? 72.0 : 88.0;
+    var contentHeight = viewportHeight - pagePadding * 2;
+    if (contentHeight < 0) {
+      contentHeight = 0;
+    }
+    var battlefieldLaneWidth =
+        maxContentWidth - pagePadding * 2 - sidebarWidth - columnGap;
+    if (battlefieldLaneWidth < 300) {
+      battlefieldLaneWidth = 300;
+    }
+    var boardWidth =
+        (contentHeight - panelVerticalChrome) * _battlefieldAspectRatio;
+    final boardWidthLimit = battlefieldLaneWidth - panelHorizontalChrome;
+    if (boardWidth > _battlefieldDesktopMaxWidth) {
+      boardWidth = _battlefieldDesktopMaxWidth;
+    }
+    if (boardWidth > boardWidthLimit) {
+      boardWidth = boardWidthLimit;
+    }
+    if (boardWidth < 280) {
+      boardWidth = 280;
+    }
+    final boardHeight = boardWidth / _battlefieldAspectRatio;
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1380),
+        child: Padding(
+          padding: EdgeInsets.all(pagePadding),
+          child: SizedBox(
+            height: contentHeight,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: _buildBattlefieldPanel(
+                      room: room,
+                      battle: battle,
+                      mySide: mySide,
+                      selectedCards: selectedCards,
+                      boardWidth: boardWidth,
+                      boardHeight: boardHeight,
+                      compact: battlefieldCompact,
+                    ),
+                  ),
+                ),
+                SizedBox(width: columnGap),
+                SizedBox(
+                  width: sidebarWidth,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildHudSection(
+                        battle: battle,
+                        me: me,
+                        opponent: opponent,
+                        mySide: mySide,
+                        simulationMode: room.simulationMode,
+                        compact: true,
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: _buildCommandDeck(
+                          battle: battle,
+                          compact: true,
+                          selectedCards: selectedCards,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildLobby(RoyaleRoomSnapshot room) {
     final myUserId = room.me?.userId;
     final isHostMode = room.simulationMode == 'host';
@@ -722,6 +824,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 880;
         final compactPhone = constraints.maxWidth < 600;
+        final wideDesktop = constraints.maxWidth >= 1100;
         if (compactPhone) {
           return _buildImmersiveArena(
             room: room,
@@ -729,6 +832,17 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
             mySide: mySide,
             selectedCards: selectedCards,
             selectedCost: selectedCost,
+            constraints: constraints,
+          );
+        }
+        if (wideDesktop) {
+          return _buildWideDesktopArena(
+            room: room,
+            battle: battle,
+            me: me,
+            opponent: opponent,
+            mySide: mySide,
+            selectedCards: selectedCards,
             constraints: constraints,
           );
         }
