@@ -21,6 +21,68 @@ class _GlowOrb extends StatelessWidget {
   }
 }
 
+class _ArenaFriendInviteButton extends StatelessWidget {
+  const _ArenaFriendInviteButton({
+    required this.label,
+    required this.onTap,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    this.isLoading = false,
+  });
+
+  final String label;
+  final VoidCallback? onTap;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null && !isLoading;
+    final effectiveForeground = enabled
+        ? foregroundColor
+        : foregroundColor.withValues(alpha: 0.45);
+
+    return SizedBox(
+      height: 32,
+      child: Material(
+        color: enabled
+            ? backgroundColor
+            : backgroundColor.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Center(
+              child: isLoading
+                  ? SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          effectiveForeground,
+                        ),
+                      ),
+                    )
+                  : Text(
+                      label,
+                      style: TextStyle(
+                        color: effectiveForeground,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _GlassPanel extends StatelessWidget {
   const _GlassPanel({
     required this.child,

@@ -1,6 +1,141 @@
 part of 'royale_arena_page.dart';
 
 extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
+  Widget _buildRoomFriendInviteTile(SocialUser friend) {
+    final isBusy = _isFriendDrawerBusy('invite-${friend.userId}');
+    final canInvite = _canInviteFriendsFromDrawer;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundImage:
+                friend.avatarUrl != null && friend.avatarUrl!.isNotEmpty
+                ? NetworkImage(friend.avatarUrl!)
+                : null,
+            child: friend.avatarUrl != null && friend.avatarUrl!.isNotEmpty
+                ? null
+                : Text(friend.name.isEmpty ? '?' : friend.name.characters.first),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  friend.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  friend.isOnline
+                      ? _t.text('Online')
+                      : friend.lastActiveAt == null || friend.lastActiveAt!.isEmpty
+                      ? _t.text('Offline')
+                      : '${_t.text('Last online')} ${friend.lastActiveAt}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          if (canInvite) ...[
+            const SizedBox(width: 12),
+            _ArenaFriendInviteButton(
+              label: _t.text('Invite Battle'),
+              backgroundColor: const Color(0xFFDDEBFF),
+              foregroundColor: const Color(0xFF184D8E),
+              onTap: _friendDrawerBusyKey == null
+                  ? () => _inviteFriendFromDrawer(friend)
+                  : null,
+              isLoading: isBusy,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoomFriendDrawer() {
+    final overview = _friendsOverview;
+    final friends = overview?.friends ?? const <SocialUser>[];
+
+    return Drawer(
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF07111F), Color(0xFF0D1B2A), Color(0xFF14253A)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+                child: Text(
+                  _t.text('Friend List'),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+                child: Text(
+                  _canInviteFriendsFromDrawer
+                      ? '${_t.text('Room')} ${widget.roomCode}'
+                      : _t.text('Battle starts as soon as both players are ready'),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ),
+              if (overview == null)
+                const Expanded(
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (friends.isEmpty)
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      _t.text('No friends yet'),
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    itemCount: friends.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) =>
+                        _buildRoomFriendInviteTile(friends[index]),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildHandInfoChips(
     RoyaleBattleView battle,
     List<RoyaleCard> selectedCards,

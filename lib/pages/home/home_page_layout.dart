@@ -32,13 +32,182 @@ extension _HomePageLayout on _HomePageState {
     );
   }
 
-  Widget _buildDrawerFriendTile(SocialUser friend) {
-    final subtitle = _friendStatusText(friend);
+  Widget _buildDrawerIconActionButton({
+    required IconData icon,
+    required Color backgroundColor,
+    required Color foregroundColor,
+    required VoidCallback? onTap,
+    bool isLoading = false,
+  }) {
+    final isEnabled = onTap != null && !isLoading;
+    final effectiveForeground = isEnabled
+        ? foregroundColor
+        : foregroundColor.withValues(alpha: 0.45);
 
-    return ListTile(
-      dense: true,
-      contentPadding: EdgeInsets.zero,
-      leading: Stack(
+    return SizedBox(
+      width: 32,
+      height: 32,
+      child: Material(
+        color: isEnabled
+            ? backgroundColor
+            : backgroundColor.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: isEnabled ? onTap : null,
+          borderRadius: BorderRadius.circular(10),
+          child: Center(
+            child: isLoading
+                ? SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        effectiveForeground,
+                      ),
+                    ),
+                  )
+                : Icon(icon, size: 17, color: effectiveForeground),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerTextActionButton({
+    required String label,
+    required Color backgroundColor,
+    required Color foregroundColor,
+    required VoidCallback? onTap,
+    bool isLoading = false,
+  }) {
+    final isEnabled = onTap != null && !isLoading;
+    final effectiveForeground = isEnabled
+        ? foregroundColor
+        : foregroundColor.withValues(alpha: 0.45);
+
+    return SizedBox(
+      height: 32,
+      child: Material(
+        color: isEnabled
+            ? backgroundColor
+            : backgroundColor.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: isEnabled ? onTap : null,
+          borderRadius: BorderRadius.circular(10),
+          child: Center(
+            child: isLoading
+                ? SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        effectiveForeground,
+                      ),
+                    ),
+                  )
+                : Text(
+                    label,
+                    style: TextStyle(
+                      color: effectiveForeground,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerFriendTileFrame({
+    required Widget avatar,
+    required String title,
+    required String subtitle,
+    Widget? trailing,
+    double trailingWidth = 0,
+    Color? backgroundColor,
+    Color? borderColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16),
+        border: borderColor == null ? null : Border.all(color: borderColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          avatar,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (trailing != null) ...[
+            const SizedBox(width: 12),
+            SizedBox(width: trailingWidth, child: trailing),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerRoomInviteActions(RoomInviteItem invite) {
+    final isAcceptBusy = _isBusy('room-accept-${invite.id}');
+    final isRejectBusy = _isBusy('room-reject-${invite.id}');
+    final isActionLocked = _busyKey != null && !isAcceptBusy && !isRejectBusy;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        _buildDrawerIconActionButton(
+          icon: Icons.close_rounded,
+          backgroundColor: const Color(0xFFFFE1DE),
+          foregroundColor: const Color(0xFF9A2F22),
+          onTap: isActionLocked ? null : () => _rejectRoomInvite(invite),
+          isLoading: isRejectBusy,
+        ),
+        const SizedBox(width: 8),
+        _buildDrawerIconActionButton(
+          icon: Icons.check_rounded,
+          backgroundColor: const Color(0xFFDDF4E4),
+          foregroundColor: const Color(0xFF17663A),
+          onTap: isActionLocked ? null : () => _acceptRoomInvite(invite),
+          isLoading: isAcceptBusy,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDrawerFriendTile(
+    SocialUser friend, {
+    RoomInviteItem? roomInvite,
+  }) {
+    return _buildDrawerFriendTileFrame(
+      avatar: Stack(
         clipBehavior: Clip.none,
         children: [
           _buildUserAvatar(
@@ -64,13 +233,58 @@ extension _HomePageLayout on _HomePageState {
           ),
         ],
       ),
-      title: Text(
-        friend.name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontWeight: FontWeight.w700),
+      title: friend.name,
+      subtitle: roomInvite != null
+          ? '${_t.text('Room')} ${roomInvite.roomCode}'
+          : _friendStatusText(friend),
+      trailingWidth: roomInvite != null ? 72 : 0,
+      trailing: roomInvite != null ? _buildDrawerRoomInviteActions(roomInvite) : null,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      borderColor: Theme.of(
+        context,
+      ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+    );
+  }
+
+  Widget _buildIncomingRequestTile(FriendRequestItem item) {
+    final isAcceptBusy = _isBusy('accept-${item.id}');
+    final isRejectBusy = _isBusy('reject-${item.id}');
+    final isActionLocked = _busyKey != null && !isAcceptBusy && !isRejectBusy;
+
+    return _buildDrawerFriendTileFrame(
+      avatar: _buildUserAvatar(
+        label: item.user.name,
+        avatarUrl: item.user.avatarUrl,
+        radius: 18,
+        fallbackBackgroundColor: const Color(0xFF8A5A00),
       ),
-      subtitle: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
+      title: item.user.name,
+      subtitle: _t.text('They invited you'),
+      trailingWidth: 92,
+      trailing: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildDrawerTextActionButton(
+            label: _t.text('Accept'),
+            backgroundColor: const Color(0xFFDDF4E4),
+            foregroundColor: const Color(0xFF17663A),
+            onTap: isActionLocked ? null : () => _acceptIncomingRequest(item),
+            isLoading: isAcceptBusy,
+          ),
+          const SizedBox(height: 8),
+          _buildDrawerTextActionButton(
+            label: _t.text('Reject'),
+            backgroundColor: const Color(0xFFFFE1DE),
+            foregroundColor: const Color(0xFF9A2F22),
+            onTap: isActionLocked ? null : () => _rejectIncomingRequest(item),
+            isLoading: isRejectBusy,
+          ),
+        ],
+      ),
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      borderColor: Theme.of(
+        context,
+      ).colorScheme.outlineVariant.withValues(alpha: 0.5),
     );
   }
 
@@ -133,7 +347,12 @@ extension _HomePageLayout on _HomePageState {
   }
 
   Widget _buildDrawerFriendList(FriendsOverview? overview) {
+    final roomInvites = overview?.roomInvites ?? const <RoomInviteItem>[];
+    final incomingRequests = overview?.incomingRequests ?? const <FriendRequestItem>[];
     final friends = overview?.friends ?? const <SocialUser>[];
+    final roomInviteByInviterUserId = <int, RoomInviteItem>{
+      for (final invite in roomInvites) invite.inviter.userId: invite,
+    };
 
     if (_isLoadingFriends && overview == null) {
       return const Center(child: CircularProgressIndicator());
@@ -141,40 +360,34 @@ extension _HomePageLayout on _HomePageState {
     if (overview == null) {
       return Center(child: Text(_t.text('Failed to load friend data')));
     }
-    if (friends.isEmpty) {
+    if (incomingRequests.isEmpty && friends.isEmpty) {
       return Center(child: Text(_t.text('No friends yet')));
     }
 
-    return ListView.separated(
+    return ListView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      itemCount: friends.length,
-      separatorBuilder: (_, _) => const Divider(height: 1),
-      itemBuilder: (context, index) => _buildDrawerFriendTile(friends[index]),
+      children: [
+        for (var index = 0; index < incomingRequests.length; index++) ...[
+          _buildIncomingRequestTile(incomingRequests[index]),
+          const SizedBox(height: 8),
+        ],
+        for (var index = 0; index < friends.length; index++) ...[
+          _buildDrawerFriendTile(
+            friends[index],
+            roomInvite: roomInviteByInviterUserId[friends[index].userId],
+          ),
+          if (index < friends.length - 1) const SizedBox(height: 8),
+        ],
+      ],
     );
   }
 
-  Widget _buildDrawerFriendHeader(FriendsOverview? overview) {
-    final friends = overview?.friends ?? const <SocialUser>[];
+  Widget _buildDrawerFriendHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              _t.text('Friend List'),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-            ),
-          ),
-          if (overview != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFF16324F).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text('${friends.length} ${_t.text('people')}'),
-            ),
-        ],
+      child: Text(
+        _t.text('Friend List'),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
       ),
     );
   }
@@ -188,42 +401,14 @@ extension _HomePageLayout on _HomePageState {
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 8),
-        const SizedBox(height: 16),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: () => _openRoute('/profile'),
-          icon: const Icon(Icons.edit),
-          label: Text(t.text('Edit Profile')),
-        ),
-        const SizedBox(height: 12),
-        FilledButton.icon(
-          onPressed: () => _openRoute('/friends'),
-          icon: const Icon(Icons.group_outlined),
-          label: Text(t.text('Friends')),
-        ),
-        if (_canManageCards(user)) ...[
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () => _openRoute('/admin/cards'),
-            icon: const Icon(Icons.style_outlined),
-            label: Text(t.text('Card Management')),
-          ),
-        ],
-        if (user.role == 'admin') ...[
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () => _openRoute('/admin/roles'),
-            icon: const Icon(Icons.admin_panel_settings_outlined),
-            label: Text(t.text('Role Management')),
-          ),
-        ],
         const SizedBox(height: 24),
-        ElevatedButton.icon(
-          onPressed: () => _openRoute('/archery'),
-          icon: const Icon(Icons.architecture),
-          label: Text(t.text('Archery Game')),
+        Text(
+          t.text('Mini Royale Lobby Battle'),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         FilledButton.icon(
           onPressed: () => _openRoute('/royale-deck'),
           icon: const Icon(Icons.style_outlined),
@@ -234,6 +419,12 @@ extension _HomePageLayout on _HomePageState {
           onPressed: () => _openRoute('/royale-lobby'),
           icon: const Icon(Icons.sports_esports_outlined),
           label: Text(t.text('Mini Royale Lobby Battle')),
+        ),
+        const SizedBox(height: 12),
+        ElevatedButton.icon(
+          onPressed: () => _openRoute('/archery'),
+          icon: const Icon(Icons.architecture),
+          label: Text(t.text('Archery Game')),
         ),
         const SizedBox(height: 24),
         const AppVersionText(),
@@ -250,6 +441,11 @@ extension _HomePageLayout on _HomePageState {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildDrawerHeader(user),
+            _buildDrawerNavigationTile(
+              icon: Icons.edit_outlined,
+              label: _t.text('Edit Profile'),
+              onTap: () => _openRoute('/profile', closeDrawer: true),
+            ),
             _buildDrawerNavigationTile(
               icon: Icons.group_outlined,
               label: _t.text('Friends'),
@@ -272,7 +468,7 @@ extension _HomePageLayout on _HomePageState {
               title: Text(_t.text('Refresh Friends List')),
               onTap: _loadFriends,
             ),
-            _buildDrawerFriendHeader(overview),
+            _buildDrawerFriendHeader(),
             Expanded(child: _buildDrawerFriendList(overview)),
           ],
         ),
