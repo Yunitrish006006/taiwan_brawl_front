@@ -253,7 +253,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
           const SizedBox(height: 8),
           Text(
             t.text(
-              'Choose an 8-card deck. After creating the room, send the room code to your friend so both of you can get ready.',
+              'Choose an 8-card deck. After creating the room, open the drawer inside the room and invite a friend from your friend list.',
             ),
             style: const TextStyle(color: Colors.white70),
           ),

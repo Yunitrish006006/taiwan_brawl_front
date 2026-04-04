@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import '../../constants/app_constants.dart';
+import '../../models/friends_models.dart';
 import '../../models/royale_models.dart';
 import '../../services/api_client.dart';
 import '../../services/friends_service.dart';
@@ -43,6 +45,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   final List<String> _selectedCardIds = [];
   final Set<int> _friendUserIds = <int>{};
   final Set<int> _sentFriendRequestUserIds = <int>{};
+  FriendsOverview? _friendsOverview;
   WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _socketSubscription;
   Timer? _pingTimer;
@@ -64,6 +67,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   int _socketFailureCount = 0;
   DateTime? _lastHostStateSyncAt;
   Map<String, dynamic>? _pendingHostState;
+  String? _friendDrawerBusyKey;
 
   Map<String, String> get _t => context.read<LocaleProvider>().translation;
 
@@ -231,6 +235,63 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  bool _isFriendDrawerBusy(String key) => _friendDrawerBusyKey == key;
+
+  bool get _canInviteFriendsFromDrawer {
+    final room = _room;
+    if (room == null) {
+      return false;
+    }
+    return room.status == 'lobby' && room.players.length < 2;
+  }
+
+  Future<void> _runFriendDrawerAction(
+    String busyKey,
+    Future<void> Function() action, {
+    String? successMessage,
+  }) async {
+    if (_friendDrawerBusyKey != null) {
+      return;
+    }
+
+    setState(() {
+      _friendDrawerBusyKey = busyKey;
+    });
+
+    try {
+      await action();
+      await _refreshFriendState();
+      if (!mounted) {
+        return;
+      }
+      if (successMessage != null) {
+        _showSnackBar(successMessage);
+      }
+    } on ApiException catch (e) {
+      if (!mounted) {
+        return;
+      }
+      _showSnackBar(e.message);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _friendDrawerBusyKey = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _inviteFriendFromDrawer(SocialUser friend) async {
+    await _runFriendDrawerAction(
+      'invite-${friend.userId}',
+      () => _friendsService.sendRoomInvite(
+        roomCode: widget.roomCode,
+        inviteeUserId: friend.userId,
+      ),
+      successMessage: _t.text('Battle invite sent'),
+    );
   }
 
   void _applyRoomSnapshot(RoyaleRoomSnapshot room) {
@@ -435,6 +496,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         return;
       }
       setState(() {
+        _friendsOverview = overview;
         _friendUserIds
           ..clear()
           ..addAll(overview.friends.map((friend) => friend.userId));
@@ -983,11 +1045,20 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     final t = context.watch<LocaleProvider>().translation;
     return Scaffold(
       backgroundColor: const Color(0xFF07111F),
+      drawer: _buildRoomFriendDrawer(),
       appBar: AppBar(
         title: Text('${t.text('Room')} ${widget.roomCode}'),
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: () =>
+                Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false),
+            icon: const Icon(Icons.home_outlined),
+            tooltip: AppConstants.appName,
+          ),
+        ],
       ),
       extendBodyBehindAppBar: true,
       body: Container(
