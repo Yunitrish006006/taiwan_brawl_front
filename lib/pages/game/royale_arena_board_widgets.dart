@@ -186,74 +186,128 @@ class _TowerToken extends StatelessWidget {
     required this.label,
     required this.color,
     required this.towerHp,
+    required this.maxTowerHp,
     this.compact = false,
   });
 
   final String label;
   final Color color;
   final int towerHp;
+  final int maxTowerHp;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    final progress = maxTowerHp == 0 ? 0.0 : towerHp / maxTowerHp;
     final tokenWidth = compact ? 54.0 : 68.0;
     final tokenHeight = compact ? 68.0 : 84.0;
     final iconSize = compact ? 28.0 : 36.0;
-    final labelWidth = compact ? 76.0 : 98.0;
+    final bannerWidth = compact ? 88.0 : 112.0;
+    final labelWidth = compact ? 84.0 : 100.0;
+    final shellWidth = compact ? 96.0 : 120.0;
 
-    return Column(
-      children: [
-        Container(
-          width: tokenWidth,
-          height: tokenHeight,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [color, color.withValues(alpha: 0.72)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(compact ? 18 : 22),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.32),
-                blurRadius: compact ? 12 : 18,
-                offset: Offset(0, compact ? 7 : 10),
+    return SizedBox(
+      width: shellWidth,
+      height: tokenHeight,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          Positioned(
+            top: compact ? -18 : -22,
+            child: Container(
+              width: bannerWidth,
+              padding: EdgeInsets.fromLTRB(
+                compact ? 8 : 10,
+                compact ? 5 : 6,
+                compact ? 8 : 10,
+                compact ? 6 : 7,
               ),
-            ],
-          ),
-          alignment: Alignment.center,
-          child: Icon(
-            Icons.castle_rounded,
-            color: Colors.white,
-            size: iconSize,
-          ),
-        ),
-        SizedBox(height: compact ? 5 : 8),
-        SizedBox(
-          width: labelWidth,
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFF102030),
-              fontWeight: FontWeight.w700,
-              fontSize: compact ? 11 : 14,
+              decoration: BoxDecoration(
+                color: const Color(0xFF07111F).withValues(alpha: 0.84),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF020817).withValues(alpha: 0.28),
+                    blurRadius: compact ? 10 : 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$towerHp / $maxTowerHp',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: compact ? 10 : 11,
+                    ),
+                  ),
+                  SizedBox(height: compact ? 4 : 5),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: progress.clamp(0.0, 1.0),
+                      minHeight: compact ? 5 : 6,
+                      backgroundColor: Colors.white.withValues(alpha: 0.12),
+                      valueColor: AlwaysStoppedAnimation<Color>(color),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-        SizedBox(height: compact ? 1 : 2),
-        Text(
-          '$towerHp',
-          style: TextStyle(
-            color: Color(0xFF102030),
-            fontWeight: FontWeight.w800,
-            fontSize: compact ? 11 : 13,
+          Positioned(
+            top: 0,
+            child: Container(
+              width: tokenWidth,
+              height: tokenHeight,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [color, color.withValues(alpha: 0.72)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(compact ? 18 : 22),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.32),
+                    blurRadius: compact ? 12 : 18,
+                    offset: Offset(0, compact ? 7 : 10),
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.castle_rounded,
+                color: Colors.white,
+                size: iconSize,
+              ),
+            ),
           ),
-        ),
-      ],
+          Positioned(
+            bottom: compact ? -18 : -22,
+            child: SizedBox(
+              width: labelWidth,
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: const Color(0xFF102030),
+                  fontWeight: FontWeight.w700,
+                  fontSize: compact ? 11 : 14,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
