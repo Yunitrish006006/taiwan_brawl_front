@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,9 +9,11 @@ import '../../models/royale_models.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 import '../../services/friends_service.dart';
+import '../../services/friends_overview_sync_service.dart';
 import '../../services/locale_provider.dart';
 import '../../services/royale_service.dart';
 import '../../constants/app_constants.dart';
+import '../../main.dart';
 import '../../utils/snackbar.dart';
 import '../../widgets/app_version_text.dart';
 import '../game/royale_arena_page.dart';
@@ -23,13 +27,12 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with RouteAware {
   late final FriendsService _friendsService;
   late final RoyaleService _royaleService;
-  FriendsOverview? _friendsOverview;
-  int? _loadedUserId;
-  bool _isLoadingFriends = false;
   String? _busyKey;
+  int? _overviewRequestedForUserId;
+  PageRoute<dynamic>? _observedRoute;
 
   Map<String, String> get _t => context.read<LocaleProvider>().translation;
 
@@ -48,45 +51,49 @@ class _HomePageState extends State<HomePage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final userId = context.read<AuthService>().user?.id;
-    if (userId != null && userId != _loadedUserId) {
-      _loadedUserId = userId;
-      _loadFriends();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute<dynamic> && route != _observedRoute) {
+      if (_observedRoute != null) {
+        appRouteObserver.unsubscribe(this);
+      }
+      _observedRoute = route;
+      appRouteObserver.subscribe(this, route);
     }
-  }
-
-  Future<void> _loadFriends() async {
-    if (_isLoadingFriends) {
+    final auth = context.read<AuthService>();
+    final userId = auth.user?.id;
+    if (userId == null || userId == _overviewRequestedForUserId) {
       return;
     }
-
-    setState(() {
-      _isLoadingFriends = true;
-    });
-
-    try {
-      final overview = await _friendsService.fetchOverview();
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _friendsOverview = overview;
-      });
-    } on ApiException {
-      // Ignore transient home drawer load failures.
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingFriends = false;
-        });
-      }
-    }
+    _overviewRequestedForUserId = userId;
+    unawaited(
+      context.read<FriendsOverviewSyncService>().refreshFor(auth, silent: false),
+    );
   }
 
   bool _isBusy(String key) => _busyKey == key;
 
   void _showSnackBar(String message) {
     showAppSnackBar(context, message);
+  }
+
+  Future<void> _refreshFriendsOverview({bool silent = true}) async {
+    await context.read<FriendsOverviewSyncService>().refreshFor(
+      context.read<AuthService>(),
+      silent: silent,
+    );
+  }
+
+  @override
+  void didPopNext() {
+    unawaited(_refreshFriendsOverview(silent: false));
+  }
+
+  @override
+  void dispose() {
+    if (_observedRoute != null) {
+      appRouteObserver.unsubscribe(this);
+    }
+    super.dispose();
   }
 
   Future<void> _runDrawerFriendAction(
@@ -104,7 +111,10 @@ class _HomePageState extends State<HomePage> {
 
     try {
       await action();
-      await _loadFriends();
+      if (!mounted) {
+        return;
+      }
+      await _refreshFriendsOverview();
       if (!mounted) {
         return;
       }
@@ -236,13 +246,18 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthService>().user;
+    final friendsSync = context.watch<FriendsOverviewSyncService>();
     final t = context.watch<LocaleProvider>().translation;
     if (user == null) {
       return Scaffold(body: Center(child: Text(t.text('Please log in first'))));
     }
 
     return Scaffold(
-      drawer: _buildDrawer(user),
+      drawer: _buildDrawer(
+        user,
+        overview: friendsSync.overview,
+        isLoadingFriends: friendsSync.isLoading,
+      ),
       appBar: AppBar(
         title: const Text(AppConstants.appName),
         actions: [

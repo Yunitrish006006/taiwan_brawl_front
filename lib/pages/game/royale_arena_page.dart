@@ -9,7 +9,9 @@ import '../../constants/app_constants.dart';
 import '../../models/friends_models.dart';
 import '../../models/royale_models.dart';
 import '../../services/api_client.dart';
+import '../../services/auth_service.dart';
 import '../../services/friends_service.dart';
+import '../../services/friends_overview_sync_service.dart';
 import '../../services/host_battle_engine.dart';
 import '../../services/locale_provider.dart';
 import '../../services/royale_battle_rules.dart' as battle_rules;
@@ -43,9 +45,6 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   late final FriendsService _friendsService;
   final GlobalKey _arenaKey = GlobalKey();
   final List<String> _selectedCardIds = [];
-  final Set<int> _friendUserIds = <int>{};
-  final Set<int> _sentFriendRequestUserIds = <int>{};
-  FriendsOverview? _friendsOverview;
   WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _socketSubscription;
   Timer? _pingTimer;
@@ -239,6 +238,23 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
 
   bool _isFriendDrawerBusy(String key) => _friendDrawerBusyKey == key;
 
+  FriendsOverview? get _currentFriendsOverview =>
+      context.read<FriendsOverviewSyncService>().overview;
+
+  bool _isFriendUser(int userId) {
+    return _currentFriendsOverview?.friends.any(
+          (friend) => friend.userId == userId,
+        ) ??
+        false;
+  }
+
+  bool _hasOutgoingFriendRequest(int userId) {
+    return _currentFriendsOverview?.outgoingRequests.any(
+          (request) => request.user.userId == userId,
+        ) ??
+        false;
+  }
+
   bool get _canInviteFriendsFromDrawer {
     final room = _room;
     if (room == null) {
@@ -262,6 +278,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
 
     try {
       await action();
+      if (!mounted) {
+        return;
+      }
       await _refreshFriendState();
       if (!mounted) {
         return;
@@ -490,25 +509,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   }
 
   Future<void> _refreshFriendState() async {
-    try {
-      final overview = await _friendsService.fetchOverview();
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _friendsOverview = overview;
-        _friendUserIds
-          ..clear()
-          ..addAll(overview.friends.map((friend) => friend.userId));
-        _sentFriendRequestUserIds
-          ..clear()
-          ..addAll(
-            overview.outgoingRequests.map((request) => request.user.userId),
-          );
-      });
-    } on ApiException {
-      // Ignore friend sync failures inside battle room.
-    }
+    await context.read<FriendsOverviewSyncService>().refreshFor(
+      context.read<AuthService>(),
+    );
   }
 
   void _syncSelectionWithRoom(RoyaleRoomSnapshot room) {
@@ -906,8 +909,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
 
   Future<void> _sendFriendRequestToPlayer(RoyalePlayerView player) async {
     final userId = player.userId;
-    if (_sentFriendRequestUserIds.contains(userId) ||
-        _friendUserIds.contains(userId)) {
+    if (_hasOutgoingFriendRequest(userId) || _isFriendUser(userId)) {
       return;
     }
 
@@ -916,9 +918,10 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       if (!mounted) {
         return;
       }
-      setState(() {
-        _sentFriendRequestUserIds.add(userId);
-      });
+      await _refreshFriendState();
+      if (!mounted) {
+        return;
+      }
       _showSnackBar('${_t.text('Sent a friend request to')} ${player.name}');
     } on ApiException catch (e) {
       if (!mounted) {
@@ -932,10 +935,10 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     if (myUserId == null || player.userId == myUserId || player.userId <= 0) {
       return false;
     }
-    if (_friendUserIds.contains(player.userId)) {
+    if (_isFriendUser(player.userId)) {
       return false;
     }
-    if (_sentFriendRequestUserIds.contains(player.userId)) {
+    if (_hasOutgoingFriendRequest(player.userId)) {
       return false;
     }
     return true;
@@ -1043,9 +1046,11 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   @override
   Widget build(BuildContext context) {
     final t = context.watch<LocaleProvider>().translation;
+    final friendsOverview =
+        context.watch<FriendsOverviewSyncService>().overview;
     return Scaffold(
       backgroundColor: const Color(0xFF07111F),
-      drawer: _buildRoomFriendDrawer(),
+      drawer: _buildRoomFriendDrawer(friendsOverview),
       appBar: AppBar(
         title: Text('${t.text('Room')} ${widget.roomCode}'),
         backgroundColor: Colors.transparent,

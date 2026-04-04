@@ -1,12 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/friends_models.dart';
 import '../../models/royale_models.dart';
 import '../../services/api_client.dart';
+import '../../services/auth_service.dart';
 import '../../services/friends_service.dart';
+import '../../services/friends_overview_sync_service.dart';
 import '../../services/locale_provider.dart';
 import '../../services/royale_service.dart';
+import '../../main.dart';
 import '../game/royale_arena_page.dart';
 
 class FriendsPage extends StatefulWidget {
@@ -16,15 +21,15 @@ class FriendsPage extends StatefulWidget {
   State<FriendsPage> createState() => _FriendsPageState();
 }
 
-class _FriendsPageState extends State<FriendsPage> {
+class _FriendsPageState extends State<FriendsPage> with RouteAware {
   late final FriendsService _friendsService;
   late final RoyaleService _royaleService;
   final TextEditingController _searchController = TextEditingController();
 
-  FriendsOverview? _overview;
   List<FriendSearchResult> _searchResults = const [];
-  bool _isLoading = true;
   String? _busyKey;
+  int? _overviewRequestedForUserId;
+  PageRoute<dynamic>? _observedRoute;
 
   Map<String, String> get _t => context.read<LocaleProvider>().translation;
 
@@ -34,37 +39,49 @@ class _FriendsPageState extends State<FriendsPage> {
     final apiClient = ApiClient();
     _friendsService = FriendsService(apiClient);
     _royaleService = RoyaleService(apiClient);
-    _loadOverview();
   }
 
   @override
   void dispose() {
+    if (_observedRoute != null) {
+      appRouteObserver.unsubscribe(this);
+    }
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadOverview() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final overview = await _friendsService.fetchOverview();
-      if (!mounted) {
-        return;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute<dynamic> && route != _observedRoute) {
+      if (_observedRoute != null) {
+        appRouteObserver.unsubscribe(this);
       }
-      setState(() {
-        _overview = overview;
-      });
-    } on ApiException catch (e) {
-      _showSnackBar(e.message);
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      _observedRoute = route;
+      appRouteObserver.subscribe(this, route);
     }
+    final auth = context.read<AuthService>();
+    final userId = auth.user?.id;
+    if (userId == null || userId == _overviewRequestedForUserId) {
+      return;
+    }
+    _overviewRequestedForUserId = userId;
+    unawaited(
+      context.read<FriendsOverviewSyncService>().refreshFor(auth, silent: false),
+    );
+  }
+
+  Future<void> _refreshFriendsOverview({bool silent = true}) async {
+    await context.read<FriendsOverviewSyncService>().refreshFor(
+      context.read<AuthService>(),
+      silent: silent,
+    );
+  }
+
+  @override
+  void didPopNext() {
+    unawaited(_refreshFriendsOverview(silent: false));
   }
 
   Future<void> _runAction(
@@ -78,7 +95,10 @@ class _FriendsPageState extends State<FriendsPage> {
 
     try {
       await action();
-      await _loadOverview();
+      if (!mounted) {
+        return;
+      }
+      await _refreshFriendsOverview();
       if (!mounted) {
         return;
       }
@@ -842,10 +862,11 @@ class _FriendsPageState extends State<FriendsPage> {
   @override
   Widget build(BuildContext context) {
     final t = context.watch<LocaleProvider>().translation;
-    final overview = _overview;
+    final friendsSync = context.watch<FriendsOverviewSyncService>();
+    final overview = friendsSync.overview;
     return Scaffold(
       appBar: AppBar(title: Text(t.text('Friends'))),
-      body: _isLoading
+      body: friendsSync.isLoading && overview == null
           ? const Center(child: CircularProgressIndicator())
           : overview == null
           ? Center(child: Text(t.text('Failed to load friend data')))

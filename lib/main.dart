@@ -14,9 +14,13 @@ import 'pages/game/royale_lobby_page.dart';
 import 'pages/social/friends_page.dart';
 import 'services/api_client.dart';
 import 'services/auth_service.dart';
+import 'services/friends_overview_sync_service.dart';
 import 'services/theme_provider.dart';
 import 'services/ui_settings_provider.dart';
 import 'services/locale_provider.dart';
+
+final RouteObserver<PageRoute<dynamic>> appRouteObserver =
+    RouteObserver<PageRoute<dynamic>>();
 
 void main() {
   final apiClient = ApiClient();
@@ -24,6 +28,15 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService(apiClient)),
+        ChangeNotifierProxyProvider<AuthService, FriendsOverviewSyncService>(
+          create: (_) => FriendsOverviewSyncService(apiClient),
+          update: (_, auth, friendsSyncService) {
+            final service =
+                friendsSyncService ?? FriendsOverviewSyncService(apiClient);
+            service.syncAuth(auth);
+            return service;
+          },
+        ),
         ChangeNotifierProxyProvider<AuthService, ThemeProvider>(
           create: (_) => ThemeProvider(),
           update: (_, auth, themeProvider) {
@@ -56,6 +69,7 @@ class MainApp extends StatelessWidget {
       builder: (context, themeProvider, uiSettings, child) {
         return MaterialApp(
           title: AppConstants.appName,
+          navigatorObservers: [appRouteObserver],
           theme: ThemeData(
             brightness: Brightness.light,
             colorScheme: ColorScheme.fromSeed(
