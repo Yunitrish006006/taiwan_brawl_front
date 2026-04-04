@@ -668,6 +668,20 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         .toList();
   }
 
+  _ComboDragPayload _dragPayloadForHandCard(
+    RoyaleBattleView battle,
+    RoyaleCard draggedCard,
+  ) {
+    final selectedCards = _selectedCards(battle);
+    final shouldUseSelectedCombo =
+        selectedCards.length > 1 &&
+        selectedCards.any((card) => card.id == draggedCard.id);
+
+    return _ComboDragPayload(
+      cards: shouldUseSelectedCombo ? selectedCards : [draggedCard],
+    );
+  }
+
   int _selectedCardCost(List<RoyaleCard> cards) {
     return cards.fold<int>(0, (sum, card) => sum + card.elixirCost);
   }
@@ -983,15 +997,25 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
 
   String _battlefieldHintText(
     bool highlightDropZone,
-    List<RoyaleCard> selectedCards,
-  ) {
+    List<RoyaleCard> selectedCards, {
+    bool compact = false,
+  }) {
     if (highlightDropZone) {
+      if (compact) {
+        return _t.text('Release to deploy here');
+      }
       return _t.text('Release to cast all selected cards here');
     }
     if (selectedCards.isNotEmpty) {
+      if (compact) {
+        return _t.text('Tap the battlefield to deploy selected cards');
+      }
       return _t.text(
         'Precision targeting enabled. Tap the battlefield to place cards.',
       );
+    }
+    if (compact) {
+      return _t.text('Drag a card or combo onto your side of the arena');
     }
     return _t.text(
       'Drag a single card or combo, or select cards first then tap the 2D battlefield.',
@@ -1046,8 +1070,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   @override
   Widget build(BuildContext context) {
     final t = context.watch<LocaleProvider>().translation;
-    final friendsOverview =
-        context.watch<FriendsOverviewSyncService>().overview;
+    final friendsOverview = context
+        .watch<FriendsOverviewSyncService>()
+        .overview;
     return Scaffold(
       backgroundColor: const Color(0xFF07111F),
       drawer: _buildRoomFriendDrawer(friendsOverview),
@@ -1058,8 +1083,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         elevation: 0,
         actions: [
           IconButton(
-            onPressed: () =>
-                Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false),
+            onPressed: () => Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/home', (_) => false),
             icon: const Icon(Icons.home_outlined),
             tooltip: AppConstants.appName,
           ),
