@@ -220,11 +220,49 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
                 () => _service.createRoom(
                   deckId: _selectedDeck!.id,
                   vsBot: vsBot,
-                  simulationMode: _simulationMode,
+                  simulationMode: vsBot ? 'host' : _simulationMode,
                 ),
               ),
         icon: icon,
         label: Text(label),
+      ),
+    );
+  }
+
+  Widget _buildBotMatchModeHint(Map<String, String> t) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.memory_rounded, color: Colors.white),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  t.text('Host Simulation (Experimental)'),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  t.text(
+                    'Host simulation runs on the room host device. This experimental mode locks after battle starts.',
+                  ),
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -260,10 +298,30 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
           const SizedBox(height: 16),
           _buildDeckDropdown(t),
           const SizedBox(height: 16),
+          Text(
+            t.text('Create Room'),
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
           _buildSimulationModeCard(t),
           const SizedBox(height: 16),
           _buildCreateRoomButton(t, vsBot: false),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
+          Divider(color: Colors.white.withValues(alpha: 0.16), height: 1),
+          const SizedBox(height: 18),
+          Text(
+            t.text('Create Bot Match'),
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _buildBotMatchModeHint(t),
+          const SizedBox(height: 16),
           _buildCreateRoomButton(t, vsBot: true),
         ],
       ),
