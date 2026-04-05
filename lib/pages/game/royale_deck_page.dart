@@ -14,15 +14,28 @@ class RoyaleDeckPage extends StatefulWidget {
 }
 
 class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
+  static const int _maxDeckSlots = 3;
+  static const String _categoryAll = 'all';
+  static const String _categoryUnit = 'unit';
+  static const String _categoryEquipment = 'equipment';
+  static const String _categorySpell = 'spell';
+  static const String _categoryBuilding = 'building';
+
   late final RoyaleService _service;
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _hasLoadedDecksOnce = false;
   String? _error;
   List<RoyaleCard> _cards = const [];
+  List<RoyaleDeck> _decks = const [];
   final TextEditingController _nameController = TextEditingController(
     text: 'Battle Deck',
   );
   final List<String> _selectedCardIds = [];
+  int _activeSlot = 1;
+  String? _previewCardId;
+  String _cardCategoryFilter = _categoryAll;
+  int? _elixirFilter;
 
   @override
   void initState() {
@@ -47,18 +60,27 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     try {
       final cards = await _service.fetchCards();
       final decks = await _service.fetchDecks();
-      final selected = decks.isNotEmpty
-          ? decks.first.cards.map((card) => card.id).toList()
-          : cards.take(8).map((card) => card.id).toList();
+      final sortedDecks = [...decks]..sort((a, b) => a.slot.compareTo(b.slot));
+      final targetSlot = _resolveSlotForLoad(sortedDecks);
+      final deck = _deckForSlot(targetSlot, decks: sortedDecks);
+      final selected =
+          deck?.cards.map((card) => card.id).toList() ??
+          _defaultSelectedCardIds(cards);
+      final deckName = deck?.name ?? _defaultDeckName(targetSlot);
 
       setState(() {
         _cards = cards;
+        _decks = sortedDecks;
+        _activeSlot = targetSlot;
         _selectedCardIds
           ..clear()
           ..addAll(selected);
-        if (decks.isNotEmpty) {
-          _nameController.text = decks.first.name;
-        }
+        _nameController.text = deckName;
+        _previewCardId = _defaultPreviewCardId(
+          selectedCardIds: selected,
+          cards: cards,
+        );
+        _hasLoadedDecksOnce = true;
       });
     } on ApiException catch (e) {
       setState(() {
@@ -86,8 +108,89 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     return null;
   }
 
+  RoyaleDeck? _deckForSlot(int slot, {List<RoyaleDeck>? decks}) {
+    for (final deck in decks ?? _decks) {
+      if (deck.slot == slot) {
+        return deck;
+      }
+    }
+    return null;
+  }
+
+  int _resolveSlotForLoad(List<RoyaleDeck> decks) {
+    if (_hasLoadedDecksOnce) {
+      return _activeSlot;
+    }
+    if (decks.isEmpty) {
+      return 1;
+    }
+    return decks.first.slot;
+  }
+
+  List<String> _defaultSelectedCardIds(List<RoyaleCard> cards) {
+    return cards.take(8).map((card) => card.id).toList(growable: false);
+  }
+
+  String? _defaultPreviewCardId({
+    required List<String> selectedCardIds,
+    required List<RoyaleCard> cards,
+  }) {
+    if (selectedCardIds.isNotEmpty) {
+      return selectedCardIds.first;
+    }
+    if (cards.isNotEmpty) {
+      return cards.first.id;
+    }
+    return null;
+  }
+
+  String _defaultDeckName(int slot) {
+    return slot == 1 ? 'Battle Deck' : 'Battle Deck $slot';
+  }
+
+  int? get _nextAvailableSlot {
+    for (var slot = 1; slot <= _maxDeckSlots; slot++) {
+      if (_deckForSlot(slot) == null) {
+        return slot;
+      }
+    }
+    return null;
+  }
+
+  void _activateSlot(int slot) {
+    final deck = _deckForSlot(slot);
+    final selectedCardIds =
+        deck?.cards.map((card) => card.id).toList() ??
+        _defaultSelectedCardIds(_cards);
+
+    setState(() {
+      _activeSlot = slot;
+      _selectedCardIds
+        ..clear()
+        ..addAll(selectedCardIds);
+      _nameController.text = deck?.name ?? _defaultDeckName(slot);
+      _previewCardId = _defaultPreviewCardId(
+        selectedCardIds: selectedCardIds,
+        cards: _cards,
+      );
+    });
+  }
+
+  void _startNewDeck() {
+    final t = context.read<LocaleProvider>().translation;
+    final nextAvailableSlot = _nextAvailableSlot;
+    if (nextAvailableSlot == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t.text('You can only save up to 3 decks'))),
+      );
+      return;
+    }
+    _activateSlot(nextAvailableSlot);
+  }
+
   void _toggleCard(RoyaleCard card) {
     setState(() {
+      _previewCardId = card.id;
       if (_selectedCardIds.contains(card.id)) {
         _selectedCardIds.remove(card.id);
         return;
@@ -115,9 +218,9 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     try {
       final deck = await _service.saveDeck(
         name: _nameController.text.trim().isEmpty
-            ? 'Battle Deck'
+            ? _defaultDeckName(_activeSlot)
             : _nameController.text.trim(),
-        slot: 1,
+        slot: _activeSlot,
         cardIds: _selectedCardIds,
       );
 
@@ -126,7 +229,17 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
       }
 
       setState(() {
+        _decks = ([..._decks.where((entry) => entry.slot != deck.slot), deck]
+          ..sort((a, b) => a.slot.compareTo(b.slot)));
         _nameController.text = deck.name;
+        _activeSlot = deck.slot;
+        _selectedCardIds
+          ..clear()
+          ..addAll(deck.cards.map((card) => card.id));
+        _previewCardId = _defaultPreviewCardId(
+          selectedCardIds: _selectedCardIds,
+          cards: _cards,
+        );
       });
       ScaffoldMessenger.of(
         context,
@@ -147,6 +260,338 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     }
   }
 
+  List<RoyaleCard> get _selectedCards {
+    return _selectedCardIds
+        .map((cardId) => _findCard(cardId))
+        .whereType<RoyaleCard>()
+        .toList(growable: false);
+  }
+
+  RoyaleCard? get _previewCard {
+    final previewCardId = _previewCardId;
+    if (previewCardId != null) {
+      final previewCard = _findCard(previewCardId);
+      if (previewCard != null) {
+        return previewCard;
+      }
+    }
+    final selectedCards = _selectedCards;
+    if (selectedCards.isNotEmpty) {
+      return selectedCards.first;
+    }
+    if (_cards.isNotEmpty) {
+      return _cards.first;
+    }
+    return null;
+  }
+
+  int _selectedIndexFor(String cardId) {
+    return _selectedCardIds.indexOf(cardId);
+  }
+
+  bool _isSelectedCard(String cardId) {
+    return _selectedIndexFor(cardId) >= 0;
+  }
+
+  void _setPreviewCard(RoyaleCard card) {
+    if (_previewCardId == card.id) {
+      return;
+    }
+    setState(() {
+      _previewCardId = card.id;
+    });
+  }
+
+  bool _isUnitCard(RoyaleCard card) {
+    return card.type != 'spell' &&
+        card.type != 'equipment' &&
+        card.type != 'building';
+  }
+
+  bool _matchesCategoryFilter(RoyaleCard card) {
+    switch (_cardCategoryFilter) {
+      case _categoryUnit:
+        return _isUnitCard(card);
+      case _categoryEquipment:
+        return card.type == 'equipment';
+      case _categorySpell:
+        return card.type == 'spell';
+      case _categoryBuilding:
+        return card.type == 'building';
+      case _categoryAll:
+      default:
+        return true;
+    }
+  }
+
+  bool _matchesElixirFilter(RoyaleCard card) {
+    final elixirFilter = _elixirFilter;
+    if (elixirFilter == null) {
+      return true;
+    }
+    if (elixirFilter >= 5) {
+      return card.elixirCost >= 5;
+    }
+    return card.elixirCost == elixirFilter;
+  }
+
+  List<RoyaleCard> get _filteredCards {
+    return _cards
+        .where(_matchesCategoryFilter)
+        .where(_matchesElixirFilter)
+        .toList(growable: false);
+  }
+
+  Widget _buildDeckSlotCard(
+    int slot,
+    ThemeData theme,
+    Map<String, String> t, {
+    required double width,
+  }) {
+    final deck = _deckForSlot(slot);
+    final isActive = _activeSlot == slot;
+    final isEmpty = deck == null;
+
+    return SizedBox(
+      width: width,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: _isSaving ? null : () => _activateSlot(slot),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isActive
+                  ? theme.colorScheme.primaryContainer
+                  : theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.6,
+                    ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isActive
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.outlineVariant,
+                width: isActive ? 2 : 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '#$slot',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: isActive
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      isEmpty
+                          ? Icons.add_circle_outline_rounded
+                          : Icons.style_outlined,
+                      size: 18,
+                      color: isActive
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  deck?.name ?? t.text('New Deck'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  deck == null ? '8/8' : '${deck.cards.length}/8',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeckSlotSection(ThemeData theme, Map<String, String> t) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: _isSaving || _nextAvailableSlot == null
+                  ? null
+                  : _startNewDeck,
+              icon: const Icon(Icons.add_rounded),
+              label: Text(t.text('New Deck')),
+            ),
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final singleColumn = constraints.maxWidth < 560;
+              final slotWidth = singleColumn
+                  ? constraints.maxWidth
+                  : (constraints.maxWidth - 24) / 3;
+
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: List.generate(
+                  _maxDeckSlots,
+                  (index) =>
+                      _buildDeckSlotCard(index + 1, theme, t, width: slotWidth),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    IconData? icon,
+  }) {
+    return FilterChip(
+      selected: selected,
+      onSelected: (_) => onTap(),
+      avatar: icon == null ? null : Icon(icon, size: 16),
+      label: Text(label),
+      showCheckmark: false,
+    );
+  }
+
+  Widget _buildCardFilterSection(ThemeData theme, Map<String, String> t) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            t.text('Type'),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildFilterChip(
+                label: t.text('All'),
+                selected: _cardCategoryFilter == _categoryAll,
+                onTap: () => setState(() {
+                  _cardCategoryFilter = _categoryAll;
+                }),
+                icon: Icons.apps_rounded,
+              ),
+              _buildFilterChip(
+                label: t.text('Unit'),
+                selected: _cardCategoryFilter == _categoryUnit,
+                onTap: () => setState(() {
+                  _cardCategoryFilter = _categoryUnit;
+                }),
+                icon: Icons.shield_outlined,
+              ),
+              _buildFilterChip(
+                label: t.text('Equipment'),
+                selected: _cardCategoryFilter == _categoryEquipment,
+                onTap: () => setState(() {
+                  _cardCategoryFilter = _categoryEquipment;
+                }),
+                icon: Icons.auto_fix_high_rounded,
+              ),
+              _buildFilterChip(
+                label: t.text('Spell'),
+                selected: _cardCategoryFilter == _categorySpell,
+                onTap: () => setState(() {
+                  _cardCategoryFilter = _categorySpell;
+                }),
+                icon: Icons.local_fire_department_outlined,
+              ),
+              _buildFilterChip(
+                label: t.text('Building'),
+                selected: _cardCategoryFilter == _categoryBuilding,
+                onTap: () => setState(() {
+                  _cardCategoryFilter = _categoryBuilding;
+                }),
+                icon: Icons.fort_outlined,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            t.text('Elixir Cost'),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildFilterChip(
+                label: t.text('All'),
+                selected: _elixirFilter == null,
+                onTap: () => setState(() {
+                  _elixirFilter = null;
+                }),
+                icon: Icons.tune_rounded,
+              ),
+              for (final value in [1, 2, 3, 4])
+                _buildFilterChip(
+                  label: '$value',
+                  selected: _elixirFilter == value,
+                  onTap: () => setState(() {
+                    _elixirFilter = value;
+                  }),
+                  icon: Icons.bolt_rounded,
+                ),
+              _buildFilterChip(
+                label: '5+',
+                selected: _elixirFilter == 5,
+                onTap: () => setState(() {
+                  _elixirFilter = 5;
+                }),
+                icon: Icons.bolt_rounded,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Color _cardColor(String type, ColorScheme scheme) {
     switch (type) {
       case 'tank':
@@ -162,10 +607,609 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     }
   }
 
+  String _cardTypeLabel(Map<String, String> t, RoyaleCard card) {
+    switch (card.type) {
+      case 'tank':
+        return t.text('Tank');
+      case 'ranged':
+        return t.text('Ranged');
+      case 'swarm':
+        return t.text('Swarm');
+      case 'spell':
+        return t.text('Spell');
+      case 'equipment':
+        return t.text('Equipment');
+      default:
+        return t.text('Melee');
+    }
+  }
+
+  String _cardSummary(Map<String, String> t, RoyaleCard card) {
+    if (card.type == 'spell') {
+      return '${t.text('Spell Damage')} ${card.spellDamage}';
+    }
+    if (card.type == 'equipment') {
+      switch (card.effectKind) {
+        case 'damage_boost':
+          return '${t.text('Equipment: +Damage')} ${card.effectValue.toInt()}';
+        case 'health_boost':
+          return '${t.text('Equipment: +Health')} ${card.effectValue.toInt()}';
+        case 'speed_boost':
+          return '${t.text('Equipment: +Speed')} ${(card.effectValue * 100).toInt()}%';
+        default:
+          return t.text('Equipment Card');
+      }
+    }
+    final spawnText = card.spawnCount > 1 ? ' x${card.spawnCount}' : '';
+    return '${t.text('HP')} ${card.hp} / ${t.text('Damage')} ${card.damage}$spawnText';
+  }
+
+  String _targetRuleLabel(Map<String, String> t, RoyaleCard card) {
+    switch (card.targetRule) {
+      case 'ground':
+        return t.text('Ground');
+      case 'area':
+        return t.text('Area');
+      case 'tower':
+        return t.text('Enemy Base');
+      case 'ally_combo':
+        return t.text('Ally Combo');
+      default:
+        return card.targetRule;
+    }
+  }
+
+  Widget _buildDetailStatTile(
+    ThemeData theme, {
+    required String label,
+    required String value,
+    required IconData icon,
+  }) {
+    return Container(
+      width: 132,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface.withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: theme.colorScheme.primary),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectedDeckCard(
+    RoyaleCard card,
+    ThemeData theme,
+    String locale,
+  ) {
+    final selectionIndex = _selectedIndexFor(card.id);
+    final isPreviewed = _previewCard?.id == card.id;
+
+    return SizedBox(
+      width: 156,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => _setPreviewCard(card),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isPreviewed
+                  ? theme.colorScheme.primaryContainer
+                  : theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isPreviewed
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.outlineVariant,
+                width: isPreviewed ? 2 : 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 26,
+                      height: 26,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '${selectionIndex + 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => _toggleCard(card),
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                    ),
+                  ],
+                ),
+                Expanded(
+                  child: Center(
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: _cardColor(
+                          card.type,
+                          theme.colorScheme,
+                        ).withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: card.imageUrl != null && card.imageUrl!.isNotEmpty
+                          ? Image.network(
+                              card.imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => const Icon(
+                                Icons.image_not_supported_outlined,
+                              ),
+                            )
+                          : const Icon(Icons.style_outlined),
+                    ),
+                  ),
+                ),
+                Text(
+                  card.localizedName(locale),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${_cardTypeLabel(context.read<LocaleProvider>().translation, card)}  •  ${card.elixirCost}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectedDeckSection(
+    ThemeData theme,
+    Map<String, String> t,
+    String locale,
+  ) {
+    final selectedCards = _selectedCards;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${t.text('Selected Cards')} ${selectedCards.length}/8',
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 168,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: selectedCards.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (context, index) =>
+                  _buildSelectedDeckCard(selectedCards[index], theme, locale),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPreviewPanel(
+    ThemeData theme,
+    Map<String, String> t,
+    String locale,
+  ) {
+    final card = _previewCard;
+    if (card == null) {
+      return const SizedBox.shrink();
+    }
+
+    final selectionIndex = _selectedIndexFor(card.id);
+    final isSelected = selectionIndex >= 0;
+    final canAdd = isSelected || _selectedCardIds.length < 8;
+
+    final detailTiles = <Widget>[
+      _buildDetailStatTile(
+        theme,
+        label: t.text('Elixir Cost'),
+        value: '${card.elixirCost}',
+        icon: Icons.bolt_rounded,
+      ),
+      _buildDetailStatTile(
+        theme,
+        label: t.text('Type'),
+        value: _cardTypeLabel(t, card),
+        icon: Icons.category_outlined,
+      ),
+      _buildDetailStatTile(
+        theme,
+        label: t.text('Target Rule'),
+        value: _targetRuleLabel(t, card),
+        icon: Icons.my_location_rounded,
+      ),
+    ];
+
+    if (card.type == 'spell') {
+      detailTiles.addAll([
+        _buildDetailStatTile(
+          theme,
+          label: t.text('Spell Damage'),
+          value: '${card.spellDamage}',
+          icon: Icons.local_fire_department_outlined,
+        ),
+        _buildDetailStatTile(
+          theme,
+          label: t.text('Area'),
+          value: '${card.spellRadius}',
+          icon: Icons.blur_circular_rounded,
+        ),
+      ]);
+    } else if (card.type == 'equipment') {
+      detailTiles.add(
+        _buildDetailStatTile(
+          theme,
+          label: t.text('Equipment'),
+          value: _cardSummary(t, card),
+          icon: Icons.auto_fix_high_rounded,
+        ),
+      );
+    } else {
+      detailTiles.addAll([
+        _buildDetailStatTile(
+          theme,
+          label: t.text('HP'),
+          value: '${card.hp}',
+          icon: Icons.favorite_border_rounded,
+        ),
+        _buildDetailStatTile(
+          theme,
+          label: t.text('Damage'),
+          value: '${card.damage}',
+          icon: Icons.flash_on_outlined,
+        ),
+        _buildDetailStatTile(
+          theme,
+          label: t.text('Attack Range'),
+          value: '${card.attackRange}',
+          icon: Icons.straighten_rounded,
+        ),
+        _buildDetailStatTile(
+          theme,
+          label: t.text('Attack Speed'),
+          value: card.attackSpeed.toStringAsFixed(2),
+          icon: Icons.speed_rounded,
+        ),
+        _buildDetailStatTile(
+          theme,
+          label: t.text('Move Speed'),
+          value: '${card.moveSpeed}',
+          icon: Icons.directions_run_rounded,
+        ),
+        if (card.spawnCount > 1)
+          _buildDetailStatTile(
+            theme,
+            label: t.text('Spawn Count'),
+            value: '${card.spawnCount}',
+            icon: Icons.groups_2_outlined,
+          ),
+      ]);
+    }
+
+    final previewCardArt = Container(
+      width: 112,
+      height: 112,
+      decoration: BoxDecoration(
+        color: _cardColor(card.type, theme.colorScheme).withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: card.imageUrl != null && card.imageUrl!.isNotEmpty
+          ? Image.network(
+              card.imageUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) =>
+                  const Icon(Icons.image_not_supported_outlined, size: 34),
+            )
+          : const Icon(Icons.style_outlined, size: 38),
+    );
+
+    final previewInfo = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          t.text('Card Details'),
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          card.localizedName(locale),
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _cardSummary(t, card),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            Chip(
+              avatar: const Icon(Icons.style_outlined, size: 18),
+              label: Text(_cardTypeLabel(t, card)),
+            ),
+            Chip(
+              avatar: const Icon(Icons.badge_outlined, size: 18),
+              label: Text('${t.text('Card ID')}: ${card.id}'),
+            ),
+            if (isSelected)
+              Chip(
+                avatar: const Icon(Icons.check_circle_outline, size: 18),
+                label: Text('#${selectionIndex + 1} / 8'),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            FilledButton.icon(
+              onPressed: canAdd ? () => _toggleCard(card) : null,
+              icon: Icon(
+                isSelected ? Icons.remove_circle_outline : Icons.add_rounded,
+              ),
+              label: Text(isSelected ? t.text('Remove') : t.text('Add')),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final stacked = constraints.maxWidth < 720;
+              if (stacked) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    previewCardArt,
+                    const SizedBox(height: 16),
+                    previewInfo,
+                  ],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  previewCardArt,
+                  const SizedBox(width: 18),
+                  Expanded(child: previewInfo),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          Wrap(spacing: 10, runSpacing: 10, children: detailTiles),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvailableCardTile(
+    RoyaleCard card,
+    ThemeData theme,
+    Map<String, String> t,
+    String locale,
+  ) {
+    final isSelected = _isSelectedCard(card.id);
+    final selectionIndex = _selectedIndexFor(card.id);
+    final isPreviewed = _previewCard?.id == card.id;
+    final color = _cardColor(card.type, theme.colorScheme);
+    final canAdd = isSelected || _selectedCardIds.length < 8;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => _setPreviewCard(card),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: isPreviewed ? 0.9 : 0.76),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isPreviewed
+                  ? theme.colorScheme.primary
+                  : isSelected
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.2),
+              width: isPreviewed ? 2.6 : (isSelected ? 2 : 1),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    margin: const EdgeInsets.only(right: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: card.imageUrl != null && card.imageUrl!.isNotEmpty
+                        ? Image.network(
+                            card.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => const Icon(
+                              Icons.image_not_supported_outlined,
+                              color: Colors.white70,
+                            ),
+                          )
+                        : const Icon(Icons.style_outlined, color: Colors.white),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          card.localizedName(locale),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _cardTypeLabel(t, card),
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ),
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: Colors.black.withValues(alpha: 0.18),
+                    child: Text(
+                      '${card.elixirCost}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _cardSummary(t, card),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white70),
+              ),
+              const Spacer(),
+              Row(
+                children: [
+                  if (isSelected)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '#${selectionIndex + 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  const Spacer(),
+                  FilledButton.icon(
+                    onPressed: canAdd ? () => _toggleCard(card) : null,
+                    style: FilledButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      backgroundColor: Colors.white,
+                      foregroundColor: color,
+                    ),
+                    icon: Icon(
+                      isSelected
+                          ? Icons.remove_circle_outline
+                          : Icons.add_circle_outline_rounded,
+                      size: 18,
+                    ),
+                    label: Text(isSelected ? t.text('Remove') : t.text('Add')),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = context.watch<LocaleProvider>().translation;
+    final locale = context.watch<LocaleProvider>().locale;
+    final filteredCards = _filteredCards;
 
     return Scaffold(
       appBar: AppBar(title: Text(t.text('Mini Royale Deck Builder'))),
@@ -178,6 +1222,17 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  _buildDeckSlotSection(theme, t),
+                  const SizedBox(height: 16),
+                  _buildPreviewPanel(theme, t, locale),
+                  const SizedBox(height: 16),
+                  Text(
+                    '#$_activeSlot',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   TextField(
                     controller: _nameController,
                     decoration: InputDecoration(
@@ -186,40 +1241,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest
-                          .withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${t.text('Selected Cards')} ${_selectedCardIds.length}/8',
-                          style: theme.textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: _selectedCardIds
-                              .map((cardId) => _findCard(cardId))
-                              .whereType<RoyaleCard>()
-                              .map(
-                                (card) => InputChip(
-                                  label: Text(
-                                    '${card.localizedName(context.watch<LocaleProvider>().locale)} ${card.elixirCost}',
-                                  ),
-                                  onDeleted: () => _toggleCard(card),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ],
-                    ),
-                  ),
+                  _buildSelectedDeckSection(theme, t, locale),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -249,120 +1271,42 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                     style: theme.textTheme.titleLarge,
                   ),
                   const SizedBox(height: 12),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 1.55,
-                        ),
-                    itemCount: _cards.length,
-                    itemBuilder: (context, index) {
-                      final card = _cards[index];
-                      final selected = _selectedCardIds.contains(card.id);
-                      final color = _cardColor(card.type, theme.colorScheme);
-                      return InkWell(
+                  _buildCardFilterSection(theme, t),
+                  const SizedBox(height: 12),
+                  if (filteredCards.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.45),
                         borderRadius: BorderRadius.circular(18),
-                        onTap: () => _toggleCard(card),
-                        child: Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: color.withValues(
-                              alpha: selected ? 0.88 : 0.72,
-                            ),
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: selected
-                                  ? theme.colorScheme.primary
-                                  : Colors.white.withValues(alpha: 0.2),
-                              width: selected ? 2.4 : 1,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  if (card.imageUrl != null &&
-                                      card.imageUrl!.isNotEmpty) ...[
-                                    Container(
-                                      width: 42,
-                                      height: 42,
-                                      margin: const EdgeInsets.only(right: 10),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.12,
-                                        ),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      clipBehavior: Clip.antiAlias,
-                                      child: Image.network(
-                                        card.imageUrl!,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, _, _) => const Icon(
-                                          Icons.image_not_supported_outlined,
-                                          color: Colors.white70,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  Expanded(
-                                    child: Text(
-                                      card.localizedName(
-                                        context.watch<LocaleProvider>().locale,
-                                      ),
-                                      style: theme.textTheme.titleMedium
-                                          ?.copyWith(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                    ),
-                                  ),
-                                  CircleAvatar(
-                                    radius: 15,
-                                    backgroundColor: Colors.black.withValues(
-                                      alpha: 0.18,
-                                    ),
-                                    child: Text(
-                                      '${card.elixirCost}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const Spacer(),
-                              Text(
-                                '${t.text('Type')}: ${card.type}',
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                              Text(
-                                card.type == 'spell'
-                                    ? '${t.text('Spell Damage')} ${card.spellDamage}'
-                                    : card.type == 'equipment'
-                                    ? switch (card.effectKind) {
-                                        'damage_boost' =>
-                                          '${t.text('Equipment: +Damage')} ${card.effectValue.toInt()}',
-                                        'health_boost' =>
-                                          '${t.text('Equipment: +Health')} ${card.effectValue.toInt()}',
-                                        'speed_boost' =>
-                                          '${t.text('Equipment: +Speed')} ${(card.effectValue * 100).toInt()}%',
-                                        _ => t.text('Equipment Card'),
-                                      }
-                                    : '${t.text('HP')} ${card.hp} / ${t.text('Damage')} ${card.damage}',
-                                style: const TextStyle(color: Colors.white70),
-                              ),
-                            ],
-                          ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          t.text('No cards found'),
+                          style: theme.textTheme.bodyLarge,
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    )
+                  else
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 260,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 0.92,
+                          ),
+                      itemCount: filteredCards.length,
+                      itemBuilder: (context, index) => _buildAvailableCardTile(
+                        filteredCards[index],
+                        theme,
+                        t,
+                        locale,
+                      ),
+                    ),
                 ],
               ),
             ),
