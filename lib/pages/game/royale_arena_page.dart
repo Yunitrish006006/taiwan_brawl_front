@@ -28,8 +28,10 @@ const double _battlefieldAspectRatio = battle_rules.fieldAspectRatio;
 const double _battlefieldPhoneMaxWidth = 430;
 const double _battlefieldDesktopMaxWidth = 520;
 const int _worldScale = battle_rules.worldScale;
-const Duration _hostStateSyncInterval = Duration(milliseconds: 250);
-const Duration _socketReconnectDelay = Duration(milliseconds: 500);
+const Duration _hostStateSyncInterval = Duration(milliseconds: 100);
+const Duration _socketReconnectDelay = Duration(milliseconds: 250);
+const Duration _battlePollingInterval = Duration(milliseconds: 800);
+const Duration _lobbyPollingInterval = Duration(milliseconds: 1500);
 const int _socketFailureSnackbarThreshold = 3;
 
 class RoyaleArenaPage extends StatefulWidget {
@@ -182,7 +184,10 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       return;
     }
 
-    _roomStatePollTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+    final room = _room;
+    final interval =
+        room?.status == 'battle' ? _battlePollingInterval : _lobbyPollingInterval;
+    _roomStatePollTimer = Timer.periodic(interval, (_) {
       unawaited(_pollRoomState());
     });
   }
@@ -342,6 +347,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         _connectSocket();
       }
     } else {
+      _stopRoomStatePolling();
       _startRoomStatePolling();
     }
   }
@@ -799,6 +805,11 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     );
     if (error != null) {
       _showSnackBar(error);
+      return;
+    }
+    final engine = _hostBattleEngine;
+    if (engine != null) {
+      _scheduleHostStateSync(engine.exportBattleState(), immediate: true);
     }
   }
 
@@ -1106,6 +1117,10 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       if (error != null) {
         _showSnackBar(error);
         return;
+      }
+      final engine = _hostBattleEngine;
+      if (engine != null) {
+        _scheduleHostStateSync(engine.exportBattleState(), immediate: true);
       }
     } else {
       _channel?.sink.add(
