@@ -71,13 +71,16 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
   }
 
   double _playerEnergyForType(_HostPlayer player, String energyType) {
+    if (energyType == 'money') {
+      return player.money;
+    }
     return energyType == 'spirit' ? player.spiritEnergy : player.physicalEnergy;
   }
 
   double _cardEnergyCost(RoyaleCard card) => card.energyCost.toDouble();
 
   String _cardEnergyType(RoyaleCard card) =>
-      card.usesSpiritEnergy ? 'spirit' : 'physical';
+      card.usesMoney ? 'money' : card.usesSpiritEnergy ? 'spirit' : 'physical';
 
   void _syncPlayerTotals(_HostPlayer player) {
     player.physicalHealth = _clamp(
@@ -118,6 +121,15 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     } else {
       player.physicalEnergy -= amount;
     }
+    _syncPlayerTotals(player);
+    return true;
+  }
+
+  bool _spendPlayerMoney(_HostPlayer player, double amount) {
+    if (player.money + 1e-6 < amount) {
+      return false;
+    }
+    player.money -= amount;
     _syncPlayerTotals(player);
     return true;
   }
@@ -1114,6 +1126,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       final remainingEnergy = <String, double>{
         'physical': player.physicalEnergy,
         'spirit': player.spiritEnergy,
+        'money': player.money,
       };
       remainingEnergy[_cardEnergyType(primaryCard)] =
           (remainingEnergy[_cardEnergyType(primaryCard)] ?? 0) -
@@ -1205,10 +1218,13 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       return 'Job cards must be played alone';
     }
     final physicalCost = cards
-        .where((card) => !card.usesSpiritEnergy)
+        .where((card) => card.usesPhysicalEnergy)
         .fold<double>(0, (sum, card) => sum + _cardEnergyCost(card));
     final spiritCost = cards
         .where((card) => card.usesSpiritEnergy)
+        .fold<double>(0, (sum, card) => sum + _cardEnergyCost(card));
+    final moneyCost = cards
+        .where((card) => card.usesMoney)
         .fold<double>(0, (sum, card) => sum + _cardEnergyCost(card));
     if (player.physicalEnergy + 1e-6 < physicalCost) {
       return 'Not enough Physical Energy';
@@ -1216,15 +1232,22 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     if (player.spiritEnergy + 1e-6 < spiritCost) {
       return 'Not enough Spirit Energy';
     }
+    if (player.money + 1e-6 < moneyCost) {
+      return 'Not enough Money';
+    }
 
     final dropPoint = hasJobCard ? null : _normalizeDropPoint(side, dropX, dropY);
     final equipmentEffects = _equipmentEffects(cards);
     for (final card in cards) {
-      _spendPlayerEnergy(
-        player,
-        _cardEnergyCost(card),
-        preferSpirit: card.usesSpiritEnergy,
-      );
+      if (card.usesMoney) {
+        _spendPlayerMoney(player, _cardEnergyCost(card));
+      } else {
+        _spendPlayerEnergy(
+          player,
+          _cardEnergyCost(card),
+          preferSpirit: card.usesSpiritEnergy,
+        );
+      }
     }
     _drawReplacementCards(player, cards.map((card) => card.id).toList());
 

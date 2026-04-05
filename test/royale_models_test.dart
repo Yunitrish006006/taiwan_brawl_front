@@ -58,4 +58,26 @@ void main() {
     expect(unit.localizedName('en'), 'Legacy Name');
     expect(unit.localizedName('zh-Hant'), 'Legacy Name');
   });
+
+  test('equipment cards can use money cost type', () {
+    final card = RoyaleCard.fromJson({
+      'id': 'guardian_armor',
+      'name': 'Guardian Armor',
+      'type': 'equipment',
+      'energyCost': 3,
+      'hp': 0,
+      'damage': 0,
+      'attackRange': 0,
+      'moveSpeed': 0,
+      'attackSpeed': 0,
+      'spawnCount': 1,
+      'spellRadius': 0,
+      'spellDamage': 0,
+      'targetRule': 'ally_combo',
+    });
+
+    expect(card.usesMoney, isTrue);
+    expect(card.usesPhysicalEnergy, isFalse);
+    expect(card.usesSpiritEnergy, isFalse);
+  });
 }

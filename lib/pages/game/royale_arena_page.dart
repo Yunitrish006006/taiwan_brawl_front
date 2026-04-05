@@ -870,13 +870,16 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   }
 
   String _cardEnergyType(RoyaleCard card) =>
-      card.usesSpiritEnergy ? 'spirit' : 'physical';
+      card.usesMoney ? 'money' : card.usesSpiritEnergy ? 'spirit' : 'physical';
 
   int _cardEnergyCost(RoyaleCard card) => card.energyCost;
 
-  double _playerEnergyForType(RoyalePlayerView? player, String energyType) {
+  double _playerResourceForType(RoyalePlayerView? player, String energyType) {
     if (player == null) {
       return 0;
+    }
+    if (energyType == 'money') {
+      return player.money.current;
     }
     return energyType == 'spirit'
         ? player.spiritEnergy.current
@@ -884,30 +887,37 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   }
 
   bool _canAffordCard(RoyalePlayerView? player, RoyaleCard card) {
-    return _playerEnergyForType(player, _cardEnergyType(card)) + 1e-6 >=
+    return _playerResourceForType(player, _cardEnergyType(card)) + 1e-6 >=
         _cardEnergyCost(card);
   }
 
-  ({int physical, int spirit}) _selectedCardCosts(List<RoyaleCard> cards) {
+  ({int physical, int spirit, int money}) _selectedCardCosts(List<RoyaleCard> cards) {
     var physical = 0;
     var spirit = 0;
+    var money = 0;
     for (final card in cards) {
-      if (card.usesSpiritEnergy) {
+      if (card.usesMoney) {
+        money += _cardEnergyCost(card);
+      } else if (card.usesSpiritEnergy) {
         spirit += _cardEnergyCost(card);
       } else {
         physical += _cardEnergyCost(card);
       }
     }
-    return (physical: physical, spirit: spirit);
+    return (physical: physical, spirit: spirit, money: money);
   }
 
   bool _canAffordCards(RoyalePlayerView? player, List<RoyaleCard> cards) {
     final costs = _selectedCardCosts(cards);
-    return _playerEnergyForType(player, 'physical') + 1e-6 >= costs.physical &&
-        _playerEnergyForType(player, 'spirit') + 1e-6 >= costs.spirit;
+    return _playerResourceForType(player, 'physical') + 1e-6 >= costs.physical &&
+        _playerResourceForType(player, 'spirit') + 1e-6 >= costs.spirit &&
+        _playerResourceForType(player, 'money') + 1e-6 >= costs.money;
   }
 
   String _notEnoughEnergyMessageForType(String energyType) {
+    if (energyType == 'money') {
+      return _t.text('Not enough Money');
+    }
     return energyType == 'spirit'
         ? _t.text('Not enough Spirit Energy')
         : _t.text('Not enough Physical Energy');
@@ -918,11 +928,14 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     List<RoyaleCard> cards,
   ) {
     final costs = _selectedCardCosts(cards);
-    if (_playerEnergyForType(player, 'physical') + 1e-6 < costs.physical) {
+    if (_playerResourceForType(player, 'physical') + 1e-6 < costs.physical) {
       return _notEnoughEnergyMessageForType('physical');
     }
-    if (_playerEnergyForType(player, 'spirit') + 1e-6 < costs.spirit) {
+    if (_playerResourceForType(player, 'spirit') + 1e-6 < costs.spirit) {
       return _notEnoughEnergyMessageForType('spirit');
+    }
+    if (_playerResourceForType(player, 'money') + 1e-6 < costs.money) {
+      return _notEnoughEnergyMessageForType('money');
     }
     return _t.text('Not enough energy');
   }
@@ -931,11 +944,20 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     final locale = context.read<LocaleProvider>().locale;
     switch (locale) {
       case 'ja':
+        if (energyType == 'money') {
+          return '金';
+        }
         return energyType == 'spirit' ? '精' : '体';
       case 'zh-Hant':
+        if (energyType == 'money') {
+          return '金';
+        }
         return energyType == 'spirit' ? '精' : '生';
       case 'en':
       default:
+        if (energyType == 'money') {
+          return r'$';
+        }
         return energyType == 'spirit' ? 'SP' : 'PH';
     }
   }
@@ -948,6 +970,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     }
     if (costs.spirit > 0) {
       segments.add('${_energyTypeShortLabel('spirit')} ${costs.spirit}');
+    }
+    if (costs.money > 0) {
+      segments.add('${_energyTypeShortLabel('money')} ${costs.money}');
     }
     if (segments.isEmpty) {
       segments.add('0');
