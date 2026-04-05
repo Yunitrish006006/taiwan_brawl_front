@@ -1,6 +1,78 @@
 part of 'royale_arena_page.dart';
 
 extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
+  Offset _towerCenter({
+    required BoxConstraints board,
+    required String mySide,
+    required String towerSide,
+  }) {
+    final towerProgress = towerSide == 'left'
+        ? battle_rules.leftTowerX.toDouble()
+        : battle_rules.rightTowerX.toDouble();
+    final longitudinal = mySide == 'left'
+        ? 1 - (towerProgress / _worldScale)
+        : (towerProgress / _worldScale);
+    return Offset(
+      board.maxWidth * (battle_rules.centerLateral / _worldScale),
+      board.maxHeight * longitudinal.clamp(0.0, 1.0),
+    );
+  }
+
+  double? _selectedTowerThreatReach(List<RoyaleCard> selectedCards) {
+    double? maxReach;
+    for (final card in selectedCards) {
+      if (card.type == 'equipment') {
+        continue;
+      }
+
+      final reach = card.type == 'spell'
+          ? (card.spellRadius + 50).toDouble()
+          : battle_rules.effectiveAttackReachToTower(
+              attackRange: card.attackRange.toDouble(),
+              bodyRadius: card.bodyRadius > 0
+                  ? card.bodyRadius.toDouble()
+                  : battle_rules.bodyRadiusForUnitType(card.type),
+            );
+      if (maxReach == null || reach > maxReach) {
+        maxReach = reach;
+      }
+    }
+    return maxReach;
+  }
+
+  Widget _buildTowerTargetOverlay({
+    required BoxConstraints board,
+    required String mySide,
+    required RoyalePlayerView player,
+    required List<RoyaleCard> selectedCards,
+  }) {
+    final center = _towerCenter(
+      board: board,
+      mySide: mySide,
+      towerSide: player.side,
+    );
+    final threatReach = player.side == mySide
+        ? null
+        : _selectedTowerThreatReach(selectedCards);
+    final bodyDiameter =
+        board.maxHeight * (battle_rules.towerBodyRadius / _worldScale) * 2;
+    final threatDiameter = threatReach == null
+        ? null
+        : board.maxHeight * (threatReach / _worldScale) * 2;
+    final overlayDiameter = (threatDiameter ?? bodyDiameter) + 28;
+
+    return Positioned(
+      left: center.dx - overlayDiameter / 2,
+      top: center.dy - overlayDiameter / 2,
+      child: _TowerTargetOverlay(
+        color: _sideColor(player.side),
+        bodyDiameter: bodyDiameter,
+        threatDiameter: threatDiameter,
+        emphasized: threatReach != null,
+      ),
+    );
+  }
+
   Widget _buildBattlefieldHeader({
     required bool highlightDropZone,
     required List<RoyaleCard> selectedCards,
@@ -48,23 +120,17 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
     required RoyalePlayerView player,
     required bool compact,
   }) {
-    final isLeftSide = player.side == 'left';
-    final shellWidth = compact ? 96.0 : 120.0;
-    final tokenHeight = compact ? 68.0 : 84.0;
-    final topMargin = compact ? 34.0 : 42.0;
-    final bottomMargin = compact ? 56.0 : 72.0;
-    final top = mySide == 'left'
-        ? (isLeftSide
-              ? board.maxHeight - tokenHeight - bottomMargin
-              : topMargin)
-        : (isLeftSide
-              ? topMargin
-              : board.maxHeight - tokenHeight - bottomMargin);
+    final center = _towerCenter(
+      board: board,
+      mySide: mySide,
+      towerSide: player.side,
+    );
+    final shellWidth = compact ? 74.0 : 88.0;
+    final tokenHeight = compact ? 46.0 : 54.0;
     return Positioned(
-      left: board.maxWidth * 0.5 - shellWidth / 2,
-      top: top,
+      left: center.dx - shellWidth / 2,
+      top: center.dy - tokenHeight / 2,
       child: _TowerToken(
-        label: player.name,
         color: _sideColor(player.side),
         towerHp: player.towerHp,
         maxTowerHp: player.maxTowerHp,
@@ -171,10 +237,7 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
                     borderRadius: BorderRadius.circular(compact ? 14 : 16),
                   ),
                 ),
-                icon: Icon(
-                  Icons.replay_rounded,
-                  size: compact ? 18 : 24,
-                ),
+                icon: Icon(Icons.replay_rounded, size: compact ? 18 : 24),
                 label: Text(
                   _rematchSubmitting
                       ? _t.text('Returning to room...')
@@ -307,6 +370,18 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
                               compact: compact,
                             ),
                           ),
+                        _buildTowerTargetOverlay(
+                          board: board,
+                          mySide: mySide,
+                          player: leftPlayer,
+                          selectedCards: selectedCards,
+                        ),
+                        _buildTowerTargetOverlay(
+                          board: board,
+                          mySide: mySide,
+                          player: rightPlayer,
+                          selectedCards: selectedCards,
+                        ),
                         _buildTowerToken(
                           board: board,
                           mySide: mySide,
