@@ -9,6 +9,7 @@ class _HostPlayer {
     required this.deckName,
     required this.hero,
     required this.isBot,
+    required this.botController,
     required this.ready,
     required this.connected,
     required this.deckCards,
@@ -41,6 +42,7 @@ class _HostPlayer {
   final String deckName;
   final RoyaleHero hero;
   final bool isBot;
+  final String botController;
   bool ready;
   bool connected;
   final List<RoyaleCard> deckCards;

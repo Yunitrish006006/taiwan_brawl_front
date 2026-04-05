@@ -1159,24 +1159,10 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     return comboCards;
   }
 
-  void _runBotTurns() {
-    final botPlayer = [
-      _leftPlayer,
-      _rightPlayer,
-    ].firstWhere((player) => player.isBot, orElse: () => _leftPlayer);
-    if (!botPlayer.isBot) {
-      return;
-    }
-
-    botPlayer.botThinkMs = math.max(0, botPlayer.botThinkMs - _tickMs);
-    if (botPlayer.botThinkMs > 0) {
-      return;
-    }
-
+  bool _playHeuristicBotTurn(_HostPlayer botPlayer) {
     final comboCards = _chooseBotCombo(botPlayer);
-    botPlayer.botThinkMs = _randomBotThinkMs();
     if (comboCards.isEmpty) {
-      return;
+      return false;
     }
 
     RoyaleCard primaryCard = comboCards.first;
@@ -1203,7 +1189,117 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     );
     if (error == null) {
       _emitSnapshot();
+      return true;
     }
+    return false;
+  }
+
+  void _notifyLlmFallback() {
+    if (_llmFallbackWarned) {
+      return;
+    }
+    _llmFallbackWarned = true;
+    onNotice?.call(
+      'LLM bot is unavailable. Falling back to the built-in heuristic bot.',
+    );
+  }
+
+  Future<void> _requestLlmBotTurn(String side) async {
+    if (_llmDecisionPending) {
+      return;
+    }
+    final service = llmService;
+    final botPlayer = _playerForSide(side);
+    if (!botPlayer.isBot) {
+      return;
+    }
+
+    if (service == null) {
+      _notifyLlmFallback();
+      _playHeuristicBotTurn(botPlayer);
+      botPlayer.botThinkMs = _randomBotThinkMs();
+      return;
+    }
+
+    _llmDecisionPending = true;
+    try {
+      final decision = await service.decideLlmBotAction(
+        exportLlmBotDecisionState(side),
+      );
+      if (_result != null) {
+        return;
+      }
+
+      final liveBotPlayer = _playerForSide(side);
+      if (!liveBotPlayer.isBot) {
+        return;
+      }
+
+      if (decision.usedFallback) {
+        _notifyLlmFallback();
+      }
+
+      if (decision.isWait) {
+        return;
+      }
+
+      final cards = decision.cardIds
+          .map(liveBotPlayer.cardById)
+          .whereType<RoyaleCard>()
+          .toList();
+      if (cards.length != decision.cardIds.length ||
+          decision.dropX == null ||
+          decision.dropY == null) {
+        _notifyLlmFallback();
+        _playHeuristicBotTurn(liveBotPlayer);
+        return;
+      }
+
+      final error = _playSideCombo(
+        side,
+        cards,
+        dropX: decision.dropX!,
+        dropY: decision.dropY!,
+      );
+      if (error != null) {
+        _notifyLlmFallback();
+        _playHeuristicBotTurn(liveBotPlayer);
+        return;
+      }
+      _emitSnapshot();
+    } catch (_) {
+      _notifyLlmFallback();
+      _playHeuristicBotTurn(_playerForSide(side));
+    } finally {
+      _llmDecisionPending = false;
+      _playerForSide(side).botThinkMs = _randomBotThinkMs();
+    }
+  }
+
+  void _runBotTurns() {
+    final botPlayer = [
+      _leftPlayer,
+      _rightPlayer,
+    ].firstWhere((player) => player.isBot, orElse: () => _leftPlayer);
+    if (!botPlayer.isBot) {
+      return;
+    }
+    if (_llmDecisionPending) {
+      return;
+    }
+
+    botPlayer.botThinkMs = math.max(0, botPlayer.botThinkMs - _tickMs);
+    if (botPlayer.botThinkMs > 0) {
+      return;
+    }
+
+    if (botPlayer.botController == 'llm') {
+      unawaited(_requestLlmBotTurn(botPlayer.side));
+      return;
+    }
+
+    _playHeuristicBotTurn(botPlayer);
+    botPlayer.botThinkMs = _randomBotThinkMs();
   }
 
   String? _playSideCombo(
