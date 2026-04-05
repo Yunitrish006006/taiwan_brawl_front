@@ -692,12 +692,17 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
 
   void _syncSelectionWithRoom(RoyaleRoomSnapshot room) {
     if (room.battle == null) {
-      _selectedCardIds.clear();
-      _aimPoint = null;
+      if (room.status != 'battle') {
+        _selectedCardIds.clear();
+        _aimPoint = null;
+      }
       return;
     }
-    final handIds =
-        room.battle?.yourHand.map((card) => card.id).toSet() ?? <String>{};
+    final handIds = room.battle?.yourHand.map((card) => card.id).toSet() ?? <String>{};
+    final hasCompleteHandSnapshot = handIds.length >= 4;
+    if (!hasCompleteHandSnapshot) {
+      return;
+    }
     _selectedCardIds.removeWhere((id) => !handIds.contains(id));
   }
 
@@ -820,9 +825,8 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         _showSnackBar(_t.text('Job cards must be played alone'));
         return;
       }
-      final battle = _room?.battle;
-      if (battle == null || battle.yourElixir + 1e-6 < card.elixirCost) {
-        _showSnackBar(_t.text('Not enough energy'));
+      if (!_canAffordCard(_room?.me, card)) {
+        _showSnackBar(_notEnoughEnergyMessageForType(_cardEnergyType(card)));
         return;
       }
       final point = _defaultJobDropPoint();
@@ -858,6 +862,96 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         .toList();
   }
 
+  String _cardEnergyType(RoyaleCard card) =>
+      card.usesSpiritEnergy ? 'spirit' : 'physical';
+
+  int _cardEnergyCost(RoyaleCard card) => card.energyCost;
+
+  double _playerEnergyForType(RoyalePlayerView? player, String energyType) {
+    if (player == null) {
+      return 0;
+    }
+    return energyType == 'spirit'
+        ? player.spiritEnergy.current
+        : player.physicalEnergy.current;
+  }
+
+  bool _canAffordCard(RoyalePlayerView? player, RoyaleCard card) {
+    return _playerEnergyForType(player, _cardEnergyType(card)) + 1e-6 >=
+        _cardEnergyCost(card);
+  }
+
+  ({int physical, int spirit}) _selectedCardCosts(List<RoyaleCard> cards) {
+    var physical = 0;
+    var spirit = 0;
+    for (final card in cards) {
+      if (card.usesSpiritEnergy) {
+        spirit += _cardEnergyCost(card);
+      } else {
+        physical += _cardEnergyCost(card);
+      }
+    }
+    return (physical: physical, spirit: spirit);
+  }
+
+  bool _canAffordCards(RoyalePlayerView? player, List<RoyaleCard> cards) {
+    final costs = _selectedCardCosts(cards);
+    return _playerEnergyForType(player, 'physical') + 1e-6 >= costs.physical &&
+        _playerEnergyForType(player, 'spirit') + 1e-6 >= costs.spirit;
+  }
+
+  String _notEnoughEnergyMessageForType(String energyType) {
+    return energyType == 'spirit'
+        ? _t.text('Not enough Spirit Energy')
+        : _t.text('Not enough Physical Energy');
+  }
+
+  String _notEnoughEnergyMessageForCards(
+    RoyalePlayerView? player,
+    List<RoyaleCard> cards,
+  ) {
+    final costs = _selectedCardCosts(cards);
+    if (_playerEnergyForType(player, 'physical') + 1e-6 < costs.physical) {
+      return _notEnoughEnergyMessageForType('physical');
+    }
+    if (_playerEnergyForType(player, 'spirit') + 1e-6 < costs.spirit) {
+      return _notEnoughEnergyMessageForType('spirit');
+    }
+    return _t.text('Not enough energy');
+  }
+
+  String _energyTypeShortLabel(String energyType) {
+    final locale = context.read<LocaleProvider>().locale;
+    switch (locale) {
+      case 'ja':
+        return energyType == 'spirit' ? '精' : '体';
+      case 'zh-Hant':
+        return energyType == 'spirit' ? '精' : '生';
+      case 'en':
+      default:
+        return energyType == 'spirit' ? 'SP' : 'PH';
+    }
+  }
+
+  String _energyCostSummary(List<RoyaleCard> cards) {
+    final costs = _selectedCardCosts(cards);
+    final segments = <String>[];
+    if (costs.physical > 0) {
+      segments.add('${_energyTypeShortLabel('physical')} ${costs.physical}');
+    }
+    if (costs.spirit > 0) {
+      segments.add('${_energyTypeShortLabel('spirit')} ${costs.spirit}');
+    }
+    if (segments.isEmpty) {
+      segments.add('0');
+    }
+    return segments.join(' · ');
+  }
+
+  String _cardEnergyLabel(RoyaleCard card) {
+    return '${_energyTypeShortLabel(_cardEnergyType(card))} ${_cardEnergyCost(card)}';
+  }
+
   _ComboDragPayload _dragPayloadForHandCard(
     RoyaleBattleView battle,
     RoyaleCard draggedCard,
@@ -870,10 +964,6 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     return _ComboDragPayload(
       cards: shouldUseSelectedCombo ? selectedCards : [draggedCard],
     );
-  }
-
-  int _selectedCardCost(List<RoyaleCard> cards) {
-    return cards.fold<int>(0, (sum, card) => sum + card.elixirCost);
   }
 
   bool get _hasDeploymentTarget {
@@ -959,6 +1049,10 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     }
     if (hasJobCard && cards.length != 1) {
       _showSnackBar(_t.text('Job cards must be played alone'));
+      return;
+    }
+    if (!_canAffordCards(_room?.me, cards)) {
+      _showSnackBar(_notEnoughEnergyMessageForCards(_room?.me, cards));
       return;
     }
 

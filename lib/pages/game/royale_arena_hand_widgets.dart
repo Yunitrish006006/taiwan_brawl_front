@@ -26,6 +26,10 @@ class _HandCard extends StatelessWidget {
     required this.cardColor,
     required this.cardStats,
     required this.typeLabel,
+    required this.costLabel,
+    required this.costIcon,
+    required this.costColor,
+    required this.insufficientLabel,
     this.selectedOrder = -1,
     this.compact = false,
   });
@@ -35,6 +39,10 @@ class _HandCard extends StatelessWidget {
   final Color cardColor;
   final String cardStats;
   final String typeLabel;
+  final String costLabel;
+  final IconData costIcon;
+  final Color costColor;
+  final String insufficientLabel;
   final int selectedOrder;
   final bool compact;
 
@@ -93,16 +101,36 @@ class _HandCard extends StatelessWidget {
                       ),
                     ),
                     const Spacer(),
-                    CircleAvatar(
-                      radius: compact ? 13 : 16,
-                      backgroundColor: Colors.white.withValues(alpha: 0.18),
-                      child: Text(
-                        '${card.elixirCost}',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: compact ? 11 : 14,
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: compact ? 7 : 9,
+                        vertical: compact ? 5 : 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: costColor.withValues(alpha: 0.22),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: costColor.withValues(alpha: 0.5),
                         ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            costIcon,
+                            size: compact ? 12 : 14,
+                            color: costColor,
+                          ),
+                          SizedBox(width: compact ? 3 : 4),
+                          Text(
+                            costLabel,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: compact ? 10 : 12,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -179,9 +207,7 @@ class _HandCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  context.watch<LocaleProvider>().translation.text(
-                    'Not enough energy',
-                  ),
+                  insufficientLabel,
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 10,

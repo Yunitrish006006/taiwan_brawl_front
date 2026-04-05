@@ -160,7 +160,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     List<RoyaleCard> selectedCards,
     bool compact,
   ) {
-    final selectedCost = _selectedCardCost(selectedCards);
+    final me = _room?.me;
     return Wrap(
       spacing: compact ? 8 : 12,
       runSpacing: compact ? 8 : 10,
@@ -179,7 +179,13 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
         _InfoChip(
           icon: Icons.bolt_rounded,
           label:
-              '${_t.text('Current Energy')} ${battle.yourElixir.toStringAsFixed(1)} / ${battle.yourMaxElixir.toStringAsFixed(1)}',
+              '${_t.text('Physical Energy')} ${_playerEnergyForType(me, 'physical').toStringAsFixed(1)} / ${(me?.physicalEnergy.max ?? 0).toStringAsFixed(1)}',
+          compact: compact,
+        ),
+        _InfoChip(
+          icon: Icons.auto_awesome_rounded,
+          label:
+              '${_t.text('Spirit Energy')} ${_playerEnergyForType(me, 'spirit').toStringAsFixed(1)} / ${(me?.spiritEnergy.max ?? 0).toStringAsFixed(1)}',
           compact: compact,
         ),
         _InfoChip(
@@ -198,7 +204,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
           _InfoChip(
             icon: Icons.layers_rounded,
             label:
-                '${_t.text('Selected Cards')} ${selectedCards.length} / $selectedCost',
+                '${_t.text('Selected Cards')} ${selectedCards.length} / ${_energyCostSummary(selectedCards)}',
             compact: compact,
           ),
       ],
@@ -210,7 +216,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: battle.yourHand.map((card) {
-          final playable = battle.yourElixir >= card.elixirCost;
+          final playable = _canAffordCard(_room?.me, card);
           final selectionOrder = _selectedCardIds.indexOf(card.id);
           final handCard = _HandCard(
             card: card,
@@ -219,6 +225,16 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
             cardColor: _cardColor(card.type),
             cardStats: _cardStats(card),
             typeLabel: _cardTypeLabel(card),
+            costLabel: _cardEnergyLabel(card),
+            costIcon: card.usesSpiritEnergy
+                ? Icons.auto_awesome_rounded
+                : Icons.bolt_rounded,
+            costColor: card.usesSpiritEnergy
+                ? const Color(0xFFB388FF)
+                : const Color(0xFF4FC3F7),
+            insufficientLabel: _notEnoughEnergyMessageForType(
+              _cardEnergyType(card),
+            ),
             compact: compact,
           );
 
@@ -413,8 +429,8 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
   Widget _buildImmersiveArenaBottomOverlay({
     required RoyaleBattleView battle,
     required List<RoyaleCard> selectedCards,
-    required int selectedCost,
   }) {
+    final me = _room?.me ?? _placeholderPlayer(_room?.viewerSide ?? 'left');
     final nextCardText = battle.nextCardId == null
         ? '${_t.text('Next Card')} ${_t.text('Unknown')}'
         : '${_t.text('Next Card')} ${battle.nextCardId}';
@@ -470,9 +486,9 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        _ElixirMeter(
-                          value: battle.yourElixir,
-                          maxValue: battle.yourMaxElixir,
+                        _DualEnergyMeter(
+                          physicalEnergy: me.physicalEnergy,
+                          spiritEnergy: me.spiritEnergy,
                           compact: true,
                         ),
                         if (selectedCards.isNotEmpty) ...[
@@ -480,7 +496,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                           _InfoChip(
                             icon: Icons.layers_rounded,
                             label:
-                                '${_t.text('Selected Cards')} ${selectedCards.length} / $selectedCost',
+                                '${_t.text('Selected Cards')} ${selectedCards.length} / ${_energyCostSummary(selectedCards)}',
                             compact: true,
                           ),
                         ],
@@ -505,7 +521,6 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     required RoyaleBattleView battle,
     required String mySide,
     required List<RoyaleCard> selectedCards,
-    required int selectedCost,
     required BoxConstraints constraints,
   }) {
     final fallbackHeight = MediaQuery.sizeOf(context).height;
@@ -558,7 +573,6 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
           child: _buildImmersiveArenaBottomOverlay(
             battle: battle,
             selectedCards: selectedCards,
-            selectedCost: selectedCost,
           ),
         ),
       ],
@@ -858,7 +872,6 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     final opponent = room.opponent;
     final mySide = room.viewerSide ?? 'left';
     final selectedCards = _selectedCards(battle);
-    final selectedCost = _selectedCardCost(selectedCards);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -871,7 +884,6 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
             battle: battle,
             mySide: mySide,
             selectedCards: selectedCards,
-            selectedCost: selectedCost,
             constraints: constraints,
           );
         }
@@ -967,9 +979,13 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                   ),
                 ),
               ),
-              _ElixirMeter(
-                value: battle.yourElixir,
-                maxValue: battle.yourMaxElixir,
+              _DualEnergyMeter(
+                physicalEnergy:
+                    me?.physicalEnergy ??
+                    _placeholderPlayer(mySide).physicalEnergy,
+                spiritEnergy:
+                    me?.spiritEnergy ??
+                    _placeholderPlayer(mySide).spiritEnergy,
                 compact: compact,
               ),
               _ArenaLegendChip(

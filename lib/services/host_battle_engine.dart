@@ -224,12 +224,17 @@ class HostBattleEngine {
     final cards = playableCards.cards;
     final hasJobCard = cards.any((card) => card.isJob);
 
-    final totalElixirCost = cards.fold<double>(
-      0,
-      (sum, card) => sum + card.elixirCost,
-    );
-    if (player.elixir + 1e-6 < totalElixirCost) {
-      return 'Not enough energy';
+    final physicalCost = cards
+        .where((card) => !card.usesSpiritEnergy)
+        .fold<double>(0, (sum, card) => sum + card.energyCost);
+    final spiritCost = cards
+        .where((card) => card.usesSpiritEnergy)
+        .fold<double>(0, (sum, card) => sum + card.energyCost);
+    if (player.physicalEnergy + 1e-6 < physicalCost) {
+      return 'Not enough Physical Energy';
+    }
+    if (player.spiritEnergy + 1e-6 < spiritCost) {
+      return 'Not enough Spirit Energy';
     }
 
     if (_isEquipmentOnlyCast(cards)) {
@@ -245,8 +250,8 @@ class HostBattleEngine {
     for (final card in cards) {
       _spendPlayerEnergy(
         player,
-        card.elixirCost.toDouble(),
-        preferSpirit: card.type == 'spell',
+        card.energyCost.toDouble(),
+        preferSpirit: card.usesSpiritEnergy,
       );
     }
     _drawReplacementCards(player, cardIds);

@@ -353,21 +353,19 @@ class _PlayerHudCard extends StatelessWidget {
   }
 }
 
-class _ElixirMeter extends StatelessWidget {
-  const _ElixirMeter({
-    required this.value,
-    required this.maxValue,
+class _DualEnergyMeter extends StatelessWidget {
+  const _DualEnergyMeter({
+    required this.physicalEnergy,
+    required this.spiritEnergy,
     this.compact = false,
   });
 
-  final double value;
-  final double maxValue;
+  final RoyaleResourceState physicalEnergy;
+  final RoyaleResourceState spiritEnergy;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    final active = value.floor();
-    final meterCount = maxValue.ceil().clamp(4, 14);
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 10 : 12,
@@ -381,29 +379,84 @@ class _ElixirMeter extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.flash_on_rounded,
-            color: const Color(0xFFB388FF),
-            size: compact ? 16 : 20,
+          _MiniEnergyBar(
+            icon: Icons.bolt_rounded,
+            value: physicalEnergy.current,
+            maxValue: physicalEnergy.max,
+            color: const Color(0xFF4FC3F7),
+            compact: compact,
           ),
-          SizedBox(width: compact ? 6 : 8),
-          ...List.generate(meterCount, (index) {
+          SizedBox(width: compact ? 8 : 10),
+          _MiniEnergyBar(
+            icon: Icons.auto_awesome_rounded,
+            value: spiritEnergy.current,
+            maxValue: spiritEnergy.max,
+            color: const Color(0xFFB388FF),
+            compact: compact,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniEnergyBar extends StatelessWidget {
+  const _MiniEnergyBar({
+    required this.icon,
+    required this.value,
+    required this.maxValue,
+    required this.color,
+    required this.compact,
+  });
+
+  final IconData icon;
+  final double value;
+  final double maxValue;
+  final Color color;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = value.floor();
+    final meterCount = maxValue.ceil().clamp(3, 8);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: compact ? 14 : 16),
+            SizedBox(width: compact ? 4 : 5),
+            Text(
+              '${value.toStringAsFixed(1)}/${maxValue.toStringAsFixed(1)}',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: compact ? 11 : 12,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: compact ? 4 : 5),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(meterCount, (index) {
             return Container(
-              width: compact ? 7 : 10,
-              height: compact ? 14 : 18,
+              width: compact ? 6 : 8,
+              height: compact ? 10 : 12,
               margin: EdgeInsets.only(
-                right: index == meterCount - 1 ? 0 : (compact ? 3 : 4),
+                right: index == meterCount - 1 ? 0 : (compact ? 2 : 3),
               ),
               decoration: BoxDecoration(
                 color: index < active
-                    ? const Color(0xFF9B5DE5)
+                    ? color
                     : Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(999),
               ),
             );
           }),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
