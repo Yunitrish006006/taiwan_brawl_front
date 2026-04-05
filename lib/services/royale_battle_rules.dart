@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-const int tickMs = 100;
+const int tickMs = 66;
 const int matchDurationMs = 210000;
 const int worldScale = 1000;
 const double centerLateral = worldScale / 2;
