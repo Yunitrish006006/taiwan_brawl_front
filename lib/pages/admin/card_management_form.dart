@@ -57,7 +57,7 @@ extension _CardManagementFormLayout on _CardManagementPageState {
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       subtitle: Text(
-                        '${card.id} · ${_typeLabel(t, card.type)} · ${t.text('Elixir Cost')} ${card.elixirCost}',
+                        '${card.id} · ${_typeLabel(t, card.type)} · ${_cardEnergyCostLabel(t, card)}',
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => phoneLayout
@@ -228,8 +228,17 @@ extension _CardManagementFormLayout on _CardManagementPageState {
       runSpacing: 12,
       children: [
         _buildFieldBox(
-          _buildNumberField(t, _elixirCostController, 'Elixir Cost'),
+          _buildNumberField(t, _elixirCostController, 'Energy Cost'),
           width: 220,
+        ),
+        _buildDropdownField(
+          t: t,
+          value: _selectedEnergyCostType,
+          label: 'Energy Type',
+          keyPrefix: 'energy-type',
+          options: _CardManagementPageState._energyCostTypeOptions,
+          labelBuilder: (value) => _energyCostTypeLabel(t, value),
+          onChanged: _setSelectedEnergyCostType,
         ),
         _buildDropdownField(
           t: t,

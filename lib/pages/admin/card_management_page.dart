@@ -49,6 +49,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
     'job_delivery',
     'job_day_labor',
   ];
+  static const List<String> _energyCostTypeOptions = ['physical', 'spirit'];
 
   late final AdminService _adminService;
 
@@ -81,6 +82,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
   bool _showMobileEditor = false;
   String? _selectedCardId;
   String _selectedType = _typeOptions.first;
+  String _selectedEnergyCostType = _energyCostTypeOptions.first;
   String _selectedTargetRule = _targetRuleOptions.first;
   String _selectedEffectKind = _effectKindOptions.first;
 
@@ -178,6 +180,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
       _isCreatingNew = false;
       _selectedCardId = card.id;
       _selectedType = card.type;
+      _selectedEnergyCostType = card.energyCostType;
       _selectedTargetRule = card.targetRule;
       _selectedEffectKind = card.effectKind;
       _idController.text = card.id;
@@ -204,6 +207,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
       _isCreatingNew = true;
       _selectedCardId = null;
       _selectedType = _typeOptions.first;
+      _selectedEnergyCostType = _energyCostTypeOptions.first;
       _selectedTargetRule = _targetRuleOptions.first;
       _selectedEffectKind = _effectKindOptions.first;
       _idController.clear();
@@ -297,10 +301,11 @@ class _CardManagementPageState extends State<CardManagementPage> {
       'nameEn': nameEn,
       'nameJa': nameJa,
       'nameI18n': {'zh-Hant': nameZhHant, 'en': nameEn, 'ja': nameJa},
-      'elixirCost': _parseIntField(
+      'energyCost': _parseIntField(
         _elixirCostController,
-        _t.text('Elixir Cost'),
+        _t.text('Energy Cost'),
       ),
+      'energyCostType': _selectedEnergyCostType,
       'type': _selectedType,
       'hp': _parseIntField(_hpController, _t.text('HP')),
       'damage': _parseIntField(_damageController, _t.text('Damage')),
@@ -590,9 +595,37 @@ class _CardManagementPageState extends State<CardManagementPage> {
     }
   }
 
+  String _energyCostTypeLabel(Map<String, String> t, String value) {
+    switch (value) {
+      case 'spirit':
+        return t.text('Spirit Energy');
+      case 'physical':
+      default:
+        return t.text('Physical Energy');
+    }
+  }
+
+  String _cardEnergyCostLabel(Map<String, String> t, RoyaleCard card) {
+    return '${_energyCostTypeLabel(t, card.energyCostType)} ${card.energyCost}';
+  }
+
   void _setSelectedType(String value) {
     setState(() {
+      final wasSpell = _selectedType == 'spell';
       _selectedType = value;
+      if (_isCreatingNew) {
+        if (value == 'spell') {
+          _selectedEnergyCostType = 'spirit';
+        } else if (wasSpell && _selectedEnergyCostType == 'spirit') {
+          _selectedEnergyCostType = 'physical';
+        }
+      }
+    });
+  }
+
+  void _setSelectedEnergyCostType(String value) {
+    setState(() {
+      _selectedEnergyCostType = value;
     });
   }
 

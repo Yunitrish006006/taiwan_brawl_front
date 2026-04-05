@@ -334,9 +334,9 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
       return true;
     }
     if (elixirFilter >= 5) {
-      return card.elixirCost >= 5;
+      return card.energyCost >= 5;
     }
-    return card.elixirCost == elixirFilter;
+    return card.energyCost == elixirFilter;
   }
 
   List<RoyaleCard> get _filteredCards {
@@ -562,7 +562,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
           ),
           const SizedBox(height: 16),
           Text(
-            t.text('Elixir Cost'),
+            t.text('Energy Cost'),
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w800,
             ),
@@ -638,6 +638,34 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
       default:
         return t.text('Melee');
     }
+  }
+
+  String _energyTypeLabel(Map<String, String> t, RoyaleCard card) {
+    return card.usesSpiritEnergy
+        ? t.text('Spirit Energy')
+        : t.text('Physical Energy');
+  }
+
+  String _energyTypeShortLabel(String locale, RoyaleCard card) {
+    if (locale == 'ja') {
+      return card.usesSpiritEnergy ? '精' : '体';
+    }
+    if (locale == 'zh-Hant') {
+      return card.usesSpiritEnergy ? '精' : '生';
+    }
+    return card.usesSpiritEnergy ? 'SP' : 'PH';
+  }
+
+  String _energyCostLabel(
+    Map<String, String> t,
+    RoyaleCard card,
+    String locale, {
+    bool compact = false,
+  }) {
+    if (compact) {
+      return '${_energyTypeShortLabel(locale, card)} ${card.energyCost}';
+    }
+    return '${_energyTypeLabel(t, card)} ${card.energyCost}';
   }
 
   String _jobProfileLabel(Map<String, String> t, RoyaleCard card) {
@@ -825,7 +853,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${_cardTypeLabel(context.read<LocaleProvider>().translation, card)}  •  ${card.elixirCost}',
+                  '${_cardTypeLabel(context.read<LocaleProvider>().translation, card)}  •  ${_energyCostLabel(context.read<LocaleProvider>().translation, card, locale, compact: true)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -892,8 +920,8 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     final detailTiles = <Widget>[
       _buildDetailStatTile(
         theme,
-        label: t.text('Elixir Cost'),
-        value: '${card.elixirCost}',
+        label: t.text('Energy Cost'),
+        value: _energyCostLabel(t, card, locale),
         icon: Icons.bolt_rounded,
       ),
       _buildDetailStatTile(
@@ -1190,7 +1218,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                     radius: 16,
                     backgroundColor: Colors.black.withValues(alpha: 0.18),
                     child: Text(
-                      '${card.elixirCost}',
+                      _energyTypeShortLabel(locale, card),
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -1205,6 +1233,14 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _energyCostLabel(t, card, locale),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const Spacer(),
               Row(

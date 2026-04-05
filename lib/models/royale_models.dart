@@ -9,7 +9,8 @@ class RoyaleCard {
     required this.nameJa,
     required this.imageUrl,
     required this.imageVersion,
-    required this.elixirCost,
+    required this.energyCost,
+    required this.energyCostType,
     required this.type,
     required this.hp,
     required this.damage,
@@ -32,7 +33,8 @@ class RoyaleCard {
   final String nameJa;
   final String? imageUrl;
   final int imageVersion;
-  final int elixirCost;
+  final int energyCost;
+  final String energyCostType;
   final String type;
   final int hp;
   final int damage;
@@ -50,6 +52,12 @@ class RoyaleCard {
   bool get isEquipment => type == 'equipment';
 
   bool get isJob => type == 'job';
+
+  bool get usesSpiritEnergy => energyCostType == 'spirit';
+
+  bool get usesPhysicalEnergy => !usesSpiritEnergy;
+
+  int get elixirCost => energyCost;
 
   String localizedName(String locale) {
     final englishFallback = nameEn.isNotEmpty ? nameEn : name;
@@ -74,7 +82,13 @@ class RoyaleCard {
       nameJa: (json['nameJa'] as String?) ?? (json['name'] as String? ?? ''),
       imageUrl: resolveRemoteImageUrl(json['imageUrl'] as String?),
       imageVersion: (json['imageVersion'] as num?)?.toInt() ?? 0,
-      elixirCost: (json['elixirCost'] as num).toInt(),
+      energyCost:
+          (json['energyCost'] as num?)?.toInt() ??
+          (json['elixirCost'] as num?)?.toInt() ??
+          0,
+      energyCostType:
+          (json['energyCostType'] as String?) ??
+          ((json['type'] as String?) == 'spell' ? 'spirit' : 'physical'),
       type: json['type'] as String,
       hp: (json['hp'] as num).toInt(),
       damage: (json['damage'] as num).toInt(),

@@ -70,6 +70,15 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     return player.hero.bonusKind == bonusKind ? player.hero.bonusValue : 1;
   }
 
+  double _playerEnergyForType(_HostPlayer player, String energyType) {
+    return energyType == 'spirit' ? player.spiritEnergy : player.physicalEnergy;
+  }
+
+  double _cardEnergyCost(RoyaleCard card) => card.energyCost.toDouble();
+
+  String _cardEnergyType(RoyaleCard card) =>
+      card.usesSpiritEnergy ? 'spirit' : 'physical';
+
   void _syncPlayerTotals(_HostPlayer player) {
     player.physicalHealth = _clamp(
       player.physicalHealth,
@@ -102,22 +111,14 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     double amount, {
     required bool preferSpirit,
   }) {
-    if (player.elixir + 1e-6 < amount) {
+    final available = preferSpirit ? player.spiritEnergy : player.physicalEnergy;
+    if (available + 1e-6 < amount) {
       return false;
     }
-    var remaining = amount;
     if (preferSpirit) {
-      final spiritDrain = math.min(player.spiritEnergy, remaining);
-      player.spiritEnergy -= spiritDrain;
-      remaining -= spiritDrain;
-      final physicalDrain = math.min(player.physicalEnergy, remaining);
-      player.physicalEnergy -= physicalDrain;
+      player.spiritEnergy -= amount;
     } else {
-      final physicalDrain = math.min(player.physicalEnergy, remaining);
-      player.physicalEnergy -= physicalDrain;
-      remaining -= physicalDrain;
-      final spiritDrain = math.min(player.spiritEnergy, remaining);
-      player.spiritEnergy -= spiritDrain;
+      player.physicalEnergy -= amount;
     }
     _syncPlayerTotals(player);
     return true;
@@ -908,7 +909,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     final enemyTowerHp = _playerForSide(enemySide).towerHp;
 
     if (card.isJob) {
-      var score = card.effectValue * 12 - card.elixirCost * 6;
+      var score = card.effectValue * 12 - _cardEnergyCost(card) * 6;
       if (player.money <= player.maxMoney * 0.25) {
         score += 180;
       } else if (player.money <= player.maxMoney * 0.5) {
@@ -927,7 +928,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       if (spellTarget == null) {
         return -220.0;
       }
-      var score = spellTarget.score - card.elixirCost * 12.0;
+      var score = spellTarget.score - _cardEnergyCost(card) * 12.0;
       if (spellTarget.kills >= 2) {
         score += 120;
       }
@@ -937,7 +938,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       return score;
     }
 
-    var score = _cardPowerScore(card) - card.elixirCost * 32.0;
+    var score = _cardPowerScore(card) - _cardEnergyCost(card) * 32.0;
     if (card.attackRange >= 200) {
       score += 80;
     }
@@ -947,7 +948,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     if (urgentThreat) {
       score += card.attackRange >= 200 ? 120 : 50;
       score += card.spawnCount >= 3 ? 110 : 0;
-      score += card.elixirCost <= 3 ? 70 : 0;
+      score += _cardEnergyCost(card) <= 3 ? 70 : 0;
     } else {
       score += alliedFront != null && card.attackRange >= 200 ? 130 : 0;
       score += alliedFront != null && card.targetRule == 'tower' ? 60 : 0;
@@ -968,7 +969,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
   }
 
   double _scoreEquipmentCard(RoyaleCard primaryCard, RoyaleCard equipmentCard) {
-    var score = 40.0 - equipmentCard.elixirCost * 8.0;
+    var score = 40.0 - _cardEnergyCost(equipmentCard) * 8.0;
     switch (equipmentCard.effectKind) {
       case 'damage_boost':
         score +=
@@ -1046,7 +1047,11 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         .whereType<RoyaleCard>()
         .toList();
     final affordable = handCards
-        .where((card) => card.elixirCost <= player.elixir + 1e-6)
+        .where(
+          (card) =>
+              _playerEnergyForType(player, _cardEnergyType(card)) + 1e-6 >=
+              _cardEnergyCost(card),
+        )
         .toList();
     if (affordable.isEmpty) {
       return const [];
@@ -1097,7 +1102,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       if (scoreComparison != 0) {
         return scoreComparison;
       }
-      return a.card.elixirCost.compareTo(b.card.elixirCost);
+      return a.card.energyCost.compareTo(b.card.energyCost);
     });
     final primaryCard = scoredCards.isEmpty ? null : scoredCards.first.card;
     if (primaryCard == null) {
@@ -1108,7 +1113,13 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     if (!primaryCard.isJob &&
         primaryCard.type != 'spell' &&
         playableEquipment.isNotEmpty) {
-      var remainingElixir = player.elixir - primaryCard.elixirCost;
+      final remainingEnergy = <String, double>{
+        'physical': player.physicalEnergy,
+        'spirit': player.spiritEnergy,
+      };
+      remainingEnergy[_cardEnergyType(primaryCard)] =
+          (remainingEnergy[_cardEnergyType(primaryCard)] ?? 0) -
+          _cardEnergyCost(primaryCard);
       final scoredEquipment = playableEquipment
           .map(
             (card) => _BotCardScore(
@@ -1124,11 +1135,14 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         if (comboCards.length >= _maxComboCards) {
           break;
         }
-        if (entry.card.elixirCost > remainingElixir + 1e-6) {
+        if (_cardEnergyCost(entry.card) >
+            (remainingEnergy[_cardEnergyType(entry.card)] ?? 0) + 1e-6) {
           continue;
         }
         comboCards.add(entry.card);
-        remainingElixir -= entry.card.elixirCost;
+        remainingEnergy[_cardEnergyType(entry.card)] =
+            (remainingEnergy[_cardEnergyType(entry.card)] ?? 0) -
+            _cardEnergyCost(entry.card);
       }
     }
     return comboCards;
@@ -1192,12 +1206,17 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     if (hasJobCard && cards.length != 1) {
       return 'Job cards must be played alone';
     }
-    final totalElixirCost = cards.fold<double>(
-      0,
-      (sum, card) => sum + card.elixirCost,
-    );
-    if (player.elixir + 1e-6 < totalElixirCost) {
-      return 'Not enough energy';
+    final physicalCost = cards
+        .where((card) => !card.usesSpiritEnergy)
+        .fold<double>(0, (sum, card) => sum + _cardEnergyCost(card));
+    final spiritCost = cards
+        .where((card) => card.usesSpiritEnergy)
+        .fold<double>(0, (sum, card) => sum + _cardEnergyCost(card));
+    if (player.physicalEnergy + 1e-6 < physicalCost) {
+      return 'Not enough Physical Energy';
+    }
+    if (player.spiritEnergy + 1e-6 < spiritCost) {
+      return 'Not enough Spirit Energy';
     }
 
     final dropPoint = hasJobCard ? null : _normalizeDropPoint(side, dropX, dropY);
@@ -1205,8 +1224,8 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     for (final card in cards) {
       _spendPlayerEnergy(
         player,
-        card.elixirCost.toDouble(),
-        preferSpirit: card.type == 'spell',
+        _cardEnergyCost(card),
+        preferSpirit: card.usesSpiritEnergy,
       );
     }
     _drawReplacementCards(player, cards.map((card) => card.id).toList());
