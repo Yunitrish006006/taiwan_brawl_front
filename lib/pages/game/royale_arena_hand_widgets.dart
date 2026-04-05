@@ -180,7 +180,7 @@ class _HandCard extends StatelessWidget {
                 ),
                 child: Text(
                   context.watch<LocaleProvider>().translation.text(
-                    'Not enough elixir',
+                    'Not enough energy',
                   ),
                   style: const TextStyle(
                     color: Colors.white70,

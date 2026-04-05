@@ -21,9 +21,455 @@ class _BotCardScore {
   final double score;
 }
 
+class _JobEventTemplate {
+  const _JobEventTemplate({
+    required this.id,
+    required this.weight,
+    required this.tone,
+    required this.titleZhHant,
+    required this.titleEn,
+    required this.titleJa,
+    required this.descriptionZhHant,
+    required this.descriptionEn,
+    required this.descriptionJa,
+    required this.moneyFactor,
+    this.tags = const <String>[],
+    this.mentalStage = 0,
+    this.physicalHealthDelta = 0,
+    this.spiritHealthDelta = 0,
+    this.physicalEnergyDelta = 0,
+    this.spiritEnergyDelta = 0,
+  });
+
+  final String id;
+  final double weight;
+  final String tone;
+  final List<String> tags;
+  final int mentalStage;
+  final String titleZhHant;
+  final String titleEn;
+  final String titleJa;
+  final String descriptionZhHant;
+  final String descriptionEn;
+  final String descriptionJa;
+  final double moneyFactor;
+  final double physicalHealthDelta;
+  final double spiritHealthDelta;
+  final double physicalEnergyDelta;
+  final double spiritEnergyDelta;
+}
+
 extension _HostBattleEngineRuntime on HostBattleEngine {
   int _randomBotThinkMs() {
     return battle_rules.randomBotThinkMs(_random);
+  }
+
+  double _roundMetric(double value) => double.parse(value.toStringAsFixed(1));
+
+  double _heroBonusMultiplier(_HostPlayer player, String bonusKind) {
+    return player.hero.bonusKind == bonusKind ? player.hero.bonusValue : 1;
+  }
+
+  void _syncPlayerTotals(_HostPlayer player) {
+    player.physicalHealth = _clamp(
+      player.physicalHealth,
+      0,
+      player.maxPhysicalHealth,
+    );
+    player.spiritHealth = _clamp(
+      player.spiritHealth,
+      0,
+      player.maxSpiritHealth,
+    );
+    player.physicalEnergy = _clamp(
+      player.physicalEnergy,
+      0,
+      player.maxPhysicalEnergy,
+    );
+    player.spiritEnergy = _clamp(
+      player.spiritEnergy,
+      0,
+      player.maxSpiritEnergy,
+    );
+    player.money = _clamp(player.money, 0, player.maxMoney);
+    player.maxElixir = player.maxPhysicalEnergy + player.maxSpiritEnergy;
+    player.elixir = player.physicalEnergy + player.spiritEnergy;
+    player.towerHp = (player.physicalHealth + player.spiritHealth).round();
+  }
+
+  bool _spendPlayerEnergy(
+    _HostPlayer player,
+    double amount, {
+    required bool preferSpirit,
+  }) {
+    if (player.elixir + 1e-6 < amount) {
+      return false;
+    }
+    var remaining = amount;
+    if (preferSpirit) {
+      final spiritDrain = math.min(player.spiritEnergy, remaining);
+      player.spiritEnergy -= spiritDrain;
+      remaining -= spiritDrain;
+      final physicalDrain = math.min(player.physicalEnergy, remaining);
+      player.physicalEnergy -= physicalDrain;
+    } else {
+      final physicalDrain = math.min(player.physicalEnergy, remaining);
+      player.physicalEnergy -= physicalDrain;
+      remaining -= physicalDrain;
+      final spiritDrain = math.min(player.spiritEnergy, remaining);
+      player.spiritEnergy -= spiritDrain;
+    }
+    _syncPlayerTotals(player);
+    return true;
+  }
+
+  void _applyTowerDamage(
+    _HostPlayer player,
+    int damage, {
+    required bool preferSpirit,
+  }) {
+    var remaining = damage.toDouble();
+    if (preferSpirit) {
+      final spiritDrain = math.min(player.spiritHealth, remaining);
+      player.spiritHealth -= spiritDrain;
+      remaining -= spiritDrain;
+      final physicalDrain = math.min(player.physicalHealth, remaining);
+      player.physicalHealth -= physicalDrain;
+    } else {
+      final physicalDrain = math.min(player.physicalHealth, remaining);
+      player.physicalHealth -= physicalDrain;
+      remaining -= physicalDrain;
+      final spiritDrain = math.min(player.spiritHealth, remaining);
+      player.spiritHealth -= spiritDrain;
+    }
+    _syncPlayerTotals(player);
+  }
+
+  void _adjustPlayerResources(
+    _HostPlayer player, {
+    double moneyDelta = 0,
+    double physicalHealthDelta = 0,
+    double spiritHealthDelta = 0,
+    double physicalEnergyDelta = 0,
+    double spiritEnergyDelta = 0,
+  }) {
+    player.money += moneyDelta;
+    player.physicalHealth += physicalHealthDelta;
+    player.spiritHealth += spiritHealthDelta;
+    player.physicalEnergy += physicalEnergyDelta;
+    player.spiritEnergy += spiritEnergyDelta;
+    _syncPlayerTotals(player);
+  }
+
+  void _regeneratePlayerResources(_HostPlayer player, double dt) {
+    player.physicalHealth = _clamp(
+      player.physicalHealth + player.physicalHealthRegen * dt,
+      0,
+      player.maxPhysicalHealth,
+    );
+    player.spiritHealth = _clamp(
+      player.spiritHealth + player.spiritHealthRegen * dt,
+      0,
+      player.maxSpiritHealth,
+    );
+    player.physicalEnergy = _clamp(
+      player.physicalEnergy + player.physicalEnergyRegen * dt,
+      0,
+      player.maxPhysicalEnergy,
+    );
+    player.spiritEnergy = _clamp(
+      player.spiritEnergy + player.spiritEnergyRegen * dt,
+      0,
+      player.maxSpiritEnergy,
+    );
+    player.money = _clamp(
+      player.money + player.moneyPerSecond * dt,
+      0,
+      player.maxMoney,
+    );
+    _syncPlayerTotals(player);
+  }
+
+  List<_JobEventTemplate> _jobEventsForProfile(String profile) {
+    switch (profile) {
+      case 'job_delivery':
+        return const [
+          _JobEventTemplate(
+            id: 'surge_bonus',
+            weight: 1.15,
+            tone: 'positive',
+            titleZhHant: '尖峰加成',
+            titleEn: 'Surge Bonus',
+            titleJa: 'ピーク加算',
+            descriptionZhHant: '剛好卡進高峰獎勵區間，這趟外送意外很賺。',
+            descriptionEn:
+                'You hit the surge window just right. This delivery paid unexpectedly well.',
+            descriptionJa: 'ちょうどピーク加算に乗って、この配達はかなり稼げた。',
+            moneyFactor: 1.45,
+            physicalEnergyDelta: -0.8,
+            spiritEnergyDelta: -0.3,
+          ),
+          _JobEventTemplate(
+            id: 'empty_trip',
+            weight: 1,
+            tone: 'negative',
+            titleZhHant: '白跑一趟',
+            titleEn: 'Dead Run',
+            titleJa: '空振り配達',
+            descriptionZhHant: '接單又被取消，你花了力氣，卻只拿到零碎補貼。',
+            descriptionEn:
+                'The order got canceled mid-run. You burned energy for scraps.',
+            descriptionJa: '配達中にキャンセルされ、体力だけ使って小銭しか残らなかった。',
+            moneyFactor: 0.2,
+            physicalEnergyDelta: -0.7,
+            spiritHealthDelta: -16,
+          ),
+          _JobEventTemplate(
+            id: 'traffic_brush',
+            weight: 0.92,
+            tone: 'negative',
+            titleZhHant: '擦撞驚魂',
+            titleEn: 'Near Crash',
+            titleJa: '接触事故寸前',
+            descriptionZhHant: '趕單趕到差點出事，雖然有收入，但身體明顯被消耗。',
+            descriptionEn:
+                'You pushed too hard chasing the order and almost crashed. Your body paid for it.',
+            descriptionJa:
+                '配達を急ぎすぎて事故寸前。収入はあっても体への負担が大きい。',
+            moneyFactor: 0.92,
+            physicalHealthDelta: -45,
+            physicalEnergyDelta: -1,
+          ),
+          _JobEventTemplate(
+            id: 'big_tip',
+            weight: 0.8,
+            tone: 'positive',
+            titleZhHant: '客人給大賞',
+            titleEn: 'Big Tip',
+            titleJa: '太っ腹チップ',
+            descriptionZhHant: '客人心情太好，這單的回報幾乎翻倍。',
+            descriptionEn:
+                'A generous customer doubled the value of the run with a huge tip.',
+            descriptionJa: '太っ腹な客のおかげで、この配達はほぼ倍の価値になった。',
+            moneyFactor: 1.8,
+            physicalEnergyDelta: -0.9,
+          ),
+        ];
+      case 'job_day_labor':
+        return const [
+          _JobEventTemplate(
+            id: 'cash_job',
+            weight: 1.05,
+            tone: 'positive',
+            titleZhHant: '現領粗工',
+            titleEn: 'Cash Labor',
+            titleJa: '現金日雇い',
+            descriptionZhHant: '這班是現領，錢拿得快，但身體也被磨得很明顯。',
+            descriptionEn:
+                'This was a cash job. The pay came fast, but your body felt every second.',
+            descriptionJa: '現金払いの仕事で即金は入ったが、体への負荷も大きかった。',
+            moneyFactor: 1.7,
+            physicalHealthDelta: -28,
+            physicalEnergyDelta: -1.1,
+          ),
+          _JobEventTemplate(
+            id: 'boss_meal',
+            weight: 0.9,
+            tone: 'mixed',
+            titleZhHant: '老闆請便當',
+            titleEn: 'Boss Bought Lunch',
+            titleJa: '親方のおごり',
+            descriptionZhHant: '工很硬，但中午有人請吃飯，精神稍微穩住一點。',
+            descriptionEn:
+                'The work was rough, but lunch on the boss softened the blow.',
+            descriptionJa: '仕事はきつかったが、親方のおごりで少し気持ちが持ち直した。',
+            moneyFactor: 1.15,
+            physicalEnergyDelta: -0.75,
+            spiritHealthDelta: 18,
+          ),
+          _JobEventTemplate(
+            id: 'wage_docked',
+            weight: 0.95,
+            tone: 'negative',
+            tags: ['mental'],
+            mentalStage: 1,
+            titleZhHant: '被莫名扣薪',
+            titleEn: 'Pay Docked',
+            titleJa: '謎の減給',
+            descriptionZhHant: '工做完了卻被扣錢，精神壓力整個湧上來。',
+            descriptionEn:
+                'You finished the work, but the pay got cut anyway. The stress hit hard.',
+            descriptionJa: '仕事は終えたのに賃金を削られ、ストレスが一気にのしかかった。',
+            moneyFactor: 0.48,
+            spiritHealthDelta: -36,
+            spiritEnergyDelta: -0.6,
+          ),
+          _JobEventTemplate(
+            id: 'veteran_rate',
+            weight: 0.72,
+            tone: 'positive',
+            titleZhHant: '熟手價加成',
+            titleEn: 'Veteran Rate',
+            titleJa: '熟練手当',
+            descriptionZhHant: '今天接到熟手價，賺得很多，但你也真的快散了。',
+            descriptionEn:
+                'You landed a veteran-rate shift. The money was great, the wear was real.',
+            descriptionJa: '熟練手当の現場に入れた。収入は大きいが、消耗も激しい。',
+            moneyFactor: 2.08,
+            physicalHealthDelta: -40,
+            physicalEnergyDelta: -1.3,
+          ),
+        ];
+      case 'job_part_time':
+      default:
+        return const [
+          _JobEventTemplate(
+            id: 'extra_shift',
+            weight: 1.2,
+            tone: 'positive',
+            titleZhHant: '臨時頂班',
+            titleEn: 'Extra Shift',
+            titleJa: '臨時シフト',
+            descriptionZhHant: '有人臨時請假，你硬補進班表，多賺到一筆現金。',
+            descriptionEn:
+                'Someone bailed on their shift. You covered it and pocketed extra cash.',
+            descriptionJa: '急な欠員が出て、代打でシフトに入り追加収入を得た。',
+            moneyFactor: 1.25,
+            physicalEnergyDelta: -0.4,
+            spiritEnergyDelta: -0.3,
+          ),
+          _JobEventTemplate(
+            id: 'schedule_cut',
+            weight: 1,
+            tone: 'negative',
+            titleZhHant: '班表被砍',
+            titleEn: 'Hours Cut',
+            titleJa: 'シフト削減',
+            descriptionZhHant: '店裡突然砍班，你白跑一趟，只拿到很少的錢。',
+            descriptionEn:
+                'The shop cut your hours at the last second. You barely earned anything.',
+            descriptionJa: '急にシフトが削られ、ほとんど稼げなかった。',
+            moneyFactor: 0.35,
+            spiritHealthDelta: -18,
+            spiritEnergyDelta: -0.5,
+          ),
+          _JobEventTemplate(
+            id: 'rude_customer',
+            weight: 0.95,
+            tone: 'negative',
+            tags: ['mental'],
+            mentalStage: 1,
+            titleZhHant: '奧客爆氣',
+            titleEn: 'Customer Meltdown',
+            titleJa: '迷惑客の暴走',
+            descriptionZhHant: '你被奧客連續輸出，錢是拿到了，但精神被磨掉一層。',
+            descriptionEn:
+                'A nightmare customer unloaded on you. You got paid, but your mind took a hit.',
+            descriptionJa: '迷惑客に絡まれ、給料は出たがメンタルを削られた。',
+            moneyFactor: 0.78,
+            spiritHealthDelta: -32,
+            spiritEnergyDelta: -0.8,
+          ),
+          _JobEventTemplate(
+            id: 'tips_night',
+            weight: 0.85,
+            tone: 'positive',
+            titleZhHant: '小費爆發',
+            titleEn: 'Tip Frenzy',
+            titleJa: 'チップ大当たり',
+            descriptionZhHant: '今晚客人心情好，額外的小費讓收入直接拉高。',
+            descriptionEn:
+                'Customers were generous tonight. Tips pushed your income way up.',
+            descriptionJa: '客の機嫌が良く、チップで収入が一気に跳ねた。',
+            moneyFactor: 1.65,
+            physicalEnergyDelta: -0.5,
+            spiritEnergyDelta: -0.2,
+          ),
+        ];
+    }
+  }
+
+  _JobEventTemplate _pickWeightedJobEvent(
+    _HostPlayer player,
+    List<_JobEventTemplate> templates,
+  ) {
+    final weighted = templates.map((entry) {
+      var weight = entry.weight;
+      if (entry.tags.contains('mental')) {
+        weight *= player.hero.mentalEventWeightMultiplier;
+      }
+      if (entry.tone == 'positive') {
+        weight *= player.hero.jobPositiveWeightMultiplier;
+      }
+      if (entry.tone == 'negative') {
+        weight *= player.hero.jobNegativeWeightMultiplier;
+      }
+      return MapEntry(entry, math.max(0.01, weight));
+    }).toList();
+    final totalWeight = weighted.fold<double>(
+      0,
+      (sum, entry) => sum + entry.value,
+    );
+    var threshold = _random.nextDouble() * totalWeight;
+    for (final entry in weighted) {
+      threshold -= entry.value;
+      if (threshold <= 0) {
+        return entry.key;
+      }
+    }
+    return weighted.last.key;
+  }
+
+  ({
+    String titleZhHant,
+    String titleEn,
+    String titleJa,
+    String descriptionZhHant,
+    String descriptionEn,
+    String descriptionJa,
+  })
+  _mentalStageText(int stage) {
+    if (stage <= 1) {
+      return (
+        titleZhHant: '精神疾病 I：焦慮失眠',
+        titleEn: 'Mental Illness I: Anxiety Spiral',
+        titleJa: '精神疾患 I：不安と不眠',
+        descriptionZhHant: '壓力累積到開始失眠與焦躁，精神恢復明顯變慢。',
+        descriptionEn:
+            'Pressure built into insomnia and anxiety. Your mind is recovering much slower.',
+        descriptionJa: 'ストレスが不眠と焦燥に変わり、メンタルの回復が鈍っている。',
+      );
+    }
+    final mania = _random.nextDouble() < 0.5;
+    if (mania) {
+      return (
+        titleZhHant: '精神疾病 II：躁症發作',
+        titleEn: 'Mental Illness II: Manic Break',
+        titleJa: '精神疾患 II：躁状態',
+        descriptionZhHant: '你被高壓與過勞推進躁症狀態，精神耗損進一步擴大。',
+        descriptionEn:
+            'Stress and overwork tipped you into mania, amplifying the mental crash.',
+        descriptionJa: '高圧と過労で躁状態に入り、精神の消耗がさらに増した。',
+      );
+    }
+    return (
+      titleZhHant: '精神疾病 II：鬱症發作',
+      titleEn: 'Mental Illness II: Depressive Crash',
+      titleJa: '精神疾患 II：うつ状態',
+      descriptionZhHant: '壓力把你壓進鬱症發作，精神與體力一起往下掉。',
+      descriptionEn:
+          'The pressure collapsed into depression, dragging both mind and body down.',
+      descriptionJa: 'ストレスがうつ状態へ崩れ、心身の両方が落ち込んだ。',
+    );
+  }
+
+  void _appendBattleEvent(RoyaleBattleEvent event) {
+    _battleEvents
+      ..add(event)
+      ..removeRange(
+        0,
+        math.max(0, _battleEvents.length - 6),
+      );
   }
 
   _DropPoint _normalizeDropPoint(String side, double dropX, double dropY) {
@@ -71,6 +517,71 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         .toList();
   }
 
+  void _resolveJobCard(_HostPlayer player, RoyaleCard card) {
+    final profile = _jobEventsForProfile(card.effectKind);
+    final picked = _pickWeightedJobEvent(player, profile);
+    final finalStage = picked.mentalStage <= 0
+        ? 0
+        : math.max(
+            picked.mentalStage,
+            player.hero.mentalIllnessStageFloor,
+          );
+
+    var spiritHealthDelta = picked.spiritHealthDelta;
+    var spiritEnergyDelta = picked.spiritEnergyDelta;
+    var physicalEnergyDelta = picked.physicalEnergyDelta;
+    if (picked.mentalStage > 0) {
+      spiritHealthDelta *= player.hero.mentalDamageMultiplier;
+      spiritEnergyDelta *= player.hero.mentalDamageMultiplier;
+      if (finalStage >= 2) {
+        spiritHealthDelta -= 26;
+        spiritEnergyDelta -= 0.7;
+        physicalEnergyDelta -= 0.25;
+      }
+    }
+
+    final mentalText = finalStage > 0 ? _mentalStageText(finalStage) : null;
+    final moneyDelta = _roundMetric(
+      card.effectValue * picked.moneyFactor * player.hero.jobMoneyMultiplier,
+    );
+    final event = RoyaleBattleEvent(
+      id: 'job-${DateTime.now().microsecondsSinceEpoch}-${_random.nextInt(9999)}',
+      kind: 'job_outcome',
+      side: player.side,
+      cardId: card.id,
+      cardName: card.name,
+      cardNameZhHant: card.nameZhHant,
+      cardNameEn: card.nameEn,
+      cardNameJa: card.nameJa,
+      title: mentalText?.titleEn ?? picked.titleEn,
+      titleZhHant: mentalText?.titleZhHant ?? picked.titleZhHant,
+      titleEn: mentalText?.titleEn ?? picked.titleEn,
+      titleJa: mentalText?.titleJa ?? picked.titleJa,
+      description: mentalText?.descriptionEn ?? picked.descriptionEn,
+      descriptionZhHant:
+          mentalText?.descriptionZhHant ?? picked.descriptionZhHant,
+      descriptionEn: mentalText?.descriptionEn ?? picked.descriptionEn,
+      descriptionJa: mentalText?.descriptionJa ?? picked.descriptionJa,
+      tone: picked.tone,
+      mentalStage: finalStage,
+      moneyDelta: moneyDelta,
+      physicalHealthDelta: _roundMetric(picked.physicalHealthDelta),
+      spiritHealthDelta: _roundMetric(spiritHealthDelta),
+      physicalEnergyDelta: _roundMetric(physicalEnergyDelta),
+      spiritEnergyDelta: _roundMetric(spiritEnergyDelta),
+    );
+
+    _adjustPlayerResources(
+      player,
+      moneyDelta: event.moneyDelta,
+      physicalHealthDelta: event.physicalHealthDelta,
+      spiritHealthDelta: event.spiritHealthDelta,
+      physicalEnergyDelta: event.physicalEnergyDelta,
+      spiritEnergyDelta: event.spiritEnergyDelta,
+    );
+    _appendBattleEvent(event);
+  }
+
   _UnitStats _applyEquipmentEffects(
     RoyaleCard card,
     List<_EquipmentEffect> effects,
@@ -99,6 +610,10 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
   void _resolveSpell(String side, RoyaleCard card, _DropPoint dropPoint) {
     final enemySide = _enemySide(side);
     final enemyPlayer = _playerForSide(enemySide);
+    final caster = _playerForSide(side);
+    final spellDamage = (card.spellDamage *
+            _heroBonusMultiplier(caster, 'spell_damage_multiplier'))
+        .round();
 
     for (final unit in _units) {
       if (unit.side == side) {
@@ -111,7 +626,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
             dropPoint.lateralPosition,
           ) <=
           card.spellRadius) {
-        unit.hp -= card.spellDamage;
+        unit.hp -= spellDamage;
       }
     }
 
@@ -123,7 +638,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
           dropPoint.lateralPosition,
         ) <=
         card.spellRadius + 50) {
-      enemyPlayer.towerHp = math.max(0, enemyPlayer.towerHp - card.spellDamage);
+      _applyTowerDamage(enemyPlayer, spellDamage, preferSpirit: true);
     }
   }
 
@@ -136,6 +651,15 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     final count = math.max(1, card.spawnCount);
     final spacing = count == 1 ? 0.0 : 30 / _fieldAspectRatio;
     final stats = _applyEquipmentEffects(card, equipmentEffects);
+    final caster = _playerForSide(side);
+    final boostedHp = math.max(
+      1,
+      (stats.hp * _heroBonusMultiplier(caster, 'unit_hp_multiplier')).round(),
+    );
+    final boostedDamage = math.max(
+      1,
+      (stats.damage * caster.hero.unitDamageMultiplier).round(),
+    );
     for (var index = 0; index < count; index += 1) {
       final offset = (index - (count - 1) / 2) * spacing;
       _units.add(
@@ -153,9 +677,9 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
           lateralPosition: _sanitizeLateralPosition(
             dropPoint.lateralPosition + offset,
           ),
-          hp: stats.hp,
-          maxHp: stats.hp,
-          damage: stats.damage,
+          hp: boostedHp,
+          maxHp: boostedHp,
+          damage: boostedDamage,
           attackRange: card.attackRange.toDouble(),
           bodyRadius: card.bodyRadius > 0
               ? card.bodyRadius.toDouble()
@@ -238,7 +762,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       return;
     }
     final enemyPlayer = _playerForSide(target.targetSide!);
-    enemyPlayer.towerHp = math.max(0, enemyPlayer.towerHp - unit.damage);
+    _applyTowerDamage(enemyPlayer, unit.damage, preferSpirit: false);
   }
 
   double _ownTowerProgressForSide(String side) {
@@ -383,6 +907,21 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     final ownTowerHp = player.towerHp;
     final enemyTowerHp = _playerForSide(enemySide).towerHp;
 
+    if (card.isJob) {
+      var score = card.effectValue * 12 - card.elixirCost * 6;
+      if (player.money <= player.maxMoney * 0.25) {
+        score += 180;
+      } else if (player.money <= player.maxMoney * 0.5) {
+        score += 90;
+      } else {
+        score -= 40;
+      }
+      if (urgentThreat) {
+        score -= 70;
+      }
+      return score;
+    }
+
     if (card.type == 'spell') {
       final spellTarget = _evaluateSpellTarget(side, card);
       if (spellTarget == null) {
@@ -513,8 +1052,14 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       return const [];
     }
 
+    final playableJobs = affordable.where((card) => card.isJob).toList();
     final playableUnits = affordable
-        .where((card) => card.type != 'equipment' && card.type != 'spell')
+        .where(
+          (card) =>
+              !card.isJob &&
+              card.type != 'equipment' &&
+              card.type != 'spell',
+        )
         .toList();
     final playableSpells = affordable
         .where((card) => card.type == 'spell')
@@ -533,7 +1078,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     final alliedFront = _selectAlliedFront(player.side, alliedUnits);
 
     final scoredCards = <_BotCardScore>[];
-    for (final card in [...playableUnits, ...playableSpells]) {
+    for (final card in [...playableJobs, ...playableUnits, ...playableSpells]) {
       scoredCards.add(
         _BotCardScore(
           card: card,
@@ -560,7 +1105,9 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     }
 
     final comboCards = <RoyaleCard>[primaryCard];
-    if (primaryCard.type != 'spell' && playableEquipment.isNotEmpty) {
+    if (!primaryCard.isJob &&
+        primaryCard.type != 'spell' &&
+        playableEquipment.isNotEmpty) {
       var remainingElixir = player.elixir - primaryCard.elixirCost;
       final scoredEquipment = playableEquipment
           .map(
@@ -641,24 +1188,36 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     required double dropY,
   }) {
     final player = _playerForSide(side);
+    final hasJobCard = cards.any((card) => card.isJob);
+    if (hasJobCard && cards.length != 1) {
+      return 'Job cards must be played alone';
+    }
     final totalElixirCost = cards.fold<double>(
       0,
       (sum, card) => sum + card.elixirCost,
     );
     if (player.elixir + 1e-6 < totalElixirCost) {
-      return 'Not enough elixir';
+      return 'Not enough energy';
     }
 
-    final dropPoint = _normalizeDropPoint(side, dropX, dropY);
+    final dropPoint = hasJobCard ? null : _normalizeDropPoint(side, dropX, dropY);
     final equipmentEffects = _equipmentEffects(cards);
-    player.elixir = _clamp(player.elixir - totalElixirCost, 0, _maxElixir);
+    for (final card in cards) {
+      _spendPlayerEnergy(
+        player,
+        card.elixirCost.toDouble(),
+        preferSpirit: card.type == 'spell',
+      );
+    }
     _drawReplacementCards(player, cards.map((card) => card.id).toList());
 
     for (final card in cards) {
       if (card.type == 'spell') {
-        _resolveSpell(side, card, dropPoint);
+        _resolveSpell(side, card, dropPoint!);
+      } else if (card.isJob) {
+        _resolveJobCard(player, card);
       } else if (card.type != 'equipment') {
-        _spawnUnits(side, card, dropPoint, equipmentEffects);
+        _spawnUnits(side, card, dropPoint!, equipmentEffects);
       }
     }
     return null;
@@ -672,16 +1231,8 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
 
     final dt = _tickMs / 1000;
     _timeRemainingMs -= _tickMs;
-    _leftPlayer.elixir = _clamp(
-      _leftPlayer.elixir + _elixirPerSecond * dt,
-      0,
-      _maxElixir,
-    );
-    _rightPlayer.elixir = _clamp(
-      _rightPlayer.elixir + _elixirPerSecond * dt,
-      0,
-      _maxElixir,
-    );
+    _regeneratePlayerResources(_leftPlayer, dt);
+    _regeneratePlayerResources(_rightPlayer, dt);
 
     _runBotTurns();
 

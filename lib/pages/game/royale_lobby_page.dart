@@ -22,7 +22,9 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
   bool _isLoading = true;
   bool _isSubmitting = false;
   List<RoyaleDeck> _decks = const [];
+  List<RoyaleHero> _heroes = const [];
   RoyaleDeck? _selectedDeck;
+  RoyaleHero? _selectedHero;
   final TextEditingController _roomCodeController = TextEditingController();
 
   @override
@@ -31,7 +33,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
     _service = RoyaleService(ApiClient());
     _roomCodeController.text =
         widget.initialRoomCode?.trim().toUpperCase() ?? '';
-    _loadDecks();
+    _loadLobbyData();
   }
 
   @override
@@ -40,17 +42,27 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
     super.dispose();
   }
 
-  Future<void> _loadDecks() async {
+  Future<void> _loadLobbyData() async {
     final t = context.read<LocaleProvider>().translation;
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final decks = await _service.fetchDecks();
+      final results = await Future.wait([
+        _service.fetchDecks(),
+        _service.fetchHeroes(),
+      ]);
+      final decks = results[0] as List<RoyaleDeck>;
+      final heroes = results[1] as List<RoyaleHero>;
+      final defaultHero = heroes.where((hero) => hero.id == 'ordinary_person');
       setState(() {
         _decks = decks;
+        _heroes = heroes;
         _selectedDeck = decks.isNotEmpty ? decks.first : null;
+        _selectedHero = defaultHero.isNotEmpty
+            ? defaultHero.first
+            : (heroes.isNotEmpty ? heroes.first : null);
       });
     } catch (e) {
       if (!mounted) {
@@ -80,6 +92,10 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
       _showSnackBar(t.text('Please create a deck first'));
       return;
     }
+    if (_selectedHero == null) {
+      _showSnackBar(t.text('Please select a hero first'));
+      return;
+    }
 
     setState(() {
       _isSubmitting = true;
@@ -94,7 +110,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
         MaterialPageRoute(builder: (_) => RoyaleArenaPage(roomCode: room.code)),
       );
       if (mounted) {
-        _loadDecks();
+        _loadLobbyData();
       }
     } on ApiException catch (e) {
       if (!mounted) {
@@ -149,6 +165,121 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
           _selectedDeck = value;
         });
       },
+    );
+  }
+
+  String _heroMeterSummary(RoyaleResourceDefinition value) {
+    return '${value.initial.toStringAsFixed(1)} / ${value.max.toStringAsFixed(1)} / ${value.regenPerSecond.toStringAsFixed(1)}';
+  }
+
+  Widget _buildHeroSelector(Map<String, String> t, String locale) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          t.text('Select Hero'),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: _heroes.map((hero) {
+            final selected = _selectedHero?.id == hero.id;
+            return SizedBox(
+              width: 240,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: () {
+                  setState(() {
+                    _selectedHero = hero;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? Colors.white.withValues(alpha: 0.18)
+                        : Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: selected
+                          ? const Color(0xFFFFD166)
+                          : Colors.white.withValues(alpha: 0.14),
+                      width: selected ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        hero.localizedName(locale),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        hero.localizedBonusSummary(locale),
+                        style: const TextStyle(
+                          color: Color(0xFFFFD166),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        '${t.text('Physical Health')} ${_heroMeterSummary(hero.physicalHealth)}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${t.text('Spirit Health')} ${_heroMeterSummary(hero.spiritHealth)}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${t.text('Physical Energy')} ${_heroMeterSummary(hero.physicalEnergy)}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${t.text('Spirit Energy')} ${_heroMeterSummary(hero.spiritEnergy)}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${t.text('Money')} ${_heroMeterSummary(hero.money)}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 
@@ -219,6 +350,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
             : () => _enterRoom(
                 () => _service.createRoom(
                   deckId: _selectedDeck!.id,
+                  heroId: _selectedHero!.id,
                   vsBot: vsBot,
                   simulationMode: vsBot ? 'host' : _simulationMode,
                 ),
@@ -267,7 +399,11 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
     );
   }
 
-  Widget _buildCreateRoomPanel(ThemeData theme, Map<String, String> t) {
+  Widget _buildCreateRoomPanel(
+    ThemeData theme,
+    Map<String, String> t,
+    String locale,
+  ) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -297,6 +433,8 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
           ),
           const SizedBox(height: 16),
           _buildDeckDropdown(t),
+          const SizedBox(height: 16),
+          _buildHeroSelector(t, locale),
           const SizedBox(height: 16),
           Text(
             t.text('Create Room'),
@@ -361,6 +499,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
                       () => _service.joinRoom(
                         roomCode: _roomCodeController.text.trim().toUpperCase(),
                         deckId: _selectedDeck!.id,
+                        heroId: _selectedHero!.id,
                       ),
                     ),
               icon: const Icon(Icons.login),
@@ -373,10 +512,11 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
   }
 
   Widget _buildLobbyBody(ThemeData theme, Map<String, String> t) {
+    final locale = context.watch<LocaleProvider>().locale;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _buildCreateRoomPanel(theme, t),
+        _buildCreateRoomPanel(theme, t, locale),
         const SizedBox(height: 20),
         _buildJoinRoomPanel(theme, t),
         const SizedBox(height: 20),

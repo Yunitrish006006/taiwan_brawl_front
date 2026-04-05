@@ -7,6 +7,7 @@ class _HostPlayer {
     required this.side,
     required this.deckId,
     required this.deckName,
+    required this.hero,
     required this.isBot,
     required this.ready,
     required this.connected,
@@ -14,6 +15,22 @@ class _HostPlayer {
     required this.hand,
     required this.queue,
     required this.elixir,
+    required this.maxElixir,
+    required this.physicalHealth,
+    required this.maxPhysicalHealth,
+    required this.physicalHealthRegen,
+    required this.spiritHealth,
+    required this.maxSpiritHealth,
+    required this.spiritHealthRegen,
+    required this.physicalEnergy,
+    required this.maxPhysicalEnergy,
+    required this.physicalEnergyRegen,
+    required this.spiritEnergy,
+    required this.maxSpiritEnergy,
+    required this.spiritEnergyRegen,
+    required this.money,
+    required this.maxMoney,
+    required this.moneyPerSecond,
     required this.towerHp,
     required this.maxTowerHp,
     required this.botThinkMs,
@@ -24,6 +41,7 @@ class _HostPlayer {
   final String side;
   final int deckId;
   final String deckName;
+  final RoyaleHero hero;
   final bool isBot;
   bool ready;
   bool connected;
@@ -31,6 +49,22 @@ class _HostPlayer {
   final List<String> hand;
   final List<String> queue;
   double elixir;
+  double maxElixir;
+  double physicalHealth;
+  double maxPhysicalHealth;
+  double physicalHealthRegen;
+  double spiritHealth;
+  double maxSpiritHealth;
+  double spiritHealthRegen;
+  double physicalEnergy;
+  double maxPhysicalEnergy;
+  double physicalEnergyRegen;
+  double spiritEnergy;
+  double maxSpiritEnergy;
+  double spiritEnergyRegen;
+  double money;
+  double maxMoney;
+  double moneyPerSecond;
   int towerHp;
   final int maxTowerHp;
   int botThinkMs;

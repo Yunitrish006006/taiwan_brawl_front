@@ -10,8 +10,6 @@ part 'host_battle_engine_models.dart';
 const int _tickMs = battle_rules.tickMs;
 const int _matchDurationMs = battle_rules.matchDurationMs;
 const int _worldScale = battle_rules.worldScale;
-const double _maxElixir = battle_rules.maxElixir;
-const double _elixirPerSecond = battle_rules.elixirPerSecond;
 const int _leftTowerX = battle_rules.leftTowerX;
 const int _rightTowerX = battle_rules.rightTowerX;
 const int _towerHp = battle_rules.towerHp;
@@ -72,6 +70,7 @@ class HostBattleEngine {
       _viewerSide = room.viewerSide ?? 'left' {
     _leftPlayer = _buildPlayer(room, 'left');
     _rightPlayer = _buildPlayer(room, 'right');
+    _battleEvents.addAll(room.battle?.events ?? const []);
   }
 
   final String _code;
@@ -81,6 +80,7 @@ class HostBattleEngine {
   late _HostPlayer _leftPlayer;
   late _HostPlayer _rightPlayer;
   final List<_HostUnit> _units = <_HostUnit>[];
+  final List<RoyaleBattleEvent> _battleEvents = <RoyaleBattleEvent>[];
   int _nextUnitId = 1;
   int _timeRemainingMs = _matchDurationMs;
   RoyaleBattleResult? _result;
@@ -141,6 +141,35 @@ class HostBattleEngine {
             },
           )
           .toList(),
+      'events': _battleEvents
+          .map(
+            (event) => {
+              'id': event.id,
+              'kind': event.kind,
+              'side': event.side,
+              'cardId': event.cardId,
+              'cardName': event.cardName,
+              'cardNameZhHant': event.cardNameZhHant,
+              'cardNameEn': event.cardNameEn,
+              'cardNameJa': event.cardNameJa,
+              'title': event.title,
+              'titleZhHant': event.titleZhHant,
+              'titleEn': event.titleEn,
+              'titleJa': event.titleJa,
+              'description': event.description,
+              'descriptionZhHant': event.descriptionZhHant,
+              'descriptionEn': event.descriptionEn,
+              'descriptionJa': event.descriptionJa,
+              'tone': event.tone,
+              'mentalStage': event.mentalStage,
+              'moneyDelta': event.moneyDelta,
+              'physicalHealthDelta': event.physicalHealthDelta,
+              'spiritHealthDelta': event.spiritHealthDelta,
+              'physicalEnergyDelta': event.physicalEnergyDelta,
+              'spiritEnergyDelta': event.spiritEnergyDelta,
+            },
+          )
+          .toList(),
     };
   }
 
@@ -193,30 +222,42 @@ class HostBattleEngine {
       return playableCards.error;
     }
     final cards = playableCards.cards;
+    final hasJobCard = cards.any((card) => card.isJob);
 
     final totalElixirCost = cards.fold<double>(
       0,
       (sum, card) => sum + card.elixirCost,
     );
     if (player.elixir + 1e-6 < totalElixirCost) {
-      return 'Not enough elixir';
+      return 'Not enough energy';
     }
 
     if (_isEquipmentOnlyCast(cards)) {
       return 'Equipment cards need at least one unit in the same cast';
     }
+    if (hasJobCard && cards.length != 1) {
+      return 'Job cards must be played alone';
+    }
 
-    final dropPoint = _normalizeDropPoint(side, dropX, dropY);
+    final dropPoint = hasJobCard ? null : _normalizeDropPoint(side, dropX, dropY);
     final equipmentEffects = _equipmentEffects(cards);
 
-    player.elixir = _clamp(player.elixir - totalElixirCost, 0, _maxElixir);
+    for (final card in cards) {
+      _spendPlayerEnergy(
+        player,
+        card.elixirCost.toDouble(),
+        preferSpirit: card.type == 'spell',
+      );
+    }
     _drawReplacementCards(player, cardIds);
 
     for (final card in cards) {
       if (card.type == 'spell') {
-        _resolveSpell(side, card, dropPoint);
+        _resolveSpell(side, card, dropPoint!);
+      } else if (card.isJob) {
+        _resolveJobCard(player, card);
       } else if (card.type != 'equipment') {
-        _spawnUnits(side, card, dropPoint, equipmentEffects);
+        _spawnUnits(side, card, dropPoint!, equipmentEffects);
       }
     }
 
@@ -253,7 +294,10 @@ class HostBattleEngine {
   bool _isEquipmentOnlyCast(List<RoyaleCard> cards) {
     final hasEquipment = cards.any((card) => card.type == 'equipment');
     final hasUnit = cards.any(
-      (card) => card.type != 'equipment' && card.type != 'spell',
+      (card) =>
+          card.type != 'equipment' &&
+          card.type != 'spell' &&
+          !card.isJob,
     );
     return hasEquipment && !hasUnit;
   }
@@ -261,9 +305,25 @@ class HostBattleEngine {
   Map<String, dynamic> _exportPlayerState(_HostPlayer player) {
     return {
       'elixir': player.elixir,
+      'maxElixir': player.maxElixir,
       'hand': player.hand,
       'queue': player.queue,
       'botThinkMs': player.botThinkMs,
+      'physicalHealth': player.physicalHealth,
+      'maxPhysicalHealth': player.maxPhysicalHealth,
+      'physicalHealthRegen': player.physicalHealthRegen,
+      'spiritHealth': player.spiritHealth,
+      'maxSpiritHealth': player.maxSpiritHealth,
+      'spiritHealthRegen': player.spiritHealthRegen,
+      'physicalEnergy': player.physicalEnergy,
+      'maxPhysicalEnergy': player.maxPhysicalEnergy,
+      'physicalEnergyRegen': player.physicalEnergyRegen,
+      'spiritEnergy': player.spiritEnergy,
+      'maxSpiritEnergy': player.maxSpiritEnergy,
+      'spiritEnergyRegen': player.spiritEnergyRegen,
+      'money': player.money,
+      'maxMoney': player.maxMoney,
+      'moneyPerSecond': player.moneyPerSecond,
       'towerHp': player.towerHp,
       'maxTowerHp': player.maxTowerHp,
     };
@@ -286,6 +346,7 @@ class HostBattleEngine {
       side: side,
       deckId: view.deckId,
       deckName: view.deckName,
+      hero: view.hero,
       isBot: view.userId == 0,
       ready: view.ready,
       connected: view.connected,
@@ -297,7 +358,23 @@ class HostBattleEngine {
           ? List<String>.from(view.queueCardIds)
           : queue,
       elixir: view.elixir ?? 5,
-      towerHp: view.maxTowerHp == 0 ? _towerHp : view.maxTowerHp,
+      maxElixir: view.maxEnergy,
+      physicalHealth: view.physicalHealth.current,
+      maxPhysicalHealth: view.physicalHealth.max,
+      physicalHealthRegen: view.physicalHealth.regenPerSecond,
+      spiritHealth: view.spiritHealth.current,
+      maxSpiritHealth: view.spiritHealth.max,
+      spiritHealthRegen: view.spiritHealth.regenPerSecond,
+      physicalEnergy: view.physicalEnergy.current,
+      maxPhysicalEnergy: view.physicalEnergy.max,
+      physicalEnergyRegen: view.physicalEnergy.regenPerSecond,
+      spiritEnergy: view.spiritEnergy.current,
+      maxSpiritEnergy: view.spiritEnergy.max,
+      spiritEnergyRegen: view.spiritEnergy.regenPerSecond,
+      money: view.money.current,
+      maxMoney: view.money.max,
+      moneyPerSecond: view.money.regenPerSecond,
+      towerHp: view.maxTowerHp == 0 ? _towerHp : view.towerHp,
       maxTowerHp: view.maxTowerHp == 0 ? _towerHp : view.maxTowerHp,
       botThinkMs: view.userId == 0 ? _randomBotThinkMs() : 0,
     );
@@ -328,8 +405,34 @@ class HostBattleEngine {
         elixir: _leftPlayer.elixir,
         handCardIds: _leftPlayer.hand,
         queueCardIds: _leftPlayer.queue,
+        hero: _leftPlayer.hero,
         ready: _leftPlayer.ready,
         connected: _leftPlayer.connected,
+        physicalHealth: RoyaleResourceState(
+          current: _leftPlayer.physicalHealth,
+          max: _leftPlayer.maxPhysicalHealth,
+          regenPerSecond: _leftPlayer.physicalHealthRegen,
+        ),
+        spiritHealth: RoyaleResourceState(
+          current: _leftPlayer.spiritHealth,
+          max: _leftPlayer.maxSpiritHealth,
+          regenPerSecond: _leftPlayer.spiritHealthRegen,
+        ),
+        physicalEnergy: RoyaleResourceState(
+          current: _leftPlayer.physicalEnergy,
+          max: _leftPlayer.maxPhysicalEnergy,
+          regenPerSecond: _leftPlayer.physicalEnergyRegen,
+        ),
+        spiritEnergy: RoyaleResourceState(
+          current: _leftPlayer.spiritEnergy,
+          max: _leftPlayer.maxSpiritEnergy,
+          regenPerSecond: _leftPlayer.spiritEnergyRegen,
+        ),
+        money: RoyaleResourceState(
+          current: _leftPlayer.money,
+          max: _leftPlayer.maxMoney,
+          regenPerSecond: _leftPlayer.moneyPerSecond,
+        ),
         towerHp: _leftPlayer.towerHp,
         maxTowerHp: _leftPlayer.maxTowerHp,
       ),
@@ -343,8 +446,34 @@ class HostBattleEngine {
         elixir: _rightPlayer.elixir,
         handCardIds: _rightPlayer.hand,
         queueCardIds: _rightPlayer.queue,
+        hero: _rightPlayer.hero,
         ready: _rightPlayer.ready,
         connected: _rightPlayer.connected,
+        physicalHealth: RoyaleResourceState(
+          current: _rightPlayer.physicalHealth,
+          max: _rightPlayer.maxPhysicalHealth,
+          regenPerSecond: _rightPlayer.physicalHealthRegen,
+        ),
+        spiritHealth: RoyaleResourceState(
+          current: _rightPlayer.spiritHealth,
+          max: _rightPlayer.maxSpiritHealth,
+          regenPerSecond: _rightPlayer.spiritHealthRegen,
+        ),
+        physicalEnergy: RoyaleResourceState(
+          current: _rightPlayer.physicalEnergy,
+          max: _rightPlayer.maxPhysicalEnergy,
+          regenPerSecond: _rightPlayer.physicalEnergyRegen,
+        ),
+        spiritEnergy: RoyaleResourceState(
+          current: _rightPlayer.spiritEnergy,
+          max: _rightPlayer.maxSpiritEnergy,
+          regenPerSecond: _rightPlayer.spiritEnergyRegen,
+        ),
+        money: RoyaleResourceState(
+          current: _rightPlayer.money,
+          max: _rightPlayer.maxMoney,
+          regenPerSecond: _rightPlayer.moneyPerSecond,
+        ),
         towerHp: _rightPlayer.towerHp,
         maxTowerHp: _rightPlayer.maxTowerHp,
       ),
@@ -360,6 +489,8 @@ class HostBattleEngine {
       battle: RoyaleBattleView(
         timeRemainingMs: _timeRemainingMs,
         yourElixir: viewerPlayer.elixir,
+        yourMaxElixir: viewerPlayer.maxElixir,
+        yourMoney: viewerPlayer.money,
         yourHand: viewerPlayer.hand
             .map((cardId) => viewerPlayer.cardById(cardId))
             .whereType<RoyaleCard>()
@@ -389,6 +520,7 @@ class HostBattleEngine {
               ),
             )
             .toList(),
+        events: List<RoyaleBattleEvent>.unmodifiable(_battleEvents),
         result: _result,
       ),
     );

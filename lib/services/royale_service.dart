@@ -29,6 +29,11 @@ class RoyaleService {
     return jsonModelList(res, 'cards', RoyaleCard.fromJson);
   }
 
+  Future<List<RoyaleHero>> fetchHeroes() async {
+    final res = await _apiClient.getJson('/api/heroes');
+    return jsonModelList(res, 'heroes', RoyaleHero.fromJson);
+  }
+
   Future<List<RoyaleDeck>> fetchDecks() async {
     final res = await _apiClient.getJson('/api/decks');
     return jsonModelList(res, 'decks', RoyaleDeck.fromJson);
@@ -49,12 +54,14 @@ class RoyaleService {
 
   Future<RoyaleRoomSnapshot> createRoom({
     required int deckId,
+    String heroId = 'ordinary_person',
     bool vsBot = false,
     String simulationMode = 'server',
   }) async {
     final effectiveSimulationMode = vsBot ? 'host' : simulationMode;
     final res = await _apiClient.postJson('/api/rooms', {
       'deckId': deckId,
+      'heroId': heroId,
       'vsBot': vsBot,
       'simulationMode': effectiveSimulationMode,
     });
@@ -64,8 +71,12 @@ class RoyaleService {
   Future<RoyaleRoomSnapshot> joinRoom({
     required String roomCode,
     required int deckId,
+    String heroId = 'ordinary_person',
   }) async {
-    return _postRoomAction(roomCode, 'join', {'deckId': deckId});
+    return _postRoomAction(roomCode, 'join', {
+      'deckId': deckId,
+      'heroId': heroId,
+    });
   }
 
   Future<RoyaleRoomSnapshot> readyRoom(String roomCode) async {

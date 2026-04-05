@@ -28,6 +28,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
     'tank',
     'swarm',
     'spell',
+    'job',
     'equipment',
   ];
 
@@ -35,6 +36,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
     'ground',
     'tower',
     'area',
+    'self',
     'ally_combo',
   ];
 
@@ -43,6 +45,9 @@ class _CardManagementPageState extends State<CardManagementPage> {
     'damage_boost',
     'health_boost',
     'speed_boost',
+    'job_part_time',
+    'job_delivery',
+    'job_day_labor',
   ];
 
   late final AdminService _adminService;
@@ -538,6 +543,8 @@ class _CardManagementPageState extends State<CardManagementPage> {
         return t.text('Swarm');
       case 'spell':
         return t.text('Spell');
+      case 'job':
+        return t.text('Job');
       case 'equipment':
         return t.text('Equipment');
       default:
@@ -553,6 +560,8 @@ class _CardManagementPageState extends State<CardManagementPage> {
         return t.text('Tower');
       case 'area':
         return t.text('Area');
+      case 'self':
+        return t.text('Self');
       case 'ally_combo':
         return t.text('Ally Combo');
       default:
@@ -570,6 +579,12 @@ class _CardManagementPageState extends State<CardManagementPage> {
         return t.text('Health Boost');
       case 'speed_boost':
         return t.text('Speed Boost');
+      case 'job_part_time':
+        return t.text('Part-time Shift');
+      case 'job_delivery':
+        return t.text('Delivery Gig');
+      case 'job_day_labor':
+        return t.text('Day Labor');
       default:
         return value;
     }

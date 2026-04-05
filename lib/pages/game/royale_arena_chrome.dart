@@ -190,6 +190,12 @@ class _PlayerHudCard extends StatelessWidget {
   const _PlayerHudCard({
     required this.title,
     required this.subtitle,
+    required this.hero,
+    required this.physicalHealth,
+    required this.spiritHealth,
+    required this.physicalEnergy,
+    required this.spiritEnergy,
+    required this.money,
     required this.towerHp,
     required this.maxTowerHp,
     required this.color,
@@ -199,6 +205,12 @@ class _PlayerHudCard extends StatelessWidget {
 
   final String title;
   final String subtitle;
+  final RoyaleHero hero;
+  final RoyaleResourceState physicalHealth;
+  final RoyaleResourceState spiritHealth;
+  final RoyaleResourceState physicalEnergy;
+  final RoyaleResourceState spiritEnergy;
+  final RoyaleResourceState money;
   final int towerHp;
   final int maxTowerHp;
   final Color color;
@@ -208,6 +220,7 @@ class _PlayerHudCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progress = maxTowerHp == 0 ? 0.0 : towerHp / maxTowerHp;
+    final locale = context.watch<LocaleProvider>().locale;
     return Container(
       padding: EdgeInsets.all(compact ? 12 : 16),
       decoration: BoxDecoration(
@@ -239,6 +252,28 @@ class _PlayerHudCard extends StatelessWidget {
               fontSize: compact ? 14 : 18,
             ),
           ),
+          SizedBox(height: compact ? 6 : 8),
+          Text(
+            hero.localizedName(locale),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: const Color(0xFFFFD166),
+              fontWeight: FontWeight.w800,
+              fontSize: compact ? 11 : 13,
+            ),
+          ),
+          SizedBox(height: compact ? 2 : 4),
+          Text(
+            hero.localizedBonusSummary(locale),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: alignEnd ? TextAlign.end : TextAlign.start,
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: compact ? 10 : 12,
+            ),
+          ),
           SizedBox(height: compact ? 8 : 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
@@ -257,6 +292,61 @@ class _PlayerHudCard extends StatelessWidget {
               fontSize: compact ? 11 : 13,
             ),
           ),
+          SizedBox(height: compact ? 8 : 10),
+          _ResourceStrip(
+            label: context.watch<LocaleProvider>().translation.text(
+              'Physical Health',
+            ),
+            value: physicalHealth.current,
+            max: physicalHealth.max,
+            color: const Color(0xFFFF7B7B),
+            compact: compact,
+            alignEnd: alignEnd,
+          ),
+          SizedBox(height: compact ? 6 : 8),
+          _ResourceStrip(
+            label: context.watch<LocaleProvider>().translation.text(
+              'Spirit Health',
+            ),
+            value: spiritHealth.current,
+            max: spiritHealth.max,
+            color: const Color(0xFF7BDFF2),
+            compact: compact,
+            alignEnd: alignEnd,
+          ),
+          SizedBox(height: compact ? 6 : 8),
+          _ResourceStrip(
+            label: context.watch<LocaleProvider>().translation.text(
+              'Physical Energy',
+            ),
+            value: physicalEnergy.current,
+            max: physicalEnergy.max,
+            color: const Color(0xFFFFB703),
+            compact: compact,
+            alignEnd: alignEnd,
+          ),
+          SizedBox(height: compact ? 6 : 8),
+          _ResourceStrip(
+            label: context.watch<LocaleProvider>().translation.text(
+              'Spirit Energy',
+            ),
+            value: spiritEnergy.current,
+            max: spiritEnergy.max,
+            color: const Color(0xFF9B5DE5),
+            compact: compact,
+            alignEnd: alignEnd,
+          ),
+          SizedBox(height: compact ? 6 : 8),
+          _ResourceStrip(
+            label: context.watch<LocaleProvider>().translation.text('Money'),
+            value: money.current,
+            max: money.max,
+            color: const Color(0xFF80ED99),
+            compact: compact,
+            alignEnd: alignEnd,
+            footer:
+                '+${money.regenPerSecond.toStringAsFixed(1)}/${context.watch<LocaleProvider>().translation.text('sec')}',
+          ),
         ],
       ),
     );
@@ -264,14 +354,20 @@ class _PlayerHudCard extends StatelessWidget {
 }
 
 class _ElixirMeter extends StatelessWidget {
-  const _ElixirMeter({required this.value, this.compact = false});
+  const _ElixirMeter({
+    required this.value,
+    required this.maxValue,
+    this.compact = false,
+  });
 
   final double value;
+  final double maxValue;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final active = value.floor();
+    final meterCount = maxValue.ceil().clamp(4, 14);
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 10 : 12,
@@ -286,16 +382,18 @@ class _ElixirMeter extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.water_drop_rounded,
+            Icons.flash_on_rounded,
             color: const Color(0xFFB388FF),
             size: compact ? 16 : 20,
           ),
           SizedBox(width: compact ? 6 : 8),
-          ...List.generate(10, (index) {
+          ...List.generate(meterCount, (index) {
             return Container(
               width: compact ? 7 : 10,
               height: compact ? 14 : 18,
-              margin: EdgeInsets.only(right: index == 9 ? 0 : (compact ? 3 : 4)),
+              margin: EdgeInsets.only(
+                right: index == meterCount - 1 ? 0 : (compact ? 3 : 4),
+              ),
               decoration: BoxDecoration(
                 color: index < active
                     ? const Color(0xFF9B5DE5)
@@ -306,6 +404,87 @@ class _ElixirMeter extends StatelessWidget {
           }),
         ],
       ),
+    );
+  }
+}
+
+class _ResourceStrip extends StatelessWidget {
+  const _ResourceStrip({
+    required this.label,
+    required this.value,
+    required this.max,
+    required this.color,
+    required this.compact,
+    required this.alignEnd,
+    this.footer,
+  });
+
+  final String label;
+  final double value;
+  final double max;
+  final Color color;
+  final bool compact;
+  final bool alignEnd;
+  final String? footer;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = max <= 0 ? 0.0 : (value / max).clamp(0.0, 1.0);
+    return Column(
+      crossAxisAlignment:
+          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: alignEnd
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                  fontSize: compact ? 10 : 11,
+                ),
+              ),
+            ),
+            SizedBox(width: compact ? 6 : 8),
+            Text(
+              '${value.toStringAsFixed(1)} / ${max.toStringAsFixed(1)}',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: compact ? 10 : 11,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: compact ? 4 : 5),
+        SizedBox(
+          width: double.infinity,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: compact ? 5 : 6,
+              backgroundColor: Colors.white.withValues(alpha: 0.08),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ),
+        if (footer != null) ...[
+          SizedBox(height: compact ? 3 : 4),
+          Text(
+            footer!,
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: compact ? 9 : 10,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

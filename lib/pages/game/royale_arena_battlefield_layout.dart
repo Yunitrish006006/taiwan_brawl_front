@@ -131,6 +131,9 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
       left: center.dx - shellWidth / 2,
       top: center.dy - tokenHeight / 2,
       child: _TowerToken(
+        heroName: player.hero.localizedName(
+          context.watch<LocaleProvider>().locale,
+        ),
         color: _sideColor(player.side),
         towerHp: player.towerHp,
         maxTowerHp: player.maxTowerHp,

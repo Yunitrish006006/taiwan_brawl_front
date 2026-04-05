@@ -437,12 +437,14 @@ class _TowerTargetOverlay extends StatelessWidget {
 
 class _TowerToken extends StatelessWidget {
   const _TowerToken({
+    required this.heroName,
     required this.color,
     required this.towerHp,
     required this.maxTowerHp,
     this.compact = false,
   });
 
+  final String heroName;
   final Color color;
   final int towerHp;
   final int maxTowerHp;
@@ -490,6 +492,17 @@ class _TowerToken extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  Text(
+                    heroName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: const Color(0xFFFFD166),
+                      fontWeight: FontWeight.w800,
+                      fontSize: compact ? 8 : 9,
+                    ),
+                  ),
+                  SizedBox(height: compact ? 2 : 3),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
