@@ -179,7 +179,12 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
         _InfoChip(
           icon: Icons.bolt_rounded,
           label:
-              '${_t.text('Current Elixir')} ${battle.yourElixir.toStringAsFixed(1)}',
+              '${_t.text('Current Energy')} ${battle.yourElixir.toStringAsFixed(1)} / ${battle.yourMaxElixir.toStringAsFixed(1)}',
+          compact: compact,
+        ),
+        _InfoChip(
+          icon: Icons.attach_money_rounded,
+          label: '${_t.text('Money')} ${battle.yourMoney.toStringAsFixed(1)}',
           compact: compact,
         ),
         _InfoChip(
@@ -223,7 +228,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
               onTap: () => _toggleCardSelection(card),
               child: Draggable<_ComboDragPayload>(
                 data: _dragPayloadForHandCard(battle, card),
-                maxSimultaneousDrags: playable ? 1 : 0,
+                maxSimultaneousDrags: playable && !card.isJob ? 1 : 0,
                 dragAnchorStrategy: pointerDragAnchorStrategy,
                 feedback: Material(
                   color: Colors.transparent,
@@ -242,11 +247,11 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
   String _commandDeckHintText(bool compact) {
     if (compact) {
       return _t.text(
-        'Tap cards to build a combo, then drag a single card or combo onto the battlefield.',
+        'Tap cards to build a combo, then drag onto the battlefield. Work cards trigger instantly.',
       );
     }
     return _t.text(
-      'Tap cards to build a combo first. Equipment cards apply to units cast together. Drag a single card or combo into your deployment zone.',
+      'Tap cards to build a combo first. Equipment cards apply to units cast together. Work cards are cast immediately and resolve a random event.',
     );
   }
 
@@ -465,7 +470,11 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        _ElixirMeter(value: battle.yourElixir, compact: true),
+                        _ElixirMeter(
+                          value: battle.yourElixir,
+                          maxValue: battle.yourMaxElixir,
+                          compact: true,
+                        ),
                         if (selectedCards.isNotEmpty) ...[
                           const SizedBox(width: 8),
                           _InfoChip(
@@ -766,6 +775,17 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                                   player.deckName,
                                   style: const TextStyle(color: Colors.white70),
                                 ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  player.hero.localizedName(
+                                    context.watch<LocaleProvider>().locale,
+                                  ),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFD166),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -947,7 +967,11 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                   ),
                 ),
               ),
-              _ElixirMeter(value: battle.yourElixir, compact: compact),
+              _ElixirMeter(
+                value: battle.yourElixir,
+                maxValue: battle.yourMaxElixir,
+                compact: compact,
+              ),
               _ArenaLegendChip(
                 label: simulationMode == 'host'
                     ? _t.text('Host Simulation (Experimental)')
@@ -1002,6 +1026,16 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                 child: _PlayerHudCard(
                   title: me?.name ?? _t.text('You'),
                   subtitle: mySide == 'left' ? 'Blue Side' : 'Red Side',
+                  hero: me?.hero ?? _placeholderPlayer(mySide).hero,
+                  physicalHealth: me?.physicalHealth ??
+                      _placeholderPlayer(mySide).physicalHealth,
+                  spiritHealth: me?.spiritHealth ??
+                      _placeholderPlayer(mySide).spiritHealth,
+                  physicalEnergy: me?.physicalEnergy ??
+                      _placeholderPlayer(mySide).physicalEnergy,
+                  spiritEnergy: me?.spiritEnergy ??
+                      _placeholderPlayer(mySide).spiritEnergy,
+                  money: me?.money ?? _placeholderPlayer(mySide).money,
                   towerHp: me?.towerHp ?? 0,
                   maxTowerHp: me?.maxTowerHp ?? 1,
                   color: _sideColor(mySide),
@@ -1014,6 +1048,22 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                 child: _PlayerHudCard(
                   title: opponent?.name ?? _t.text('Opponent'),
                   subtitle: mySide == 'left' ? 'Red Side' : 'Blue Side',
+                  hero: opponent?.hero ??
+                      _placeholderPlayer(opponent?.side ?? 'right').hero,
+                  physicalHealth: opponent?.physicalHealth ??
+                      _placeholderPlayer(opponent?.side ?? 'right')
+                          .physicalHealth,
+                  spiritHealth: opponent?.spiritHealth ??
+                      _placeholderPlayer(opponent?.side ?? 'right')
+                          .spiritHealth,
+                  physicalEnergy: opponent?.physicalEnergy ??
+                      _placeholderPlayer(opponent?.side ?? 'right')
+                          .physicalEnergy,
+                  spiritEnergy: opponent?.spiritEnergy ??
+                      _placeholderPlayer(opponent?.side ?? 'right')
+                          .spiritEnergy,
+                  money: opponent?.money ??
+                      _placeholderPlayer(opponent?.side ?? 'right').money,
                   towerHp: opponent?.towerHp ?? 0,
                   maxTowerHp: opponent?.maxTowerHp ?? 1,
                   color: _sideColor(opponent?.side ?? 'right'),

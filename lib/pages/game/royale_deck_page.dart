@@ -20,6 +20,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   static const String _categoryEquipment = 'equipment';
   static const String _categorySpell = 'spell';
   static const String _categoryBuilding = 'building';
+  static const String _categoryJob = 'job';
 
   late final RoyaleService _service;
   bool _isLoading = true;
@@ -305,7 +306,8 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   bool _isUnitCard(RoyaleCard card) {
     return card.type != 'spell' &&
         card.type != 'equipment' &&
-        card.type != 'building';
+        card.type != 'building' &&
+        !card.isJob;
   }
 
   bool _matchesCategoryFilter(RoyaleCard card) {
@@ -318,6 +320,8 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
         return card.type == 'spell';
       case _categoryBuilding:
         return card.type == 'building';
+      case _categoryJob:
+        return card.isJob;
       case _categoryAll:
       default:
         return true;
@@ -546,6 +550,14 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                 }),
                 icon: Icons.fort_outlined,
               ),
+              _buildFilterChip(
+                label: t.text('Job'),
+                selected: _cardCategoryFilter == _categoryJob,
+                onTap: () => setState(() {
+                  _cardCategoryFilter = _categoryJob;
+                }),
+                icon: Icons.work_outline_rounded,
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -602,6 +614,8 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
         return const Color(0xFFE65100);
       case 'spell':
         return const Color(0xFFC62828);
+      case 'job':
+        return const Color(0xFF6D8E23);
       default:
         return const Color(0xFF6D4C41);
     }
@@ -619,12 +633,29 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
         return t.text('Spell');
       case 'equipment':
         return t.text('Equipment');
+      case 'job':
+        return t.text('Job');
       default:
         return t.text('Melee');
     }
   }
 
+  String _jobProfileLabel(Map<String, String> t, RoyaleCard card) {
+    switch (card.effectKind) {
+      case 'job_delivery':
+        return t.text('Delivery Gig');
+      case 'job_day_labor':
+        return t.text('Day Labor');
+      case 'job_part_time':
+      default:
+        return t.text('Part-time Shift');
+    }
+  }
+
   String _cardSummary(Map<String, String> t, RoyaleCard card) {
+    if (card.isJob) {
+      return '${_jobProfileLabel(t, card)} · ${t.text('Base Pay')} ${card.effectValue.toInt()}';
+    }
     if (card.type == 'spell') {
       return '${t.text('Spell Damage')} ${card.spellDamage}';
     }
@@ -654,6 +685,8 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
         return t.text('Enemy Base');
       case 'ally_combo':
         return t.text('Ally Combo');
+      case 'self':
+        return t.text('Self');
       default:
         return card.targetRule;
     }
@@ -877,7 +910,22 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
       ),
     ];
 
-    if (card.type == 'spell') {
+    if (card.isJob) {
+      detailTiles.addAll([
+        _buildDetailStatTile(
+          theme,
+          label: t.text('Work Profile'),
+          value: _jobProfileLabel(t, card),
+          icon: Icons.work_outline_rounded,
+        ),
+        _buildDetailStatTile(
+          theme,
+          label: t.text('Base Pay'),
+          value: '${card.effectValue.toInt()}',
+          icon: Icons.attach_money_rounded,
+        ),
+      ]);
+    } else if (card.type == 'spell') {
       detailTiles.addAll([
         _buildDetailStatTile(
           theme,

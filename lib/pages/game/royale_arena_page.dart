@@ -68,6 +68,8 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   DateTime? _lastHostStateSyncAt;
   Map<String, dynamic>? _pendingHostState;
   String? _friendDrawerBusyKey;
+  String? _lastSeenBattleEventId;
+  bool _battleEventDialogOpen = false;
 
   Map<String, String> get _t => context.read<LocaleProvider>().translation;
 
@@ -104,6 +106,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         _syncSelectionWithRoom(room);
         _isLoading = false;
       });
+      _primeLatestBattleEvent(room);
       if (_shouldUseLiveSocket(room)) {
         _connectSocket();
       } else {
@@ -328,6 +331,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       _room = room;
       _syncSelectionWithRoom(room);
     });
+    _showLatestBattleEventIfNeeded(room);
     if (_shouldUseLiveSocket(room)) {
       _stopRoomStatePolling();
       if (_channel == null) {
@@ -357,6 +361,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
             _room = snapshot;
             _syncSelectionWithRoom(snapshot);
           });
+          _showLatestBattleEventIfNeeded(snapshot);
           _scheduleHostStateSync(engine.exportBattleState());
           if (snapshot.battle?.result != null) {
             _flushHostStateSync();
@@ -524,6 +529,167 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     );
   }
 
+  void _primeLatestBattleEvent(RoyaleRoomSnapshot room) {
+    final latest = _latestBattleEventForViewer(room);
+    if (latest == null) {
+      return;
+    }
+    _lastSeenBattleEventId = latest.id;
+  }
+
+  RoyaleBattleEvent? _latestBattleEventForViewer(RoyaleRoomSnapshot room) {
+    final viewerSide = room.viewerSide;
+    final events = room.battle?.events;
+    if (viewerSide == null || events == null || events.isEmpty) {
+      return null;
+    }
+    for (final event in events.reversed) {
+      if (event.side == viewerSide) {
+        return event;
+      }
+    }
+    return null;
+  }
+
+  void _showLatestBattleEventIfNeeded(RoyaleRoomSnapshot room) {
+    final latest = _latestBattleEventForViewer(room);
+    if (latest == null || latest.id == _lastSeenBattleEventId) {
+      return;
+    }
+    _lastSeenBattleEventId = latest.id;
+    if (_battleEventDialogOpen || !mounted) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      unawaited(_showBattleEventDialog(latest));
+    });
+  }
+
+  Offset _defaultJobDropPoint() {
+    final viewerSide = _room?.viewerSide ?? 'left';
+    return viewerSide == 'left'
+        ? const Offset(0.5, 0.82)
+        : const Offset(0.5, 0.18);
+  }
+
+  Future<void> _showBattleEventDialog(RoyaleBattleEvent event) async {
+    if (_battleEventDialogOpen || !mounted) {
+      return;
+    }
+    _battleEventDialogOpen = true;
+    final locale = context.read<LocaleProvider>().locale;
+    final theme = Theme.of(context);
+    final deltas = <({String label, double value, Color color, IconData icon})>[
+      if (event.moneyDelta != 0)
+        (
+          label: _t.text('Money'),
+          value: event.moneyDelta,
+          color: event.moneyDelta > 0
+              ? const Color(0xFF2E7D32)
+              : const Color(0xFFC62828),
+          icon: Icons.attach_money_rounded,
+        ),
+      if (event.physicalHealthDelta != 0)
+        (
+          label: _t.text('Physical Health'),
+          value: event.physicalHealthDelta,
+          color: event.physicalHealthDelta > 0
+              ? const Color(0xFF2E7D32)
+              : const Color(0xFFC62828),
+          icon: Icons.favorite_border_rounded,
+        ),
+      if (event.spiritHealthDelta != 0)
+        (
+          label: _t.text('Spirit Health'),
+          value: event.spiritHealthDelta,
+          color: event.spiritHealthDelta > 0
+              ? const Color(0xFF2E7D32)
+              : const Color(0xFFC62828),
+          icon: Icons.psychology_alt_outlined,
+        ),
+      if (event.physicalEnergyDelta != 0)
+        (
+          label: _t.text('Physical Energy'),
+          value: event.physicalEnergyDelta,
+          color: event.physicalEnergyDelta > 0
+              ? const Color(0xFF2E7D32)
+              : const Color(0xFFC62828),
+          icon: Icons.bolt_outlined,
+        ),
+      if (event.spiritEnergyDelta != 0)
+        (
+          label: _t.text('Spirit Energy'),
+          value: event.spiritEnergyDelta,
+          color: event.spiritEnergyDelta > 0
+              ? const Color(0xFF2E7D32)
+              : const Color(0xFFC62828),
+          icon: Icons.auto_awesome_outlined,
+        ),
+    ];
+
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text(event.localizedTitle(locale)),
+            content: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    event.localizedCardName(locale),
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(event.localizedDescription(locale)),
+                  if (deltas.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: deltas
+                          .map(
+                            (entry) => Chip(
+                              avatar: Icon(
+                                entry.icon,
+                                size: 18,
+                                color: entry.color,
+                              ),
+                              label: Text(
+                                '${entry.label} ${entry.value > 0 ? '+' : ''}${entry.value.toStringAsFixed(1)}',
+                              ),
+                              side: BorderSide(color: entry.color),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      _battleEventDialogOpen = false;
+    }
+  }
+
   void _syncSelectionWithRoom(RoyaleRoomSnapshot room) {
     if (room.battle == null) {
       _selectedCardIds.clear();
@@ -649,6 +815,20 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   }
 
   void _toggleCardSelection(RoyaleCard card) {
+    if (card.isJob) {
+      if (_selectedCardIds.isNotEmpty) {
+        _showSnackBar(_t.text('Job cards must be played alone'));
+        return;
+      }
+      final battle = _room?.battle;
+      if (battle == null || battle.yourElixir + 1e-6 < card.elixirCost) {
+        _showSnackBar(_t.text('Not enough energy'));
+        return;
+      }
+      final point = _defaultJobDropPoint();
+      _castCards([card], dropX: point.dx, dropY: point.dy);
+      return;
+    }
     final alreadySelected = _selectedCardIds.contains(card.id);
     if (alreadySelected) {
       setState(() {
@@ -764,9 +944,11 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       return;
     }
 
+    final hasJobCard = cards.any((card) => card.isJob);
     final hasEquipment = cards.any((card) => card.isEquipment);
     final hasUnit = cards.any(
-      (card) => card.type != 'equipment' && card.type != 'spell',
+      (card) =>
+          card.type != 'equipment' && card.type != 'spell' && !card.isJob,
     );
 
     if (hasEquipment && !hasUnit) {
@@ -775,9 +957,13 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       );
       return;
     }
+    if (hasJobCard && cards.length != 1) {
+      _showSnackBar(_t.text('Job cards must be played alone'));
+      return;
+    }
 
     final dropPoint = Offset(dropX, dropY);
-    if (!_isLegalDeployPoint(dropPoint)) {
+    if (!hasJobCard && !_isLegalDeployPoint(dropPoint)) {
       _showSnackBar(_t.text('Place cards inside your deployment zone'));
       return;
     }
@@ -835,12 +1021,17 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         return const Color(0xFFD64545);
       case 'equipment':
         return const Color(0xFF7B3FF2);
+      case 'job':
+        return const Color(0xFF6D8E23);
       default:
         return const Color(0xFF84624A);
     }
   }
 
   String _cardStats(RoyaleCard card) {
+    if (card.isJob) {
+      return '${_jobProfileLabel(card)} · ${_t.text('Base Pay')} ${card.effectValue.toInt()}';
+    }
     if (card.type == 'spell') {
       return '${_t.text('Spell')} ${card.spellDamage}';
     }
@@ -870,8 +1061,22 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         return _t.text('Spell');
       case 'equipment':
         return _t.text('Equipment');
+      case 'job':
+        return _t.text('Job');
       default:
         return _t.text('Melee');
+    }
+  }
+
+  String _jobProfileLabel(RoyaleCard card) {
+    switch (card.effectKind) {
+      case 'job_delivery':
+        return _t.text('Delivery Gig');
+      case 'job_day_labor':
+        return _t.text('Day Labor');
+      case 'job_part_time':
+      default:
+        return _t.text('Part-time Shift');
     }
   }
 
@@ -967,6 +1172,51 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   }
 
   RoyalePlayerView _placeholderPlayer(String side) {
+    const placeholderHero = RoyaleHero(
+      id: 'waiting',
+      name: 'Waiting',
+      nameZhHant: '待命',
+      nameEn: 'Waiting',
+      nameJa: '待機',
+      bonusSummary: '',
+      bonusSummaryZhHant: '',
+      bonusSummaryEn: '',
+      bonusSummaryJa: '',
+      bonusKind: 'none',
+      bonusValue: 0,
+      physicalHealth: RoyaleResourceDefinition(
+        initial: 0,
+        max: 0,
+        regenPerSecond: 0,
+      ),
+      spiritHealth: RoyaleResourceDefinition(
+        initial: 0,
+        max: 0,
+        regenPerSecond: 0,
+      ),
+      physicalEnergy: RoyaleResourceDefinition(
+        initial: 0,
+        max: 0,
+        regenPerSecond: 0,
+      ),
+      spiritEnergy: RoyaleResourceDefinition(
+        initial: 0,
+        max: 0,
+        regenPerSecond: 0,
+      ),
+      money: RoyaleResourceDefinition(
+        initial: 0,
+        max: 0,
+        regenPerSecond: 0,
+      ),
+      unitDamageMultiplier: 1,
+      jobMoneyMultiplier: 1,
+      jobPositiveWeightMultiplier: 1,
+      jobNegativeWeightMultiplier: 1,
+      mentalEventWeightMultiplier: 1,
+      mentalDamageMultiplier: 1,
+      mentalIllnessStageFloor: 1,
+    );
     return RoyalePlayerView(
       userId: 0,
       name: _t.text('Waiting for players'),
@@ -977,8 +1227,34 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       elixir: null,
       handCardIds: const [],
       queueCardIds: const [],
+      hero: placeholderHero,
       ready: false,
       connected: false,
+      physicalHealth: const RoyaleResourceState(
+        current: 0,
+        max: 0,
+        regenPerSecond: 0,
+      ),
+      spiritHealth: const RoyaleResourceState(
+        current: 0,
+        max: 0,
+        regenPerSecond: 0,
+      ),
+      physicalEnergy: const RoyaleResourceState(
+        current: 0,
+        max: 0,
+        regenPerSecond: 0,
+      ),
+      spiritEnergy: const RoyaleResourceState(
+        current: 0,
+        max: 0,
+        regenPerSecond: 0,
+      ),
+      money: const RoyaleResourceState(
+        current: 0,
+        max: 0,
+        regenPerSecond: 0,
+      ),
       towerHp: 0,
       maxTowerHp: 1,
     );
