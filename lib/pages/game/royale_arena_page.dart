@@ -332,6 +332,10 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       _syncSelectionWithRoom(room);
     });
     _showLatestBattleEventIfNeeded(room);
+    if (_isLocalOnlyHostBotBattle(room) && _hostBattleEngine != null) {
+      _stopRoomStatePolling();
+      return;
+    }
     if (_shouldUseLiveSocket(room)) {
       _stopRoomStatePolling();
       if (_channel == null) {
@@ -374,6 +378,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         _room = engine.snapshot;
         _syncSelectionWithRoom(engine.snapshot);
       });
+      if (_isLocalOnlyHostBotBattle(engine.snapshot)) {
+        _stopRoomStatePolling();
+      }
       engine.start();
     } catch (e) {
       _showSnackBar('${_t.text('Action failed')}: $e');
@@ -1318,7 +1325,6 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       deckId: 0,
       deckName: '',
       deckCards: const [],
-      elixir: null,
       handCardIds: const [],
       queueCardIds: const [],
       hero: placeholderHero,

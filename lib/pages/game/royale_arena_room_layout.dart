@@ -219,6 +219,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
           final playable = _canAffordCard(_room?.me, card);
           final selectionOrder = _selectedCardIds.indexOf(card.id);
           final handCard = _HandCard(
+            key: ValueKey('hand-card-${card.id}'),
             card: card,
             playable: playable,
             selectedOrder: selectionOrder,
@@ -239,6 +240,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
           );
 
           return Padding(
+            key: ValueKey('hand-entry-${compact ? 'compact' : 'full'}-${card.id}'),
             padding: EdgeInsets.only(right: compact ? 10 : 14),
             child: GestureDetector(
               onTap: () => _toggleCardSelection(card),

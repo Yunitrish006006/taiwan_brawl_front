@@ -57,7 +57,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
   final TextEditingController _nameZhHantController = TextEditingController();
   final TextEditingController _nameEnController = TextEditingController();
   final TextEditingController _nameJaController = TextEditingController();
-  final TextEditingController _elixirCostController = TextEditingController();
+  final TextEditingController _energyCostController = TextEditingController();
   final TextEditingController _hpController = TextEditingController();
   final TextEditingController _damageController = TextEditingController();
   final TextEditingController _attackRangeController = TextEditingController();
@@ -91,7 +91,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
     _nameZhHantController,
     _nameEnController,
     _nameJaController,
-    _elixirCostController,
+    _energyCostController,
     _hpController,
     _damageController,
     _attackRangeController,
@@ -187,7 +187,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
       _nameZhHantController.text = card.nameZhHant;
       _nameEnController.text = card.nameEn;
       _nameJaController.text = card.nameJa;
-      _elixirCostController.text = card.elixirCost.toString();
+      _energyCostController.text = card.energyCost.toString();
       _hpController.text = card.hp.toString();
       _damageController.text = card.damage.toString();
       _attackRangeController.text = card.attackRange.toString();
@@ -214,7 +214,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
       _nameZhHantController.clear();
       _nameEnController.clear();
       _nameJaController.clear();
-      _elixirCostController.text = '3';
+      _energyCostController.text = '3';
       _hpController.text = '300';
       _damageController.text = '100';
       _attackRangeController.text = '100';
@@ -302,7 +302,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
       'nameJa': nameJa,
       'nameI18n': {'zh-Hant': nameZhHant, 'en': nameEn, 'ja': nameJa},
       'energyCost': _parseIntField(
-        _elixirCostController,
+        _energyCostController,
         _t.text('Energy Cost'),
       ),
       'energyCostType': _selectedEnergyCostType,
