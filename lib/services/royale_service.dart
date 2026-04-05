@@ -56,6 +56,7 @@ class RoyaleService {
     required int deckId,
     String heroId = 'ordinary_person',
     bool vsBot = false,
+    String botController = 'heuristic',
     String simulationMode = 'server',
   }) async {
     final effectiveSimulationMode = vsBot ? 'host' : simulationMode;
@@ -63,6 +64,7 @@ class RoyaleService {
       'deckId': deckId,
       'heroId': heroId,
       'vsBot': vsBot,
+      'botController': vsBot ? botController : null,
       'simulationMode': effectiveSimulationMode,
     });
     return _roomFromResponse(res);
@@ -105,6 +107,15 @@ class RoyaleService {
   Future<RoyaleRoomSnapshot> fetchRoomState(String roomCode) async {
     final res = await _apiClient.getJson('/api/rooms/$roomCode/state');
     return _roomFromResponse(res);
+  }
+
+  Future<RoyaleLlmBotAction> decideLlmBotAction(
+    Map<String, dynamic> state,
+  ) async {
+    final res = await _apiClient.postJson('/api/llm-bot/decide', {
+      'state': state,
+    });
+    return RoyaleLlmBotAction.fromJson(res);
   }
 
   WebSocketChannel connectToRoom(String roomCode) {

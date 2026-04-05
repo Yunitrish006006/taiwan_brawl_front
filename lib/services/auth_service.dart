@@ -117,6 +117,20 @@ class AuthService extends ChangeNotifier {
     );
   }
 
+  Future<void> updateLlmBotSettings({
+    required String baseUrl,
+    required String model,
+    String? apiKey,
+  }) async {
+    await _writeAndRefresh(
+      () => _apiClient.putJson('/api/users/llm-bot-settings', {
+        'base_url': baseUrl,
+        'model': model,
+        'api_key': apiKey,
+      }),
+    );
+  }
+
   Future<void> logout() async {
     try {
       await _apiClient.postJson('/api/logout', {});

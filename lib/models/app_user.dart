@@ -17,6 +17,9 @@ class AppUser {
     required this.themeMode,
     required this.fontSizeScale,
     required this.locale,
+    required this.llmBaseUrl,
+    required this.llmModel,
+    required this.hasLlmApiKey,
   });
 
   final int id;
@@ -34,6 +37,9 @@ class AppUser {
   final String themeMode;
   final double fontSizeScale;
   final String locale;
+  final String llmBaseUrl;
+  final String llmModel;
+  final bool hasLlmApiKey;
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
     return AppUser(
@@ -58,6 +64,10 @@ class AppUser {
       themeMode: (json['theme_mode'] as String?) ?? 'system',
       fontSizeScale: (json['font_size_scale'] as num?)?.toDouble() ?? 1.0,
       locale: (json['locale'] as String?) ?? 'zh-Hant',
+      llmBaseUrl:
+          (json['llm_base_url'] as String?) ?? 'https://api.openai.com/v1',
+      llmModel: (json['llm_model'] as String?) ?? 'gpt-4o-mini',
+      hasLlmApiKey: json['llm_has_api_key'] as bool? ?? false,
     );
   }
 }

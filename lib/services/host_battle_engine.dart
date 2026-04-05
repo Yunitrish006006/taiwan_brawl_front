@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import '../models/royale_models.dart';
 import 'royale_battle_rules.dart' as battle_rules;
+import 'royale_service.dart';
 
 part 'host_battle_engine_runtime.dart';
 part 'host_battle_engine_models.dart';
@@ -65,7 +66,12 @@ double _effectiveAttackReachToTower(_HostUnit unit) =>
     );
 
 class HostBattleEngine {
-  HostBattleEngine({required RoyaleRoomSnapshot room, required this.onSnapshot})
+  HostBattleEngine({
+    required RoyaleRoomSnapshot room,
+    required this.onSnapshot,
+    this.llmService,
+    this.onNotice,
+  })
     : _code = room.code,
       _viewerSide = room.viewerSide ?? 'left' {
     _leftPlayer = _buildPlayer(room, 'left');
@@ -76,6 +82,8 @@ class HostBattleEngine {
   final String _code;
   final String _viewerSide;
   final void Function(RoyaleRoomSnapshot snapshot) onSnapshot;
+  final RoyaleService? llmService;
+  final void Function(String message)? onNotice;
 
   late _HostPlayer _leftPlayer;
   late _HostPlayer _rightPlayer;
@@ -86,6 +94,8 @@ class HostBattleEngine {
   RoyaleBattleResult? _result;
   Timer? _timer;
   final math.Random _random = math.Random();
+  bool _llmDecisionPending = false;
+  bool _llmFallbackWarned = false;
 
   void start() {
     if (_timer != null) {
@@ -167,6 +177,50 @@ class HostBattleEngine {
               'spiritHealthDelta': event.spiritHealthDelta,
               'physicalEnergyDelta': event.physicalEnergyDelta,
               'spiritEnergyDelta': event.spiritEnergyDelta,
+            },
+          )
+          .toList(),
+    };
+  }
+
+  Map<String, dynamic> exportLlmBotDecisionState(String side) {
+    return {
+      'roomCode': _code,
+      'playerSide': side,
+      'timeRemainingMs': _timeRemainingMs,
+      'players': {
+        'left': _serializeDecisionPlayer(_leftPlayer),
+        'right': _serializeDecisionPlayer(_rightPlayer),
+      },
+      'units': _units
+          .map(
+            (unit) => {
+              'id': unit.id,
+              'cardId': unit.cardId,
+              'side': unit.side,
+              'type': unit.type,
+              'progress': unit.progress,
+              'lateralPosition': unit.lateralPosition,
+              'hp': unit.hp,
+              'maxHp': unit.maxHp,
+              'damage': unit.damage,
+              'attackRange': unit.attackRange,
+              'bodyRadius': unit.bodyRadius,
+              'moveSpeed': unit.moveSpeed,
+              'attackSpeed': unit.attackSpeed,
+              'targetRule': unit.targetRule,
+            },
+          )
+          .toList(),
+      'events': _battleEvents
+          .map(
+            (event) => {
+              'id': event.id,
+              'kind': event.kind,
+              'side': event.side,
+              'title': event.title,
+              'description': event.description,
+              'tone': event.tone,
             },
           )
           .toList(),
@@ -342,6 +396,59 @@ class HostBattleEngine {
     };
   }
 
+  Map<String, dynamic> _serializeDecisionPlayer(_HostPlayer player) {
+    return {
+      'userId': player.userId,
+      'name': player.name,
+      'side': player.side,
+      'heroId': player.hero.id,
+      'isBot': player.isBot,
+      'botController': player.botController,
+      'deckCards': player.deckCards.map(_serializeCard).toList(),
+      'handCardIds': player.hand,
+      'queueCardIds': player.queue,
+      'physicalHealth': player.physicalHealth,
+      'maxPhysicalHealth': player.maxPhysicalHealth,
+      'physicalHealthRegen': player.physicalHealthRegen,
+      'spiritHealth': player.spiritHealth,
+      'maxSpiritHealth': player.maxSpiritHealth,
+      'spiritHealthRegen': player.spiritHealthRegen,
+      'physicalEnergy': player.physicalEnergy,
+      'maxPhysicalEnergy': player.maxPhysicalEnergy,
+      'physicalEnergyRegen': player.physicalEnergyRegen,
+      'spiritEnergy': player.spiritEnergy,
+      'maxSpiritEnergy': player.maxSpiritEnergy,
+      'spiritEnergyRegen': player.spiritEnergyRegen,
+      'money': player.money,
+      'maxMoney': player.maxMoney,
+      'moneyPerSecond': player.moneyPerSecond,
+      'towerHp': player.towerHp,
+      'maxTowerHp': player.maxTowerHp,
+    };
+  }
+
+  Map<String, dynamic> _serializeCard(RoyaleCard card) {
+    return {
+      'id': card.id,
+      'name': card.name,
+      'type': card.type,
+      'energyCost': card.energyCost,
+      'energyCostType': card.energyCostType,
+      'hp': card.hp,
+      'damage': card.damage,
+      'attackRange': card.attackRange,
+      'bodyRadius': card.bodyRadius,
+      'moveSpeed': card.moveSpeed,
+      'attackSpeed': card.attackSpeed,
+      'spawnCount': card.spawnCount,
+      'spellRadius': card.spellRadius,
+      'spellDamage': card.spellDamage,
+      'targetRule': card.targetRule,
+      'effectKind': card.effectKind,
+      'effectValue': card.effectValue,
+    };
+  }
+
   _HostPlayer _buildPlayer(RoyaleRoomSnapshot room, String side) {
     final view = room.players.firstWhere((player) => player.side == side);
     final deckCards = view.deckCards;
@@ -361,6 +468,7 @@ class HostBattleEngine {
       deckName: view.deckName,
       hero: view.hero,
       isBot: view.userId == 0,
+      botController: view.botController,
       ready: view.ready,
       connected: view.connected,
       deckCards: deckCards,
@@ -415,8 +523,9 @@ class HostBattleEngine {
         deckCards: _leftPlayer.deckCards,
         handCardIds: _leftPlayer.hand,
         queueCardIds: _leftPlayer.queue,
-        hero: _leftPlayer.hero,
-        ready: _leftPlayer.ready,
+      hero: _leftPlayer.hero,
+      botController: _leftPlayer.botController,
+      ready: _leftPlayer.ready,
         connected: _leftPlayer.connected,
         physicalHealth: RoyaleResourceState(
           current: _leftPlayer.physicalHealth,
@@ -455,8 +564,9 @@ class HostBattleEngine {
         deckCards: _rightPlayer.deckCards,
         handCardIds: _rightPlayer.hand,
         queueCardIds: _rightPlayer.queue,
-        hero: _rightPlayer.hero,
-        ready: _rightPlayer.ready,
+      hero: _rightPlayer.hero,
+      botController: _rightPlayer.botController,
+      ready: _rightPlayer.ready,
         connected: _rightPlayer.connected,
         physicalHealth: RoyaleResourceState(
           current: _rightPlayer.physicalHealth,

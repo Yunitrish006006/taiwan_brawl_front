@@ -467,6 +467,7 @@ class RoyalePlayerView {
     required this.handCardIds,
     required this.queueCardIds,
     required this.hero,
+    required this.botController,
     required this.ready,
     required this.connected,
     required this.physicalHealth,
@@ -487,6 +488,7 @@ class RoyalePlayerView {
   final List<String> handCardIds;
   final List<String> queueCardIds;
   final RoyaleHero hero;
+  final String botController;
   final bool ready;
   final bool connected;
   final RoyaleResourceState physicalHealth;
@@ -523,6 +525,7 @@ class RoyalePlayerView {
       hero: RoyaleHero.fromJson(
         json['hero'] as Map<String, dynamic>? ?? const {},
       ),
+      botController: (json['botController'] as String?) ?? 'heuristic',
       ready: json['ready'] as bool? ?? false,
       connected: json['connected'] as bool? ?? false,
       physicalHealth: RoyaleResourceState.fromJson(
@@ -557,6 +560,49 @@ class RoyalePlayerView {
       ),
       towerHp: (json['towerHp'] as num?)?.toInt() ?? 0,
       maxTowerHp: (json['maxTowerHp'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class RoyaleLlmBotAction {
+  const RoyaleLlmBotAction({
+    required this.id,
+    required this.kind,
+    required this.summary,
+    required this.cardIds,
+    required this.dropX,
+    required this.dropY,
+    required this.source,
+    required this.usedFallback,
+    required this.reason,
+  });
+
+  final String id;
+  final String kind;
+  final String summary;
+  final List<String> cardIds;
+  final double? dropX;
+  final double? dropY;
+  final String source;
+  final bool usedFallback;
+  final String reason;
+
+  bool get isWait => kind == 'wait';
+
+  factory RoyaleLlmBotAction.fromJson(Map<String, dynamic> json) {
+    final action = json['action'] as Map<String, dynamic>? ?? json;
+    return RoyaleLlmBotAction(
+      id: action['id'] as String? ?? 'wait',
+      kind: action['kind'] as String? ?? 'wait',
+      summary: action['summary'] as String? ?? '',
+      cardIds: (action['cardIds'] as List<dynamic>? ?? const [])
+          .map((cardId) => cardId.toString())
+          .toList(),
+      dropX: (action['dropX'] as num?)?.toDouble(),
+      dropY: (action['dropY'] as num?)?.toDouble(),
+      source: json['source'] as String? ?? 'fallback',
+      usedFallback: json['usedFallback'] as bool? ?? false,
+      reason: json['reason'] as String? ?? '',
     );
   }
 }

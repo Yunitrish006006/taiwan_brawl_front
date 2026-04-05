@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/royale_models.dart';
 import '../../services/api_client.dart';
+import '../../services/auth_service.dart';
 import '../../services/locale_provider.dart';
 import '../../services/royale_service.dart';
 import 'royale_arena_page.dart';
@@ -19,6 +20,7 @@ class RoyaleLobbyPage extends StatefulWidget {
 class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
   late final RoyaleService _service;
   String _simulationMode = 'server';
+  String _botController = 'heuristic';
   bool _isLoading = true;
   bool _isSubmitting = false;
   List<RoyaleDeck> _decks = const [];
@@ -341,17 +343,23 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
     final icon = vsBot
         ? const Icon(Icons.smart_toy_outlined)
         : const Icon(Icons.add_circle_outline);
+    final currentUser = context.watch<AuthService>().user;
+    final llmConfigured = currentUser?.hasLlmApiKey ?? false;
+    final createDisabledByBotConfig =
+        vsBot && _botController == 'llm' && !llmConfigured;
 
     return SizedBox(
       width: double.infinity,
       child: (vsBot ? FilledButton.icon : ElevatedButton.icon)(
-        onPressed: _isSubmitting || _selectedDeck == null
+        onPressed:
+            _isSubmitting || _selectedDeck == null || createDisabledByBotConfig
             ? null
             : () => _enterRoom(
                 () => _service.createRoom(
                   deckId: _selectedDeck!.id,
                   heroId: _selectedHero!.id,
                   vsBot: vsBot,
+                  botController: vsBot ? _botController : 'heuristic',
                   simulationMode: vsBot ? 'host' : _simulationMode,
                 ),
               ),
@@ -394,6 +402,77 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  String _botControllerLabel(Map<String, String> t, String value) {
+    return value == 'llm' ? t.text('LLM Bot') : t.text('Heuristic Bot');
+  }
+
+  Widget _buildBotControllerCard(Map<String, String> t) {
+    final currentUser = context.watch<AuthService>().user;
+    final llmConfigured = currentUser?.hasLlmApiKey ?? false;
+    final description = _botController == 'llm'
+        ? t.text(
+            'LLM Bot uses your saved OpenAI-compatible API key and model settings to choose from legal battle actions.',
+          )
+        : t.text(
+            'Heuristic Bot uses the built-in combat logic and does not require any external API key.',
+          );
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            t.text('Bot Controller'),
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          SegmentedButton<String>(
+            segments: [
+              ButtonSegment<String>(
+                value: 'heuristic',
+                icon: const Icon(Icons.psychology_alt_outlined),
+                label: Text(_botControllerLabel(t, 'heuristic')),
+              ),
+              ButtonSegment<String>(
+                value: 'llm',
+                icon: const Icon(Icons.auto_awesome_outlined),
+                label: Text(_botControllerLabel(t, 'llm')),
+              ),
+            ],
+            selected: {_botController},
+            onSelectionChanged: (selection) {
+              setState(() {
+                _botController = selection.first;
+              });
+            },
+          ),
+          const SizedBox(height: 10),
+          Text(description, style: const TextStyle(color: Colors.white70)),
+          if (_botController == 'llm' && !llmConfigured) ...[
+            const SizedBox(height: 10),
+            Text(
+              t.text(
+                'LLM bot requires a saved API key. Open Profile > Display Settings > LLM Bot Settings first.',
+              ),
+              style: const TextStyle(
+                color: Color(0xFFFFD166),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -457,6 +536,8 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
               fontWeight: FontWeight.w700,
             ),
           ),
+          const SizedBox(height: 10),
+          _buildBotControllerCard(t),
           const SizedBox(height: 10),
           _buildBotMatchModeHint(t),
           const SizedBox(height: 16),

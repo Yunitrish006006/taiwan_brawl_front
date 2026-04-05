@@ -363,6 +363,8 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       late final HostBattleEngine engine;
       engine = HostBattleEngine(
         room: room,
+        llmService: _service,
+        onNotice: _showSnackBar,
         onSnapshot: (snapshot) {
           if (!mounted) {
             return;
@@ -1368,6 +1370,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       handCardIds: const [],
       queueCardIds: const [],
       hero: placeholderHero,
+      botController: 'heuristic',
       ready: false,
       connected: false,
       physicalHealth: const RoyaleResourceState(
