@@ -225,16 +225,22 @@ class HostBattleEngine {
     final hasJobCard = cards.any((card) => card.isJob);
 
     final physicalCost = cards
-        .where((card) => !card.usesSpiritEnergy)
+        .where((card) => card.usesPhysicalEnergy)
         .fold<double>(0, (sum, card) => sum + card.energyCost);
     final spiritCost = cards
         .where((card) => card.usesSpiritEnergy)
+        .fold<double>(0, (sum, card) => sum + card.energyCost);
+    final moneyCost = cards
+        .where((card) => card.usesMoney)
         .fold<double>(0, (sum, card) => sum + card.energyCost);
     if (player.physicalEnergy + 1e-6 < physicalCost) {
       return 'Not enough Physical Energy';
     }
     if (player.spiritEnergy + 1e-6 < spiritCost) {
       return 'Not enough Spirit Energy';
+    }
+    if (player.money + 1e-6 < moneyCost) {
+      return 'Not enough Money';
     }
 
     if (_isEquipmentOnlyCast(cards)) {
@@ -248,11 +254,15 @@ class HostBattleEngine {
     final equipmentEffects = _equipmentEffects(cards);
 
     for (final card in cards) {
-      _spendPlayerEnergy(
-        player,
-        card.energyCost.toDouble(),
-        preferSpirit: card.usesSpiritEnergy,
-      );
+      if (card.usesMoney) {
+        _spendPlayerMoney(player, card.energyCost.toDouble());
+      } else {
+        _spendPlayerEnergy(
+          player,
+          card.energyCost.toDouble(),
+          preferSpirit: card.usesSpiritEnergy,
+        );
+      }
     }
     _drawReplacementCards(player, cardIds);
 

@@ -53,9 +53,11 @@ class RoyaleCard {
 
   bool get isJob => type == 'job';
 
+  bool get usesMoney => energyCostType == 'money';
+
   bool get usesSpiritEnergy => energyCostType == 'spirit';
 
-  bool get usesPhysicalEnergy => !usesSpiritEnergy;
+  bool get usesPhysicalEnergy => !usesSpiritEnergy && !usesMoney;
 
   String localizedName(String locale) {
     final englishFallback = nameEn.isNotEmpty ? nameEn : name;
@@ -85,8 +87,12 @@ class RoyaleCard {
           (json['elixirCost'] as num?)?.toInt() ??
           0,
       energyCostType:
-          (json['energyCostType'] as String?) ??
-          ((json['type'] as String?) == 'spell' ? 'spirit' : 'physical'),
+          (json['type'] as String?) == 'equipment'
+              ? 'money'
+              : (json['energyCostType'] as String?) ??
+                    ((json['type'] as String?) == 'spell'
+                        ? 'spirit'
+                        : 'physical'),
       type: json['type'] as String,
       hp: (json['hp'] as num).toInt(),
       damage: (json['damage'] as num).toInt(),

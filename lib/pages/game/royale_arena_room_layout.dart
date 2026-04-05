@@ -179,13 +179,13 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
         _InfoChip(
           icon: Icons.bolt_rounded,
           label:
-              '${_t.text('Physical Energy')} ${_playerEnergyForType(me, 'physical').toStringAsFixed(1)} / ${(me?.physicalEnergy.max ?? 0).toStringAsFixed(1)}',
+              '${_t.text('Physical Energy')} ${_playerResourceForType(me, 'physical').toStringAsFixed(1)} / ${(me?.physicalEnergy.max ?? 0).toStringAsFixed(1)}',
           compact: compact,
         ),
         _InfoChip(
           icon: Icons.auto_awesome_rounded,
           label:
-              '${_t.text('Spirit Energy')} ${_playerEnergyForType(me, 'spirit').toStringAsFixed(1)} / ${(me?.spiritEnergy.max ?? 0).toStringAsFixed(1)}',
+              '${_t.text('Spirit Energy')} ${_playerResourceForType(me, 'spirit').toStringAsFixed(1)} / ${(me?.spiritEnergy.max ?? 0).toStringAsFixed(1)}',
           compact: compact,
         ),
         _InfoChip(
@@ -227,10 +227,14 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
             cardStats: _cardStats(card),
             typeLabel: _cardTypeLabel(card),
             costLabel: _cardEnergyLabel(card),
-            costIcon: card.usesSpiritEnergy
+            costIcon: card.usesMoney
+                ? Icons.attach_money_rounded
+                : card.usesSpiritEnergy
                 ? Icons.auto_awesome_rounded
                 : Icons.bolt_rounded,
-            costColor: card.usesSpiritEnergy
+            costColor: card.usesMoney
+                ? const Color(0xFFFFD166)
+                : card.usesSpiritEnergy
                 ? const Color(0xFFB388FF)
                 : const Color(0xFF4FC3F7),
             insufficientLabel: _notEnoughEnergyMessageForType(

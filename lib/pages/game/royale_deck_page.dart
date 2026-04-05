@@ -641,6 +641,9 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   }
 
   String _energyTypeLabel(Map<String, String> t, RoyaleCard card) {
+    if (card.usesMoney) {
+      return t.text('Money');
+    }
     return card.usesSpiritEnergy
         ? t.text('Spirit Energy')
         : t.text('Physical Energy');
@@ -648,12 +651,12 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
 
   String _energyTypeShortLabel(String locale, RoyaleCard card) {
     if (locale == 'ja') {
-      return card.usesSpiritEnergy ? '精' : '体';
+      return card.usesMoney ? '金' : card.usesSpiritEnergy ? '精' : '体';
     }
     if (locale == 'zh-Hant') {
-      return card.usesSpiritEnergy ? '精' : '生';
+      return card.usesMoney ? '金' : card.usesSpiritEnergy ? '精' : '生';
     }
-    return card.usesSpiritEnergy ? 'SP' : 'PH';
+    return card.usesMoney ? r'$' : card.usesSpiritEnergy ? 'SP' : 'PH';
   }
 
   String _energyCostLabel(

@@ -49,7 +49,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
     'job_delivery',
     'job_day_labor',
   ];
-  static const List<String> _energyCostTypeOptions = ['physical', 'spirit'];
+  static const List<String> _energyCostTypeOptions = ['physical', 'spirit', 'money'];
 
   late final AdminService _adminService;
 
@@ -295,6 +295,11 @@ class _CardManagementPageState extends State<CardManagementPage> {
     final nameZhHant = _nameZhHantController.text.trim();
     final nameEn = _nameEnController.text.trim();
     final nameJa = _nameJaController.text.trim();
+    final effectiveCostType = _selectedType == 'equipment'
+        ? 'money'
+        : _selectedType == 'spell'
+        ? 'spirit'
+        : _selectedEnergyCostType;
     return {
       'id': _idController.text.trim(),
       'nameZhHant': nameZhHant,
@@ -305,7 +310,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
         _energyCostController,
         _t.text('Energy Cost'),
       ),
-      'energyCostType': _selectedEnergyCostType,
+      'energyCostType': effectiveCostType,
       'type': _selectedType,
       'hp': _parseIntField(_hpController, _t.text('HP')),
       'damage': _parseIntField(_damageController, _t.text('Damage')),
@@ -597,6 +602,8 @@ class _CardManagementPageState extends State<CardManagementPage> {
 
   String _energyCostTypeLabel(Map<String, String> t, String value) {
     switch (value) {
+      case 'money':
+        return t.text('Money');
       case 'spirit':
         return t.text('Spirit Energy');
       case 'physical':
@@ -612,11 +619,16 @@ class _CardManagementPageState extends State<CardManagementPage> {
   void _setSelectedType(String value) {
     setState(() {
       final wasSpell = _selectedType == 'spell';
+      final wasEquipment = _selectedType == 'equipment';
       _selectedType = value;
       if (_isCreatingNew) {
         if (value == 'spell') {
           _selectedEnergyCostType = 'spirit';
+        } else if (value == 'equipment') {
+          _selectedEnergyCostType = 'money';
         } else if (wasSpell && _selectedEnergyCostType == 'spirit') {
+          _selectedEnergyCostType = 'physical';
+        } else if (wasEquipment && _selectedEnergyCostType == 'money') {
           _selectedEnergyCostType = 'physical';
         }
       }
