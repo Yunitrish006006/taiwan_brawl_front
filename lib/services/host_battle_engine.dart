@@ -309,8 +309,6 @@ class HostBattleEngine {
 
   Map<String, dynamic> _exportPlayerState(_HostPlayer player) {
     return {
-      'elixir': player.elixir,
-      'maxElixir': player.maxElixir,
       'hand': player.hand,
       'queue': player.queue,
       'botThinkMs': player.botThinkMs,
@@ -362,8 +360,6 @@ class HostBattleEngine {
       queue: view.queueCardIds.isNotEmpty
           ? List<String>.from(view.queueCardIds)
           : queue,
-      elixir: view.elixir ?? 5,
-      maxElixir: view.maxEnergy,
       physicalHealth: view.physicalHealth.current,
       maxPhysicalHealth: view.physicalHealth.max,
       physicalHealthRegen: view.physicalHealth.regenPerSecond,
@@ -407,7 +403,6 @@ class HostBattleEngine {
         deckId: _leftPlayer.deckId,
         deckName: _leftPlayer.deckName,
         deckCards: _leftPlayer.deckCards,
-        elixir: _leftPlayer.elixir,
         handCardIds: _leftPlayer.hand,
         queueCardIds: _leftPlayer.queue,
         hero: _leftPlayer.hero,
@@ -448,7 +443,6 @@ class HostBattleEngine {
         deckId: _rightPlayer.deckId,
         deckName: _rightPlayer.deckName,
         deckCards: _rightPlayer.deckCards,
-        elixir: _rightPlayer.elixir,
         handCardIds: _rightPlayer.hand,
         queueCardIds: _rightPlayer.queue,
         hero: _rightPlayer.hero,
@@ -493,8 +487,6 @@ class HostBattleEngine {
       players: players,
       battle: RoyaleBattleView(
         timeRemainingMs: _timeRemainingMs,
-        yourElixir: viewerPlayer.elixir,
-        yourMaxElixir: viewerPlayer.maxElixir,
         yourMoney: viewerPlayer.money,
         yourHand: viewerPlayer.hand
             .map((cardId) => viewerPlayer.cardById(cardId))

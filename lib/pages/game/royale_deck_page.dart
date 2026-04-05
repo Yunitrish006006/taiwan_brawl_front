@@ -36,7 +36,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   int _activeSlot = 1;
   String? _previewCardId;
   String _cardCategoryFilter = _categoryAll;
-  int? _elixirFilter;
+  int? _energyFilter;
 
   @override
   void initState() {
@@ -328,21 +328,21 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     }
   }
 
-  bool _matchesElixirFilter(RoyaleCard card) {
-    final elixirFilter = _elixirFilter;
-    if (elixirFilter == null) {
+  bool _matchesEnergyFilter(RoyaleCard card) {
+    final energyFilter = _energyFilter;
+    if (energyFilter == null) {
       return true;
     }
-    if (elixirFilter >= 5) {
+    if (energyFilter >= 5) {
       return card.energyCost >= 5;
     }
-    return card.energyCost == elixirFilter;
+    return card.energyCost == energyFilter;
   }
 
   List<RoyaleCard> get _filteredCards {
     return _cards
         .where(_matchesCategoryFilter)
-        .where(_matchesElixirFilter)
+        .where(_matchesEnergyFilter)
         .toList(growable: false);
   }
 
@@ -574,26 +574,26 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
             children: [
               _buildFilterChip(
                 label: t.text('All'),
-                selected: _elixirFilter == null,
+                selected: _energyFilter == null,
                 onTap: () => setState(() {
-                  _elixirFilter = null;
+                  _energyFilter = null;
                 }),
                 icon: Icons.tune_rounded,
               ),
               for (final value in [1, 2, 3, 4])
                 _buildFilterChip(
                   label: '$value',
-                  selected: _elixirFilter == value,
+                  selected: _energyFilter == value,
                   onTap: () => setState(() {
-                    _elixirFilter = value;
+                    _energyFilter = value;
                   }),
                   icon: Icons.bolt_rounded,
                 ),
               _buildFilterChip(
                 label: '5+',
-                selected: _elixirFilter == 5,
+                selected: _energyFilter == 5,
                 onTap: () => setState(() {
-                  _elixirFilter = 5;
+                  _energyFilter = 5;
                 }),
                 icon: Icons.bolt_rounded,
               ),

@@ -14,8 +14,6 @@ class _HostPlayer {
     required this.deckCards,
     required this.hand,
     required this.queue,
-    required this.elixir,
-    required this.maxElixir,
     required this.physicalHealth,
     required this.maxPhysicalHealth,
     required this.physicalHealthRegen,
@@ -48,8 +46,6 @@ class _HostPlayer {
   final List<RoyaleCard> deckCards;
   final List<String> hand;
   final List<String> queue;
-  double elixir;
-  double maxElixir;
   double physicalHealth;
   double maxPhysicalHealth;
   double physicalHealthRegen;
@@ -68,6 +64,10 @@ class _HostPlayer {
   int towerHp;
   final int maxTowerHp;
   int botThinkMs;
+
+  double get totalEnergy => physicalEnergy + spiritEnergy;
+
+  double get maxEnergy => maxPhysicalEnergy + maxSpiritEnergy;
 
   RoyaleCard? cardById(String cardId) {
     for (final card in deckCards) {

@@ -101,8 +101,6 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       player.maxSpiritEnergy,
     );
     player.money = _clamp(player.money, 0, player.maxMoney);
-    player.maxElixir = player.maxPhysicalEnergy + player.maxSpiritEnergy;
-    player.elixir = player.physicalEnergy + player.spiritEnergy;
     player.towerHp = (player.physicalHealth + player.spiritHealth).round();
   }
 
@@ -961,7 +959,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       score += card.targetRule == 'tower' ? 60 : 0;
     }
 
-    if (player.elixir >= 8 && card.type == 'tank') {
+    if (player.totalEnergy >= 8 && card.type == 'tank') {
       score += 40;
     }
 

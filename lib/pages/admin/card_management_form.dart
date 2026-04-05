@@ -228,7 +228,7 @@ extension _CardManagementFormLayout on _CardManagementPageState {
       runSpacing: 12,
       children: [
         _buildFieldBox(
-          _buildNumberField(t, _elixirCostController, 'Energy Cost'),
+          _buildNumberField(t, _energyCostController, 'Energy Cost'),
           width: 220,
         ),
         _buildDropdownField(

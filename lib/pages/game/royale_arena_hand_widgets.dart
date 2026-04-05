@@ -21,6 +21,7 @@ class _DragCursorFeedback extends StatelessWidget {
 
 class _HandCard extends StatelessWidget {
   const _HandCard({
+    super.key,
     required this.card,
     required this.playable,
     required this.cardColor,
@@ -149,6 +150,7 @@ class _HandCard extends StatelessWidget {
                     child: Image.network(
                       card.imageUrl!,
                       fit: BoxFit.cover,
+                      gaplessPlayback: true,
                       errorBuilder: (_, _, _) => const SizedBox.shrink(),
                     ),
                   ),

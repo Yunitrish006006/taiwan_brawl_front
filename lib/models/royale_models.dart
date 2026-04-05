@@ -57,8 +57,6 @@ class RoyaleCard {
 
   bool get usesPhysicalEnergy => !usesSpiritEnergy;
 
-  int get elixirCost => energyCost;
-
   String localizedName(String locale) {
     final englishFallback = nameEn.isNotEmpty ? nameEn : name;
     switch (locale) {
@@ -460,7 +458,6 @@ class RoyalePlayerView {
     required this.deckId,
     required this.deckName,
     required this.deckCards,
-    required this.elixir,
     required this.handCardIds,
     required this.queueCardIds,
     required this.hero,
@@ -481,7 +478,6 @@ class RoyalePlayerView {
   final int deckId;
   final String deckName;
   final List<RoyaleCard> deckCards;
-  final double? elixir;
   final List<String> handCardIds;
   final List<String> queueCardIds;
   final RoyaleHero hero;
@@ -512,7 +508,6 @@ class RoyalePlayerView {
       deckCards: (json['deckCards'] as List<dynamic>? ?? const [])
           .map((card) => RoyaleCard.fromJson(card as Map<String, dynamic>))
           .toList(),
-      elixir: (json['elixir'] as num?)?.toDouble(),
       handCardIds: (json['handCardIds'] as List<dynamic>? ?? const [])
           .map((cardId) => cardId.toString())
           .toList(),
@@ -653,8 +648,6 @@ class RoyaleBattleResult {
 class RoyaleBattleView {
   const RoyaleBattleView({
     required this.timeRemainingMs,
-    required this.yourElixir,
-    required this.yourMaxElixir,
     required this.yourMoney,
     required this.yourHand,
     required this.nextCardId,
@@ -664,8 +657,6 @@ class RoyaleBattleView {
   });
 
   final int timeRemainingMs;
-  final double yourElixir;
-  final double yourMaxElixir;
   final double yourMoney;
   final List<RoyaleCard> yourHand;
   final String? nextCardId;
@@ -677,8 +668,6 @@ class RoyaleBattleView {
     final resultJson = json['result'] as Map<String, dynamic>?;
     return RoyaleBattleView(
       timeRemainingMs: (json['timeRemainingMs'] as num?)?.toInt() ?? 0,
-      yourElixir: (json['yourElixir'] as num?)?.toDouble() ?? 0,
-      yourMaxElixir: (json['yourMaxElixir'] as num?)?.toDouble() ?? 0,
       yourMoney: (json['yourMoney'] as num?)?.toDouble() ?? 0,
       yourHand: (json['yourHand'] as List<dynamic>? ?? const [])
           .map((card) => RoyaleCard.fromJson(card as Map<String, dynamic>))
