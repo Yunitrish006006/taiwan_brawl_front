@@ -634,6 +634,7 @@ class HostBattleEngine {
                 attackRange: _displayAttackReach(unit).round(),
                 bodyRadius: unit.bodyRadius.round(),
                 effects: unit.effects,
+                statusEffects: unit.statusEffects,
               ),
             )
             .toList(),

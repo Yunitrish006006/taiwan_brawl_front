@@ -1186,6 +1186,18 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
           return '${_t.text('Equipment: +Health')} ${card.effectValue.toInt()}';
         case 'speed_boost':
           return '${_t.text('Equipment: +Speed')} ${(card.effectValue * 100).toInt()}%';
+        case 'hanger_strike':
+          return '${_t.text('Equipment: +Damage')} ${card.effectValue.toInt()} · ${_t.text('Bruise')} 20% · ${_t.text('Mental Illness')} 1%+';
+        case 'cane_strike':
+          return '${_t.text('Equipment: +Damage')} ${card.effectValue.toInt()} · ${_t.text('Bruise')} 50% · ${_t.text('Bleed')} 20%';
+        case 'bottle_strike':
+          return '${_t.text('Equipment: +Damage')} ${card.effectValue.toInt()} · ${_t.text('Miss')} 20% · ${_t.text('Bleed')} 40%';
+        case 'western_med':
+          return _t.text('Equipment: Random Effect');
+        case 'eastern_med':
+          return '${_t.text('Equipment: Slow on Hit')} 20%';
+        case 'electric_shock':
+          return '${_t.text('Equipment: Stun')} 60%';
       }
       return _t.text('Equipment Card');
     }

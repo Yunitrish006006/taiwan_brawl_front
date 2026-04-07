@@ -52,6 +52,7 @@ void main() {
       attackRange: 118,
       bodyRadius: 18,
       effects: [],
+      statusEffects: [],
     );
 
     expect(unit.localizedName('ja'), 'ヤンキー');

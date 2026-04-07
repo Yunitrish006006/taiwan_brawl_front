@@ -127,6 +127,7 @@ class _HostUnit {
   final String targetRule;
   double cooldown;
   final List<String> effects;
+  List<String> statusEffects = [];
 }
 
 class _DropPoint {

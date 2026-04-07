@@ -625,6 +625,7 @@ class RoyaleUnitView {
     required this.attackRange,
     required this.bodyRadius,
     required this.effects,
+    required this.statusEffects,
   });
 
   final String id;
@@ -643,6 +644,7 @@ class RoyaleUnitView {
   final int attackRange;
   final int bodyRadius;
   final List<String> effects;
+  final List<String> statusEffects;
 
   String localizedName(String locale) {
     final englishFallback = nameEn.isNotEmpty ? nameEn : name;
@@ -678,6 +680,9 @@ class RoyaleUnitView {
       bodyRadius: (json['bodyRadius'] as num?)?.toInt() ?? 0,
       effects: (json['effects'] as List<dynamic>? ?? const [])
           .map((effect) => effect.toString())
+          .toList(),
+      statusEffects: (json['statusEffects'] as List<dynamic>? ?? const [])
+          .map((e) => e.toString())
           .toList(),
     );
   }
