@@ -1371,6 +1371,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     _regeneratePlayerResources(_rightPlayer, dt);
 
     _runBotTurns();
+    _tickFieldEvents(dt);
 
     for (final unit in _units) {
       if (unit.hp <= 0) {
@@ -1437,5 +1438,685 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     _result = RoyaleBattleResult(winnerSide: winnerSide, reason: reason);
     dispose();
     _emitSnapshot();
+  }
+
+  // ── Field event system ──────────────────────────────────────────
+
+  static const int _fieldEventIntervalMs = 30000;
+
+  // Per-second passive deltas for persistent field effects
+  static const Map<String, Map<String, double>> _fieldEffectTickTable = {
+    'power_outage': {'physicalEnergy': -0.5, 'spiritEnergy': -0.4},
+    'water_outage': {'physicalEnergy': -0.8},
+    'overwork': {'spiritHealth': -8.0},
+    'fraud_epidemic': {'money': -2.2},
+    'cockroach_poison': {'physicalHealth': -5.0},
+    'world_war': {'physicalHealth': -6.0},
+  };
+
+  static const Set<String> _negativeFieldEventIds = {
+    'mountain_monkey',
+    'road_three_treasures',
+    'drunk_driver',
+    'malicious_hit_run',
+    'truck_driver',
+    'severely_disabled',
+    'fraud_epidemic',
+    'world_war',
+    'cockroach_poison',
+    'power_outage',
+    'water_outage',
+    'asian_parent',
+    'exploitative_boss',
+    'food_poisoning',
+  };
+
+  void _tickFieldEvents(double dt) {
+    final dtMs = (dt * 1000).round();
+
+    // Apply passive deltas from active field effects
+    for (final effect in _fieldEffects) {
+      final table = _fieldEffectTickTable[effect.kind];
+      if (table == null) continue;
+      final targets = effect.scope == 'one' && effect.side != null
+          ? [_playerForSide(effect.side!)]
+          : [_leftPlayer, _rightPlayer];
+      for (final p in targets) {
+        _adjustPlayerResources(
+          p,
+          physicalHealthDelta: (table['physicalHealth'] ?? 0) * dt,
+          spiritHealthDelta: (table['spiritHealth'] ?? 0) * dt,
+          physicalEnergyDelta: (table['physicalEnergy'] ?? 0) * dt,
+          spiritEnergyDelta: (table['spiritEnergy'] ?? 0) * dt,
+          moneyDelta: (table['money'] ?? 0) * dt,
+        );
+      }
+    }
+
+    // Tick down effect durations
+    for (final effect in _fieldEffects) {
+      effect.remainingMs -= dtMs;
+    }
+    _fieldEffects.removeWhere((e) => e.remainingMs <= 0);
+
+    // Countdown to next event
+    _fieldNextEventMs -= dtMs;
+    if (_fieldNextEventMs <= 0) {
+      _fieldNextEventMs = _fieldEventIntervalMs;
+      _resolveRandomFieldEvent();
+    }
+  }
+
+  // ── Weighted random pick ────────────────────────────────────────
+
+  static const List<_FieldEventTemplate> _fieldEventCatalog = [
+    // Traffic
+    _FieldEventTemplate(
+      id: 'mountain_monkey',
+      weight: 1.00,
+      category: 'traffic',
+      titleZhHant: '山道猴子肇事',
+      titleEn: 'Road Monkey Incident',
+      hitRunChance: 0.50,
+      insurancePayoutChance: 0.70,
+      caughtChance: 0.30,
+      physicalDamage: 90,
+      insurancePayout: 20,
+      caughtBonus: 25,
+    ),
+    _FieldEventTemplate(
+      id: 'road_three_treasures',
+      weight: 1.00,
+      category: 'traffic',
+      titleZhHant: '馬路三寶肇事',
+      titleEn: 'Traffic Hazard Trio',
+      hitRunChance: 0.30,
+      insurancePayoutChance: 0.80,
+      caughtChance: 0.25,
+      physicalDamage: 85,
+      insurancePayout: 18,
+      caughtBonus: 22,
+      disabledChance: 0.20,
+    ),
+    _FieldEventTemplate(
+      id: 'drunk_driver',
+      weight: 0.90,
+      category: 'traffic',
+      titleZhHant: '酒癮慣犯肇事',
+      titleEn: 'Drunk Driver Repeat Offender',
+      hitRunChance: 0.80,
+      insurancePayoutChance: 0.30,
+      caughtChance: 0.45,
+      physicalDamage: 110,
+      insurancePayout: 12,
+      caughtBonus: 35,
+    ),
+    _FieldEventTemplate(
+      id: 'malicious_hit_run',
+      weight: 0.75,
+      category: 'traffic',
+      titleZhHant: '惡意肇逃',
+      titleEn: 'Deliberate Hit-and-Run',
+      hitRunChance: 1.00,
+      insurancePayoutChance: 0.90,
+      caughtChance: 0.50,
+      physicalDamage: 130,
+      insurancePayout: 30,
+      caughtBonus: 40,
+    ),
+    _FieldEventTemplate(
+      id: 'truck_driver',
+      weight: 0.85,
+      category: 'traffic',
+      titleZhHant: '大卡車肇事',
+      titleEn: 'Semi-Truck Accident',
+      hitRunChance: 0.85,
+      insurancePayoutChance: 0.75,
+      caughtChance: 0.35,
+      physicalDamage: 150,
+      insurancePayout: 28,
+      caughtBonus: 38,
+    ),
+    _FieldEventTemplate(
+      id: 'severely_disabled',
+      weight: 0.55,
+      category: 'traffic',
+      titleZhHant: '雷殘事故',
+      titleEn: 'Catastrophic Crash',
+      hitRunChance: 0.00,
+      insurancePayoutChance: 0.00,
+      caughtChance: 0.00,
+      physicalDamage: 220,
+      spiritDamage: 50,
+    ),
+    // Security
+    _FieldEventTemplate(
+      id: 'fraud_epidemic',
+      weight: 0.90,
+      category: 'security',
+      titleZhHant: '詐騙集團猖獗',
+      titleEn: 'Fraud Gang Rampage',
+      fieldEffect: 'fraud_epidemic',
+      duration: 25000,
+      fieldValue: 2.2,
+    ),
+    // Politics
+    _FieldEventTemplate(
+      id: 'world_war',
+      weight: 0.60,
+      category: 'politics',
+      titleZhHant: '世界大戰爆發',
+      titleEn: 'World War Outbreak',
+      fieldEffect: 'world_war',
+      duration: 20000,
+      fieldValue: 6.0,
+      immediateDamage: 80,
+    ),
+    // Family
+    _FieldEventTemplate(
+      id: 'cockroach_poison',
+      weight: 0.85,
+      category: 'family',
+      titleZhHant: '蟑螂藥下毒',
+      titleEn: 'Cockroach Bait Incident',
+      fieldEffect: 'cockroach_poison',
+      duration: 12000,
+      fieldValue: 5.0,
+    ),
+    _FieldEventTemplate(
+      id: 'power_outage',
+      weight: 0.90,
+      category: 'family',
+      titleZhHant: '全區停電',
+      titleEn: 'Power Outage',
+      fieldEffect: 'power_outage',
+      duration: 18000,
+      fieldValue: 0.5,
+    ),
+    _FieldEventTemplate(
+      id: 'water_outage',
+      weight: 0.85,
+      category: 'family',
+      titleZhHant: '全區停水',
+      titleEn: 'Water Outage',
+      fieldEffect: 'water_outage',
+      duration: 15000,
+      fieldValue: 0.8,
+    ),
+    _FieldEventTemplate(
+      id: 'dinosaur_parent',
+      weight: 0.80,
+      category: 'family',
+      titleZhHant: '恐龍家長護航',
+      titleEn: 'Dinosaur Parent Shields',
+      isShield: true,
+    ),
+    _FieldEventTemplate(
+      id: 'asian_parent',
+      weight: 0.80,
+      category: 'family',
+      titleZhHant: '亞洲家長管教',
+      titleEn: 'Asian Parent Outburst',
+      spiritDamage: 45,
+      physicalEnergyPenalty: 0.8,
+      spiritEnergyPenalty: 1.0,
+    ),
+    // Company
+    _FieldEventTemplate(
+      id: 'good_boss',
+      weight: 0.90,
+      category: 'company',
+      titleZhHant: '好老闆犒賞',
+      titleEn: 'Good Boss Rewards',
+      moneyGain: 22,
+      spiritGain: 28,
+    ),
+    _FieldEventTemplate(
+      id: 'exploitative_boss',
+      weight: 0.85,
+      category: 'company',
+      titleZhHant: '慣老闆強制加班',
+      titleEn: 'Exploitative Boss Overtime',
+      fieldEffect: 'overwork',
+      duration: 20000,
+      fieldValue: 8.0,
+      spiritDamage: 55,
+    ),
+    // Recovery
+    _FieldEventTemplate(
+      id: 'rehabilitation',
+      weight: 0.70,
+      category: 'recovery',
+      titleZhHant: '強制戒毒療程',
+      titleEn: 'Mandatory Rehabilitation',
+      recoveryChance: 0.40,
+    ),
+    _FieldEventTemplate(
+      id: 'hospital',
+      weight: 0.75,
+      category: 'recovery',
+      titleZhHant: '緊急住院',
+      titleEn: 'Emergency Hospitalization',
+      physicalGain: 80,
+      moneyCost: 12,
+    ),
+    // Food
+    _FieldEventTemplate(
+      id: 'food_poisoning',
+      weight: 0.85,
+      category: 'food',
+      titleZhHant: '食品中毒',
+      titleEn: 'Food Poisoning',
+      physicalDamage: 60,
+      physicalEnergyPenalty: 0.9,
+    ),
+    // Delivery
+    _FieldEventTemplate(
+      id: 'delivery_surge',
+      weight: 0.80,
+      category: 'delivery',
+      titleZhHant: '外送尖峰潮',
+      titleEn: 'Delivery Surge Rush',
+      isDeliverySurge: true,
+    ),
+  ];
+
+  void _resolveRandomFieldEvent() {
+    final total = _fieldEventCatalog.fold<double>(0, (s, e) => s + e.weight);
+    var threshold = _random.nextDouble() * total;
+    _FieldEventTemplate? template;
+    for (final e in _fieldEventCatalog) {
+      threshold -= e.weight;
+      if (threshold <= 0) {
+        template = e;
+        break;
+      }
+    }
+    template ??= _fieldEventCatalog.last;
+    _resolveFieldEvent(template);
+  }
+
+  bool _consumeShield(String side, String eventId) {
+    if (!_negativeFieldEventIds.contains(eventId)) return false;
+    if (side == 'left' && _fieldShieldLeft) {
+      _fieldShieldLeft = false;
+      return true;
+    }
+    if (side == 'right' && _fieldShieldRight) {
+      _fieldShieldRight = false;
+      return true;
+    }
+    return false;
+  }
+
+  void _addFieldEffect(
+    String kind,
+    int durationMs,
+    double value, {
+    String scope = 'both',
+    String? side,
+  }) {
+    final existing = _fieldEffects.where(
+      (e) => e.kind == kind && (scope != 'one' || e.side == side),
+    );
+    if (existing.isNotEmpty) {
+      final e = existing.first;
+      e.remainingMs = math.max(e.remainingMs, durationMs);
+      e.value = value;
+    } else {
+      _fieldEffects.add(
+        _HostFieldEffect(
+          kind: kind,
+          remainingMs: durationMs,
+          value: value,
+          scope: scope,
+          side: side,
+        ),
+      );
+    }
+  }
+
+  void _clearFieldEffects(List<String> kinds) {
+    _fieldEffects.removeWhere((e) => kinds.contains(e.kind));
+  }
+
+  void _appendFieldEvent(RoyaleBattleEvent event) {
+    const maxEvents = 6;
+    _battleEvents.add(event);
+    if (_battleEvents.length > maxEvents) {
+      _battleEvents.removeAt(0);
+    }
+  }
+
+  String _nextFeId() =>
+      'fe-${DateTime.now().millisecondsSinceEpoch}-${++_feUid}';
+
+  RoyaleBattleEvent _makeFieldEvent(
+    _FieldEventTemplate t, {
+    String side = 'both',
+    String? descZhHant,
+    String? descEn,
+    String tone = 'mixed',
+    double moneyDelta = 0,
+    double physicalHealthDelta = 0,
+    double spiritHealthDelta = 0,
+    double physicalEnergyDelta = 0,
+    double spiritEnergyDelta = 0,
+  }) {
+    return RoyaleBattleEvent(
+      id: _nextFeId(),
+      kind: 'field_event',
+      side: side,
+      cardId: t.id,
+      cardName: t.titleEn,
+      cardNameZhHant: t.titleZhHant,
+      cardNameEn: t.titleEn,
+      cardNameJa: t.titleEn,
+      title: t.titleEn,
+      titleZhHant: t.titleZhHant,
+      titleEn: t.titleEn,
+      titleJa: t.titleEn,
+      description: descEn ?? t.titleEn,
+      descriptionZhHant: descZhHant ?? t.titleZhHant,
+      descriptionEn: descEn ?? t.titleEn,
+      descriptionJa: descEn ?? t.titleEn,
+      tone: tone,
+      mentalStage: 0,
+      moneyDelta: moneyDelta,
+      physicalHealthDelta: physicalHealthDelta,
+      spiritHealthDelta: spiritHealthDelta,
+      physicalEnergyDelta: physicalEnergyDelta,
+      spiritEnergyDelta: spiritEnergyDelta,
+    );
+  }
+
+  void _resolveFieldEvent(_FieldEventTemplate t) {
+    if (t.category == 'traffic' || t.id == 'severely_disabled') {
+      _resolveTrafficFieldEvent(t);
+    } else if (t.id == 'fraud_epidemic') {
+      _resolveFraudEpidemicFieldEvent(t);
+    } else if (t.id == 'world_war') {
+      _resolveWorldWarFieldEvent(t);
+    } else if (t.fieldEffect != null && t.id != 'exploitative_boss') {
+      // cockroach_poison, power_outage, water_outage
+      _addFieldEffect(t.fieldEffect!, t.duration, t.fieldValue);
+      _appendFieldEvent(_makeFieldEvent(t, tone: 'negative'));
+    } else if (t.isShield) {
+      _resolveDinoShieldFieldEvent(t);
+    } else if (t.id == 'asian_parent') {
+      _resolveAsianParentFieldEvent(t);
+    } else if (t.id == 'good_boss') {
+      _resolveGoodBossFieldEvent(t);
+    } else if (t.id == 'exploitative_boss') {
+      _resolveExploitativeBossFieldEvent(t);
+    } else if (t.id == 'rehabilitation') {
+      _resolveRehabFieldEvent(t);
+    } else if (t.id == 'hospital') {
+      _resolveHospitalFieldEvent(t);
+    } else if (t.id == 'food_poisoning') {
+      _resolveFoodPoisoningFieldEvent(t);
+    } else if (t.isDeliverySurge) {
+      _resolveDeliverySurgeFieldEvent(t);
+    }
+  }
+
+  void _resolveTrafficFieldEvent(_FieldEventTemplate t) {
+    final sides = ['left', 'right'];
+    final victimSide = sides[_random.nextInt(2)];
+    if (_consumeShield(victimSide, t.id)) {
+      _appendFieldEvent(
+        _makeFieldEvent(
+          t,
+          side: victimSide,
+          tone: 'positive',
+          descZhHant: '[${t.titleZhHant}] 恐龍家長攔下了傷害！',
+          descEn: '[${t.titleEn}] Dinosaur Parent blocked the impact!',
+        ),
+      );
+      return;
+    }
+    final victim = _playerForSide(victimSide);
+    final isHitRun = _random.nextDouble() < t.hitRunChance;
+    final isSevere =
+        t.disabledChance > 0 && _random.nextDouble() < t.disabledChance;
+    double hpDelta = 0, spDelta = 0, moneyDelta = 0;
+    String desc = '';
+    if (t.id == 'severely_disabled' || isSevere) {
+      hpDelta = -t.physicalDamage.toDouble();
+      spDelta = -t.spiritDamage.toDouble();
+      desc = '雷殘住院，無保險';
+    } else if (isHitRun) {
+      hpDelta = -t.physicalDamage.toDouble();
+      desc = '肇逃受傷';
+      if (_random.nextDouble() < t.insurancePayoutChance) {
+        moneyDelta += t.insurancePayout;
+        desc += '，獲保險理賠';
+      }
+      if (_random.nextDouble() < t.caughtChance) {
+        moneyDelta += t.caughtBonus;
+        desc += '，肇事者被逮';
+      }
+    } else {
+      desc = '有驚無險';
+    }
+    if (hpDelta != 0 || moneyDelta != 0 || spDelta != 0) {
+      _adjustPlayerResources(
+        victim,
+        physicalHealthDelta: hpDelta,
+        spiritHealthDelta: spDelta,
+        moneyDelta: moneyDelta,
+      );
+    }
+    _appendFieldEvent(
+      _makeFieldEvent(
+        t,
+        side: victimSide,
+        tone: hpDelta < 0 ? 'negative' : 'mixed',
+        physicalHealthDelta: hpDelta,
+        spiritHealthDelta: spDelta,
+        moneyDelta: moneyDelta,
+        descZhHant: '[${t.titleZhHant}] $desc。',
+        descEn: '[${t.titleEn}] ${isHitRun ? 'Hit-and-run' : 'Near miss'}.',
+      ),
+    );
+  }
+
+  void _resolveFraudEpidemicFieldEvent(_FieldEventTemplate t) {
+    _addFieldEffect(t.fieldEffect!, t.duration, t.fieldValue);
+    final victimSide = _random.nextBool() ? 'left' : 'right';
+    if (_consumeShield(victimSide, t.id)) {
+      _appendFieldEvent(
+        _makeFieldEvent(
+          t,
+          tone: 'mixed',
+          descZhHant:
+              '${t.titleZhHant}：恐龍家長護住了${victimSide == 'left' ? '左' : '右'}方，場地效果啟動',
+          descEn:
+              '${t.titleEn}: Shield blocked direct harm, field effect active.',
+        ),
+      );
+      return;
+    }
+    final victim = _playerForSide(victimSide);
+    final isPoisoned = _random.nextDouble() < 0.25;
+    if (isPoisoned) {
+      _adjustPlayerResources(
+        victim,
+        spiritHealthDelta: -30,
+        physicalHealthDelta: -20,
+      );
+      _appendFieldEvent(
+        _makeFieldEvent(
+          t,
+          side: victimSide,
+          tone: 'negative',
+          physicalHealthDelta: -20,
+          spiritHealthDelta: -30,
+          descZhHant: '${t.titleZhHant}：買到毒藥直接受傷！',
+          descEn: '${t.titleEn}: Bought poisoned goods!',
+        ),
+      );
+    } else {
+      _adjustPlayerResources(victim, moneyDelta: -10);
+      _appendFieldEvent(
+        _makeFieldEvent(
+          t,
+          side: victimSide,
+          tone: 'negative',
+          moneyDelta: -10,
+          descZhHant: '${t.titleZhHant}：被詐騙走了錢。',
+          descEn: '${t.titleEn}: Got scammed for cash.',
+        ),
+      );
+    }
+  }
+
+  void _resolveWorldWarFieldEvent(_FieldEventTemplate t) {
+    _addFieldEffect(t.fieldEffect!, t.duration, t.fieldValue);
+    const dmg = 80.0;
+    _adjustPlayerResources(_leftPlayer, physicalHealthDelta: -dmg);
+    _adjustPlayerResources(_rightPlayer, physicalHealthDelta: -dmg);
+    _appendFieldEvent(
+      _makeFieldEvent(
+        t,
+        tone: 'negative',
+        physicalHealthDelta: -dmg,
+        descZhHant: '${t.titleZhHant}：雙方各受 ${dmg.toInt()} 砲擊傷害，並持續流失體力。',
+        descEn:
+            '${t.titleEn}: Both sides take ${dmg.toInt()} artillery damage and bleed HP.',
+      ),
+    );
+  }
+
+  void _resolveDinoShieldFieldEvent(_FieldEventTemplate t) {
+    final shieldedSide = _random.nextBool() ? 'left' : 'right';
+    if (shieldedSide == 'left') {
+      _fieldShieldLeft = true;
+    } else {
+      _fieldShieldRight = true;
+    }
+    _appendFieldEvent(
+      _makeFieldEvent(
+        t,
+        side: shieldedSide,
+        tone: 'positive',
+        descZhHant:
+            '${t.titleZhHant}：${shieldedSide == 'left' ? '左' : '右'}方受到庇護！',
+        descEn:
+            '${t.titleEn}: ${shieldedSide} side is shielded from the next negative event.',
+      ),
+    );
+  }
+
+  void _resolveAsianParentFieldEvent(_FieldEventTemplate t) {
+    for (final p in [_leftPlayer, _rightPlayer]) {
+      _adjustPlayerResources(
+        p,
+        spiritHealthDelta: -45,
+        physicalEnergyDelta: -0.8,
+        spiritEnergyDelta: -1.0,
+      );
+    }
+    _appendFieldEvent(
+      _makeFieldEvent(
+        t,
+        tone: 'negative',
+        spiritHealthDelta: -45,
+        physicalEnergyDelta: -0.8,
+        spiritEnergyDelta: -1.0,
+      ),
+    );
+  }
+
+  void _resolveGoodBossFieldEvent(_FieldEventTemplate t) {
+    for (final p in [_leftPlayer, _rightPlayer]) {
+      _adjustPlayerResources(p, moneyDelta: 22, spiritHealthDelta: 28);
+    }
+    _appendFieldEvent(
+      _makeFieldEvent(
+        t,
+        tone: 'positive',
+        moneyDelta: 22,
+        spiritHealthDelta: 28,
+      ),
+    );
+  }
+
+  void _resolveExploitativeBossFieldEvent(_FieldEventTemplate t) {
+    _addFieldEffect(t.fieldEffect!, t.duration, t.fieldValue);
+    for (final p in [_leftPlayer, _rightPlayer]) {
+      _adjustPlayerResources(p, spiritHealthDelta: -55);
+    }
+    _appendFieldEvent(
+      _makeFieldEvent(t, tone: 'negative', spiritHealthDelta: -55),
+    );
+  }
+
+  void _resolveRehabFieldEvent(_FieldEventTemplate t) {
+    for (final p in [_leftPlayer, _rightPlayer]) {
+      if (_random.nextDouble() < 0.40) {
+        _clearFieldEffects(['overwork', 'fraud_epidemic']);
+        _adjustPlayerResources(
+          p,
+          spiritHealthDelta: 40,
+          physicalHealthDelta: 20,
+        );
+      } else {
+        _adjustPlayerResources(
+          p,
+          spiritHealthDelta: -20,
+          spiritEnergyDelta: -0.5,
+        );
+      }
+    }
+    _appendFieldEvent(_makeFieldEvent(t, tone: 'mixed'));
+  }
+
+  void _resolveHospitalFieldEvent(_FieldEventTemplate t) {
+    for (final p in [_leftPlayer, _rightPlayer]) {
+      _adjustPlayerResources(p, physicalHealthDelta: 80, moneyDelta: -12);
+    }
+    _appendFieldEvent(
+      _makeFieldEvent(
+        t,
+        tone: 'mixed',
+        physicalHealthDelta: 80,
+        moneyDelta: -12,
+      ),
+    );
+  }
+
+  void _resolveFoodPoisoningFieldEvent(_FieldEventTemplate t) {
+    for (final p in [_leftPlayer, _rightPlayer]) {
+      _adjustPlayerResources(
+        p,
+        physicalHealthDelta: -60,
+        physicalEnergyDelta: -0.9,
+      );
+    }
+    _appendFieldEvent(
+      _makeFieldEvent(
+        t,
+        tone: 'negative',
+        physicalHealthDelta: -60,
+        physicalEnergyDelta: -0.9,
+      ),
+    );
+  }
+
+  void _resolveDeliverySurgeFieldEvent(_FieldEventTemplate t) {
+    for (final p in [_leftPlayer, _rightPlayer]) {
+      if (_random.nextBool()) {
+        _adjustPlayerResources(p, moneyDelta: 18, physicalEnergyDelta: -0.6);
+      } else {
+        _adjustPlayerResources(
+          p,
+          physicalHealthDelta: -30,
+          physicalEnergyDelta: -1.0,
+          spiritHealthDelta: -15,
+        );
+      }
+    }
+    _appendFieldEvent(_makeFieldEvent(t, tone: 'mixed'));
   }
 }

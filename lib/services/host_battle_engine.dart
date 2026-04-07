@@ -97,6 +97,13 @@ class HostBattleEngine {
   bool _llmDecisionPending = false;
   bool _llmFallbackWarned = false;
 
+  // Field event state
+  int _fieldNextEventMs = 0;
+  final List<_HostFieldEffect> _fieldEffects = <_HostFieldEffect>[];
+  bool _fieldShieldLeft = false;
+  bool _fieldShieldRight = false;
+  int _feUid = 0;
+
   void start() {
     if (_timer != null) {
       return;
@@ -180,6 +187,21 @@ class HostBattleEngine {
             },
           )
           .toList(),
+      'fieldState': {
+        'nextEventMs': _fieldNextEventMs,
+        'activeEffects': _fieldEffects
+            .where((e) => e.remainingMs > 0)
+            .map(
+              (e) => {
+                'kind': e.kind,
+                'remainingMs': e.remainingMs,
+                'scope': e.scope,
+                'side': e.side,
+              },
+            )
+            .toList(),
+        'shields': {'left': _fieldShieldLeft, 'right': _fieldShieldRight},
+      },
     };
   }
 
@@ -640,6 +662,22 @@ class HostBattleEngine {
             .toList(),
         events: List<RoyaleBattleEvent>.unmodifiable(_battleEvents),
         result: _result,
+        fieldState: RoyaleFieldState(
+          nextEventMs: _fieldNextEventMs.clamp(0, 30000),
+          activeEffects: _fieldEffects
+              .where((e) => e.remainingMs > 0)
+              .map(
+                (e) => RoyaleFieldEffect(
+                  kind: e.kind,
+                  remainingMs: e.remainingMs,
+                  scope: e.scope,
+                  side: e.side,
+                ),
+              )
+              .toList(),
+          leftShield: _fieldShieldLeft,
+          rightShield: _fieldShieldRight,
+        ),
       ),
     );
   }

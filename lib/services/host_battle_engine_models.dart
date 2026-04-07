@@ -144,6 +144,22 @@ class _PlayableCardsResult {
   final String? error;
 }
 
+class _HostFieldEffect {
+  _HostFieldEffect({
+    required this.kind,
+    required this.remainingMs,
+    required this.value,
+    required this.scope,
+    this.side,
+  });
+
+  final String kind;
+  int remainingMs;
+  double value;
+  final String scope;
+  final String? side;
+}
+
 class _EquipmentEffect {
   const _EquipmentEffect({
     required this.id,
@@ -191,4 +207,62 @@ class _TargetSelection {
   final String? targetSide;
   final double forwardDistance;
   final double distance;
+}
+
+class _FieldEventTemplate {
+  const _FieldEventTemplate({
+    required this.id,
+    required this.weight,
+    required this.category,
+    required this.titleZhHant,
+    required this.titleEn,
+    this.hitRunChance = 0,
+    this.insurancePayoutChance = 0,
+    this.caughtChance = 0,
+    this.disabledChance = 0,
+    this.physicalDamage = 0,
+    this.spiritDamage = 0,
+    this.insurancePayout = 0,
+    this.caughtBonus = 0,
+    this.fieldEffect,
+    this.duration = 0,
+    this.fieldValue = 0,
+    this.immediateDamage = 0,
+    this.isShield = false,
+    this.spiritGain = 0,
+    this.moneyGain = 0,
+    this.physicalGain = 0,
+    this.moneyCost = 0,
+    this.recoveryChance = 0,
+    this.physicalEnergyPenalty = 0,
+    this.spiritEnergyPenalty = 0,
+    this.isDeliverySurge = false,
+  });
+
+  final String id;
+  final double weight;
+  final String category;
+  final String titleZhHant;
+  final String titleEn;
+  final double hitRunChance;
+  final double insurancePayoutChance;
+  final double caughtChance;
+  final double disabledChance;
+  final double physicalDamage;
+  final double spiritDamage;
+  final double insurancePayout;
+  final double caughtBonus;
+  final String? fieldEffect;
+  final int duration;
+  final double fieldValue;
+  final double immediateDamage;
+  final bool isShield;
+  final double spiritGain;
+  final double moneyGain;
+  final double physicalGain;
+  final double moneyCost;
+  final double recoveryChance;
+  final double physicalEnergyPenalty;
+  final double spiritEnergyPenalty;
+  final bool isDeliverySurge;
 }

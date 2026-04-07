@@ -559,7 +559,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       return null;
     }
     for (final event in events.reversed) {
-      if (event.side == viewerSide) {
+      if (event.side == viewerSide || event.side == 'both') {
         return event;
       }
     }

@@ -688,6 +688,55 @@ class RoyaleUnitView {
   }
 }
 
+class RoyaleFieldEffect {
+  const RoyaleFieldEffect({
+    required this.kind,
+    required this.remainingMs,
+    required this.scope,
+    this.side,
+  });
+
+  final String kind;
+  final int remainingMs;
+  final String scope;
+  final String? side;
+
+  factory RoyaleFieldEffect.fromJson(Map<String, dynamic> json) {
+    return RoyaleFieldEffect(
+      kind: json['kind'] as String? ?? '',
+      remainingMs: (json['remainingMs'] as num?)?.toInt() ?? 0,
+      scope: json['scope'] as String? ?? 'both',
+      side: json['side'] as String?,
+    );
+  }
+}
+
+class RoyaleFieldState {
+  const RoyaleFieldState({
+    required this.nextEventMs,
+    required this.activeEffects,
+    required this.leftShield,
+    required this.rightShield,
+  });
+
+  final int nextEventMs;
+  final List<RoyaleFieldEffect> activeEffects;
+  final bool leftShield;
+  final bool rightShield;
+
+  factory RoyaleFieldState.fromJson(Map<String, dynamic> json) {
+    final shields = json['shields'] as Map<String, dynamic>? ?? const {};
+    return RoyaleFieldState(
+      nextEventMs: (json['nextEventMs'] as num?)?.toInt() ?? 30000,
+      activeEffects: (json['activeEffects'] as List<dynamic>? ?? const [])
+          .map((e) => RoyaleFieldEffect.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      leftShield: shields['left'] as bool? ?? false,
+      rightShield: shields['right'] as bool? ?? false,
+    );
+  }
+}
+
 class RoyaleBattleResult {
   const RoyaleBattleResult({required this.winnerSide, required this.reason});
 
@@ -711,6 +760,7 @@ class RoyaleBattleView {
     required this.units,
     required this.events,
     required this.result,
+    this.fieldState,
   });
 
   final int timeRemainingMs;
@@ -720,6 +770,7 @@ class RoyaleBattleView {
   final List<RoyaleUnitView> units;
   final List<RoyaleBattleEvent> events;
   final RoyaleBattleResult? result;
+  final RoyaleFieldState? fieldState;
 
   factory RoyaleBattleView.fromJson(Map<String, dynamic> json) {
     final resultJson = json['result'] as Map<String, dynamic>?;
@@ -742,6 +793,11 @@ class RoyaleBattleView {
       result: resultJson == null
           ? null
           : RoyaleBattleResult.fromJson(resultJson),
+      fieldState: json['fieldState'] == null
+          ? null
+          : RoyaleFieldState.fromJson(
+              json['fieldState'] as Map<String, dynamic>,
+            ),
     );
   }
 }
