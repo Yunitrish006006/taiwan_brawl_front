@@ -316,5 +316,18 @@
   "sec": "秒",
   "as a friend": "為好友",
   "invites you to join room": "邀你加入房間",
-  "people": "人"
+  "people": "人",
+  "Field Event": "場地事件",
+  "Field Events": "場地事件",
+  "Traffic": "交通",
+  "Security": "治安",
+  "Politics": "政治",
+  "Family": "家庭",
+  "Company": "公司",
+  "Recovery": "回復",
+  "Food": "食品",
+  "Delivery": "外送",
+  "Shield": "護盾",
+  "Cards": "卡牌",
+  "Select an event to view details": "選擇一個事件查看詳情"
 }

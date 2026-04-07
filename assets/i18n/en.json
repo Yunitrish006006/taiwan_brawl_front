@@ -316,5 +316,18 @@
   "sec": "sec",
   "as a friend": "as a friend",
   "invites you to join room": "invites you to join room",
-  "people": "people"
+  "people": "people",
+  "Field Event": "Field Event",
+  "Field Events": "Field Events",
+  "Traffic": "Traffic",
+  "Security": "Security",
+  "Politics": "Politics",
+  "Family": "Family",
+  "Company": "Company",
+  "Recovery": "Recovery",
+  "Food": "Food",
+  "Delivery": "Delivery",
+  "Shield": "Shield",
+  "Cards": "Cards",
+  "Select an event to view details": "Select an event to view details"
 }

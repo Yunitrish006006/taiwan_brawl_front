@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/app_user.dart';
+import '../../models/royale_field_event_info.dart';
 import '../../models/royale_models.dart';
 import '../../services/admin_service.dart';
 import '../../services/api_client.dart';
@@ -81,6 +82,8 @@ class _CardManagementPageState extends State<CardManagementPage> {
   bool _isCreatingNew = true;
   bool _showMobileEditor = false;
   String? _selectedCardId;
+  bool _showFieldEvents = false;
+  String? _selectedFieldEventId;
   String _selectedType = _typeOptions.first;
   String _selectedEnergyCostType = _energyCostTypeOptions.first;
   String _selectedTargetRule = _targetRuleOptions.first;
@@ -650,6 +653,19 @@ class _CardManagementPageState extends State<CardManagementPage> {
   void _setSelectedEffectKind(String value) {
     setState(() {
       _selectedEffectKind = value;
+    });
+  }
+
+  void _setShowFieldEvents(bool value) {
+    setState(() {
+      _showFieldEvents = value;
+      _selectedFieldEventId = null;
+    });
+  }
+
+  void _selectFieldEvent(String id) {
+    setState(() {
+      _selectedFieldEventId = id;
     });
   }
 

@@ -316,5 +316,18 @@
   "sec": "秒",
   "as a friend": "をフレンドに",
   "invites you to join room": "がルームに招待しました",
-  "people": "人"
+  "people": "人",
+  "Field Event": "フィールドイベント",
+  "Field Events": "フィールドイベント",
+  "Traffic": "交通",
+  "Security": "治安",
+  "Politics": "政治",
+  "Family": "家族",
+  "Company": "会社",
+  "Recovery": "回復",
+  "Food": "食品",
+  "Delivery": "配達",
+  "Shield": "シールド",
+  "Cards": "カード",
+  "Select an event to view details": "イベントを選択して詳細を表示"
 }

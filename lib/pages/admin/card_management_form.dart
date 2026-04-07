@@ -2,31 +2,95 @@ part of 'card_management_page.dart';
 
 extension _CardManagementFormLayout on _CardManagementPageState {
   Widget _buildCardList(Map<String, String> t, {bool phoneLayout = false}) {
+    final theme = Theme.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Tab row
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    t.text('Card List'),
-                    style: Theme.of(context).textTheme.titleLarge,
+                  child: SegmentedButton<bool>(
+                    segments: [
+                      ButtonSegment(
+                        value: false,
+                        label: Text(t.text('Cards')),
+                        icon: const Icon(Icons.style_outlined),
+                      ),
+                      ButtonSegment(
+                        value: true,
+                        label: Text(t.text('Field Event')),
+                        icon: const Icon(Icons.casino_outlined),
+                      ),
+                    ],
+                    selected: {_showFieldEvents},
+                    onSelectionChanged: (v) => _setShowFieldEvents(v.first),
+                    style: const ButtonStyle(
+                      visualDensity: VisualDensity.compact,
+                    ),
                   ),
                 ),
-                FilledButton.icon(
-                  onPressed: phoneLayout
-                      ? _openMobileEditorForNewCard
-                      : _applyNewCardDefaults,
-                  icon: const Icon(Icons.add_rounded),
-                  label: Text(t.text('New Card')),
-                ),
+                if (!_showFieldEvents) ...[
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: phoneLayout
+                        ? _openMobileEditorForNewCard
+                        : _applyNewCardDefaults,
+                    icon: const Icon(Icons.add_rounded),
+                    label: Text(t.text('New Card')),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 12),
-            if (_isLoading)
+            if (_showFieldEvents)
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 720),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: kFieldEventCatalog.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final event = kFieldEventCatalog[index];
+                    final locale = context.read<LocaleProvider>().locale;
+                    final selected = _selectedFieldEventId == event.id;
+                    final tone = event.tone;
+                    final toneColor = tone == 'negative'
+                        ? theme.colorScheme.error
+                        : tone == 'positive'
+                        ? Colors.green
+                        : theme.colorScheme.secondary;
+                    return ListTile(
+                      selected: selected,
+                      selectedTileColor: theme.colorScheme.primaryContainer
+                          .withValues(alpha: 0.45),
+                      leading: CircleAvatar(
+                        backgroundColor: toneColor.withValues(alpha: 0.18),
+                        child: Icon(
+                          tone == 'negative'
+                              ? Icons.warning_amber_rounded
+                              : tone == 'positive'
+                              ? Icons.star_rounded
+                              : Icons.shield_outlined,
+                          color: toneColor,
+                          size: 20,
+                        ),
+                      ),
+                      title: Text(
+                        event.localizedTitle(locale),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: Text('${event.id} · ${event.category}'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => _selectFieldEvent(event.id),
+                    );
+                  },
+                ),
+              )
+            else if (_isLoading)
               const Center(child: CircularProgressIndicator())
             else if (_cards.isEmpty)
               Padding(
@@ -68,6 +132,153 @@ extension _CardManagementFormLayout on _CardManagementPageState {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFieldEventDetail(Map<String, String> t) {
+    final locale = context.read<LocaleProvider>().locale;
+    final theme = Theme.of(context);
+    final eventId = _selectedFieldEventId;
+    if (eventId == null) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.casino_outlined,
+                  size: 48,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  t.text('Field Events'),
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  t.text('Select an event to view details'),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    final event = kFieldEventCatalog.firstWhere((e) => e.id == eventId);
+    final tone = event.tone;
+    final toneColor = tone == 'negative'
+        ? theme.colorScheme.error
+        : tone == 'positive'
+        ? Colors.green
+        : theme.colorScheme.secondary;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: toneColor.withValues(alpha: 0.18),
+                    child: Icon(
+                      tone == 'negative'
+                          ? Icons.warning_amber_rounded
+                          : tone == 'positive'
+                          ? Icons.star_rounded
+                          : Icons.shield_outlined,
+                      color: toneColor,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          event.localizedTitle(locale),
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          event.id,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  Chip(
+                    label: Text(event.category),
+                    avatar: const Icon(Icons.category_outlined, size: 16),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  Chip(
+                    label: Text(tone),
+                    avatar: Icon(
+                      tone == 'negative'
+                          ? Icons.sentiment_very_dissatisfied
+                          : tone == 'positive'
+                          ? Icons.sentiment_very_satisfied
+                          : Icons.sentiment_neutral,
+                      size: 16,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  if (event.duration > 0)
+                    Chip(
+                      label: Text(
+                        '${(event.duration / 1000).toStringAsFixed(0)}s',
+                      ),
+                      avatar: const Icon(Icons.timer_outlined, size: 16),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  if (event.isShield)
+                    Chip(
+                      label: Text(t.text('Shield')),
+                      avatar: const Icon(Icons.shield_outlined, size: 16),
+                      visualDensity: VisualDensity.compact,
+                      backgroundColor: Colors.blue.withValues(alpha: 0.15),
+                    ),
+                  if (event.fieldEffect != null)
+                    Chip(
+                      label: Text(event.fieldEffect!),
+                      avatar: const Icon(Icons.bolt_outlined, size: 16),
+                      visualDensity: VisualDensity.compact,
+                      backgroundColor: toneColor.withValues(alpha: 0.12),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 12),
+              Text(
+                event.localizedDescription(locale),
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -415,7 +626,10 @@ extension _CardManagementFormLayout on _CardManagementPageState {
                   children: [
                     _buildCardList(t),
                     const SizedBox(height: 16),
-                    _buildForm(t),
+                    if (_showFieldEvents)
+                      _buildFieldEventDetail(t)
+                    else
+                      _buildForm(t),
                   ],
                 );
               }
@@ -425,7 +639,11 @@ extension _CardManagementFormLayout on _CardManagementPageState {
                 children: [
                   SizedBox(width: 360, child: _buildCardList(t)),
                   const SizedBox(width: 16),
-                  Expanded(child: SingleChildScrollView(child: _buildForm(t))),
+                  Expanded(
+                    child: _showFieldEvents
+                        ? _buildFieldEventDetail(t)
+                        : SingleChildScrollView(child: _buildForm(t)),
+                  ),
                 ],
               );
             },

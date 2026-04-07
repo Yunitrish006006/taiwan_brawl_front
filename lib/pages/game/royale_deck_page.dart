@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/royale_field_event_info.dart';
 import '../../models/royale_models.dart';
 import '../../services/api_client.dart';
 import '../../services/locale_provider.dart';
@@ -21,6 +22,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   static const String _categorySpell = 'spell';
   static const String _categoryBuilding = 'building';
   static const String _categoryJob = 'job';
+  static const String _categoryFieldEvent = 'field_event';
 
   late final RoyaleService _service;
   bool _isLoading = true;
@@ -322,6 +324,8 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
         return card.type == 'building';
       case _categoryJob:
         return card.isJob;
+      case _categoryFieldEvent:
+        return false; // field events not in card list
       case _categoryAll:
       default:
         return true;
@@ -557,6 +561,14 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                   _cardCategoryFilter = _categoryJob;
                 }),
                 icon: Icons.work_outline_rounded,
+              ),
+              _buildFilterChip(
+                label: t.text('Field Event'),
+                selected: _cardCategoryFilter == _categoryFieldEvent,
+                onTap: () => setState(() {
+                  _cardCategoryFilter = _categoryFieldEvent;
+                }),
+                icon: Icons.casino_outlined,
               ),
             ],
           ),
@@ -1354,13 +1366,17 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    t.text('Available Cards'),
+                    _cardCategoryFilter == _categoryFieldEvent
+                        ? t.text('Field Events')
+                        : t.text('Available Cards'),
                     style: theme.textTheme.titleLarge,
                   ),
                   const SizedBox(height: 12),
                   _buildCardFilterSection(theme, t),
                   const SizedBox(height: 12),
-                  if (filteredCards.isEmpty)
+                  if (_cardCategoryFilter == _categoryFieldEvent)
+                    _buildFieldEventGrid(theme, locale)
+                  else if (filteredCards.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
@@ -1397,6 +1413,236 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                 ],
               ),
             ),
+    );
+  }
+
+  // ── Field Events ────────────────────────────────────────────────
+
+  Color _fieldEventColor(String tone, ColorScheme scheme) {
+    switch (tone) {
+      case 'positive':
+        return const Color(0xFF2E7D32);
+      case 'negative':
+        return const Color(0xFFC62828);
+      case 'mixed':
+      default:
+        return const Color(0xFF5C6BC0);
+    }
+  }
+
+  Color _fieldEventCategoryColor(String category) {
+    switch (category) {
+      case 'traffic':
+        return const Color(0xFF7B5EA7);
+      case 'security':
+        return const Color(0xFF8D1A1A);
+      case 'politics':
+        return const Color(0xFF1A5276);
+      case 'family':
+        return const Color(0xFF4A7A4A);
+      case 'company':
+        return const Color(0xFF7A5C20);
+      case 'recovery':
+        return const Color(0xFF1A6B5C);
+      case 'food':
+        return const Color(0xFF8B4513);
+      case 'delivery':
+        return const Color(0xFF4A6080);
+      default:
+        return const Color(0xFF5C6BC0);
+    }
+  }
+
+  String _fieldEventCategoryLabel(String category, Map<String, String> t) {
+    switch (category) {
+      case 'traffic':
+        return t.text('Traffic');
+      case 'security':
+        return t.text('Security');
+      case 'politics':
+        return t.text('Politics');
+      case 'family':
+        return t.text('Family');
+      case 'company':
+        return t.text('Company');
+      case 'recovery':
+        return t.text('Recovery');
+      case 'food':
+        return t.text('Food');
+      case 'delivery':
+        return t.text('Delivery');
+      default:
+        return category;
+    }
+  }
+
+  Widget _buildFieldEventGrid(ThemeData theme, String locale) {
+    final t = context.read<LocaleProvider>().translation;
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 320,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.68,
+      ),
+      itemCount: kFieldEventCatalog.length,
+      itemBuilder: (context, index) =>
+          _buildFieldEventTile(kFieldEventCatalog[index], theme, t, locale),
+    );
+  }
+
+  Widget _buildFieldEventTile(
+    RoyaleFieldEventInfo event,
+    ThemeData theme,
+    Map<String, String> t,
+    String locale,
+  ) {
+    final baseColor = _fieldEventColor(event.tone, theme.colorScheme);
+    final catColor = _fieldEventCategoryColor(event.category);
+
+    final toneIcon = event.tone == 'positive'
+        ? Icons.trending_up_rounded
+        : event.tone == 'negative'
+        ? Icons.trending_down_rounded
+        : Icons.sync_alt_rounded;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: baseColor.withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.18),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                margin: const EdgeInsets.only(right: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(toneIcon, color: Colors.white, size: 22),
+              ),
+              Expanded(
+                child: Text(
+                  event.localizedTitle(locale),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    height: 1.25,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Category + timing badges
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: catColor.withValues(alpha: 0.80),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  _fieldEventCategoryLabel(event.category, t),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              if (event.isPersistent)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.timer_outlined,
+                        size: 12,
+                        color: Colors.white70,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${(event.duration / 1000).toInt()}s',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (event.isShield)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withValues(alpha: 0.80),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.shield_outlined,
+                        size: 12,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        t.text('Shield'),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Description
+          Expanded(
+            child: SingleChildScrollView(
+              child: Text(
+                event.localizedDescription(locale),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.88),
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
