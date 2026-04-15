@@ -2003,7 +2003,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         descZhHant:
             '${t.titleZhHant}：${shieldedSide == 'left' ? '左' : '右'}方受到庇護！',
         descEn:
-            '${t.titleEn}: ${shieldedSide} side is shielded from the next negative event.',
+            '${t.titleEn}: $shieldedSide side is shielded from the next negative event.',
       ),
     );
   }
