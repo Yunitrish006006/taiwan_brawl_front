@@ -237,8 +237,15 @@ extension _HomePageLayout on _HomePageState {
       subtitle: roomInvite != null
           ? '${_t.text('Room')} ${roomInvite.roomCode}'
           : _friendStatusText(friend),
-      trailingWidth: roomInvite != null ? 72 : 0,
-      trailing: roomInvite != null ? _buildDrawerRoomInviteActions(roomInvite) : null,
+      trailingWidth: roomInvite != null ? 72 : 32,
+      trailing: roomInvite != null
+          ? _buildDrawerRoomInviteActions(roomInvite)
+          : _buildDrawerIconActionButton(
+              icon: Icons.chat_bubble_outline_rounded,
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+              onTap: () => _openDmPage(friend),
+            ),
       backgroundColor: Theme.of(context).colorScheme.surface,
       borderColor: Theme.of(
         context,

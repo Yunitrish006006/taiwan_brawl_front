@@ -11,8 +11,10 @@ import '../../services/auth_service.dart';
 import '../../services/friends_service.dart';
 import '../../services/friends_overview_sync_service.dart';
 import '../../services/locale_provider.dart';
+import '../../services/chat_service.dart';
 import '../../services/royale_service.dart';
 import '../../constants/app_constants.dart';
+import '../social/dm_page.dart';
 import '../../main.dart';
 import '../../utils/snackbar.dart';
 import '../../widgets/friend_search_dialog.dart';
@@ -31,6 +33,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with RouteAware {
   late final FriendsService _friendsService;
   late final RoyaleService _royaleService;
+  late final ChatService _chatService;
   String? _busyKey;
   int? _overviewRequestedForUserId;
   PageRoute<dynamic>? _observedRoute;
@@ -43,6 +46,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
     final apiClient = ApiClient();
     _friendsService = FriendsService(apiClient);
     _royaleService = RoyaleService(apiClient);
+    _chatService = ChatService(apiClient);
   }
 
   bool _canManageCards(AppUser user) {
@@ -234,6 +238,20 @@ class _HomePageState extends State<HomePage> with RouteAware {
     await _runDrawerFriendAction(
       'room-reject-${invite.id}',
       () => _friendsService.rejectRoomInvite(invite.id),
+    );
+  }
+
+  void _openDmPage(SocialUser friend) {
+    final currentUserId = context.read<AuthService>().user?.id ?? 0;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DmPage(
+          chatService: _chatService,
+          friendId: friend.userId,
+          friendName: friend.name,
+          currentUserId: currentUserId,
+        ),
+      ),
     );
   }
 
