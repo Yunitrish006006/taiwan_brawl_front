@@ -35,7 +35,11 @@ class _DmPageState extends State<DmPage> {
   void initState() {
     super.initState();
     _loadHistory();
-    widget.chatService.connectToDm(widget.friendId);
+    widget.chatService.connectToDm(
+      widget.currentUserId,
+      widget.friendId,
+      isCaller: true,
+    );
     _subscription = widget.chatService.messageStream.listen((msg) {
       setState(() => _messages.add(msg));
       _scrollToBottom();
@@ -53,7 +57,10 @@ class _DmPageState extends State<DmPage> {
 
   Future<void> _loadHistory() async {
     try {
-      final history = await widget.chatService.fetchHistory(widget.friendId);
+      final history = await widget.chatService.fetchHistory(
+        widget.currentUserId,
+        widget.friendId,
+      );
       setState(() {
         _messages.addAll(history);
         _loading = false;
@@ -77,11 +84,11 @@ class _DmPageState extends State<DmPage> {
     }
   }
 
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
-    widget.chatService.sendMessage(widget.friendId, text);
     _textController.clear();
+    await widget.chatService.sendMessage(widget.friendId, text);
   }
 
   @override
@@ -131,13 +138,33 @@ class _DmPageState extends State<DmPage> {
               : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Text(
-          msg.text,
-          style: TextStyle(
-            color: isMine
-                ? Theme.of(context).colorScheme.onPrimary
-                : Theme.of(context).colorScheme.onSurface,
-          ),
+        child: Column(
+          crossAxisAlignment: isMine
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
+          children: [
+            Text(
+              msg.text,
+              style: TextStyle(
+                color: isMine
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            if (isMine && msg.isPending)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  '傳送中…',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onPrimary.withValues(alpha: 0.6),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

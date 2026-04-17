@@ -13,6 +13,7 @@ import 'pages/game/royale_deck_page.dart';
 import 'pages/game/royale_lobby_page.dart';
 import 'services/api_client.dart';
 import 'services/auth_service.dart';
+import 'services/chat_service.dart';
 import 'services/friends_overview_sync_service.dart';
 import 'services/theme_provider.dart';
 import 'services/ui_settings_provider.dart';
@@ -21,7 +22,9 @@ import 'services/locale_provider.dart';
 final RouteObserver<PageRoute<dynamic>> appRouteObserver =
     RouteObserver<PageRoute<dynamic>>();
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ChatService.initHive();
   final apiClient = ApiClient();
   runApp(
     MultiProvider(
