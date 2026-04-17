@@ -85,6 +85,8 @@ class ChatService {
   Future<void> sendMessage(int receiverId, String text) async {
     final createdAt = DateTime.now().toIso8601String();
     final selfId = _currentSelfId;
+    // Use client epoch ms as a stable id to correlate pending → delivered in UI
+    final clientEpoch = DateTime.now().millisecondsSinceEpoch;
 
     // Show immediately as pending in UI
     if (selfId != null) {
@@ -94,29 +96,58 @@ class ChatService {
         text: text,
         createdAt: createdAt,
         isPending: true,
+        pendingId: clientEpoch,
       );
       await _localRepo.saveMessage(selfId, pending);
       if (!_messageStream.isClosed) _messageStream.add(pending);
     }
 
     try {
-      await _apiClient.postJson('/api/chat/dm/$receiverId/send', {
+      final res = await _apiClient.postJson('/api/chat/dm/$receiverId/send', {
         'text': text,
       });
-      // Server accepted — mark delivered
+      // Server accepted — use server's createdAt so messageKey matches receiver
+      final serverCreatedAt = res['createdAt'] as String? ?? createdAt;
       if (selfId != null) {
-        await _localRepo.markDelivered(selfId, receiverId, createdAt, selfId);
+        // Remove the client-side pending entry and re-save with server createdAt
+        await _localRepo.deleteMessage(selfId, receiverId, createdAt, selfId);
         final delivered = ChatMessage(
           senderId: selfId,
           receiverId: receiverId,
           text: text,
-          createdAt: createdAt,
+          createdAt: serverCreatedAt,
           isPending: false,
+          pendingId:
+              clientEpoch, // carry the same id so DmPage can find the old pending
         );
+        await _localRepo.saveMessage(selfId, delivered);
         if (!_messageStream.isClosed) _messageStream.add(delivered);
       }
     } catch (_) {
       // isPending stays true in UI
+    }
+  }
+
+  // ── recall ────────────────────────────────────────────────────────────────
+
+  /// Recalls a message. Marks it locally and notifies the receiver via server.
+  Future<void> recallMessage(ChatMessage msg) async {
+    final selfId = _currentSelfId;
+    final friendId = _currentFriendId;
+    if (selfId == null || friendId == null) return;
+
+    // Mark locally immediately
+    await _localRepo.markRecalled(selfId, friendId, msg.messageKey);
+    if (!_messageStream.isClosed) {
+      _messageStream.add(msg.copyWith(isRecalled: true));
+    }
+
+    try {
+      await _apiClient.postJson('/api/chat/dm/$friendId/recall', {
+        'messageKey': msg.messageKey,
+      });
+    } catch (_) {
+      // Best-effort; local state already updated
     }
   }
 
@@ -132,7 +163,31 @@ class ChatService {
 
       final pendingIds = <int>[];
       for (final item in raw) {
-        final msg = ChatMessage.fromJson(item as Map<String, dynamic>);
+        final type =
+            (item as Map<String, dynamic>)['type'] as String? ?? 'message';
+        final rawId = item['id'] != null ? (item['id'] as num).toInt() : null;
+
+        if (type == 'recall') {
+          // Recall event: text == messageKey of the original message
+          final messageKey = item['text'] as String? ?? '';
+          final senderId = (item['sender_id'] as num).toInt();
+          if (_currentFriendId != null && senderId == _currentFriendId) {
+            await _localRepo.markRecalled(selfId, senderId, messageKey);
+            // Read back the updated message from Hive so createdAt is exact
+            final updated = await _localRepo.getMessage(
+              selfId,
+              senderId,
+              messageKey,
+            );
+            if (updated != null && !_messageStream.isClosed) {
+              _messageStream.add(updated);
+            }
+          }
+          if (rawId != null) pendingIds.add(rawId);
+          continue;
+        }
+
+        final msg = ChatMessage.fromJson(item);
         // Only surface messages from the current conversation
         final friendId = _currentFriendId;
         if (friendId != null && msg.senderId != friendId) continue;

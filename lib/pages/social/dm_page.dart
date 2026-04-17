@@ -42,11 +42,18 @@ class _DmPageState extends State<DmPage> {
     );
     _subscription = widget.chatService.messageStream.listen((msg) {
       setState(() {
-        // Replace existing message with same key (e.g. pending → delivered)
-        final key = '${msg.createdAt}_${msg.senderId}';
-        final idx = _messages.indexWhere(
-          (m) => '${m.createdAt}_${m.senderId}' == key,
-        );
+        // 1. Try to find by pendingId (pending → delivered with different createdAt)
+        int idx = -1;
+        if (msg.pendingId != null) {
+          idx = _messages.indexWhere((m) => m.pendingId == msg.pendingId);
+        }
+        // 2. Fall back to createdAt+senderId key (recalls, re-deliveries)
+        if (idx < 0) {
+          final key = '${msg.createdAt}_${msg.senderId}';
+          idx = _messages.indexWhere(
+            (m) => '${m.createdAt}_${m.senderId}' == key,
+          );
+        }
         if (idx >= 0) {
           _messages[idx] = msg;
         } else {
@@ -135,50 +142,114 @@ class _DmPageState extends State<DmPage> {
 
   Widget _buildBubble(ChatMessage msg) {
     final isMine = msg.senderId == widget.currentUserId;
-    return Align(
-      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.7,
-        ),
-        decoration: BoxDecoration(
-          color: isMine
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: isMine
-              ? CrossAxisAlignment.end
-              : CrossAxisAlignment.start,
-          children: [
-            Text(
-              msg.text,
-              style: TextStyle(
-                color: isMine
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : Theme.of(context).colorScheme.onSurface,
-              ),
+
+    // Recalled bubble — show placeholder regardless of sender
+    if (msg.isRecalled) {
+      return Align(
+        alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Theme.of(
+                context,
+              ).colorScheme.outline.withValues(alpha: 0.4),
             ),
-            if (isMine && msg.isPending)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  '傳送中…',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onPrimary.withValues(alpha: 0.6),
-                  ),
+          ),
+          child: Text(
+            isMine ? '你收回了一則訊息' : '對方收回了一則訊息',
+            style: TextStyle(
+              fontStyle: FontStyle.italic,
+              fontSize: 13,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final bubble = Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.7,
+      ),
+      decoration: BoxDecoration(
+        color: isMine
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: isMine
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
+        children: [
+          Text(
+            msg.text,
+            style: TextStyle(
+              color: isMine
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          if (isMine && msg.isPending)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                '傳送中…',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onPrimary.withValues(alpha: 0.6),
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
+
+    if (!isMine) {
+      return Align(alignment: Alignment.centerLeft, child: bubble);
+    }
+
+    // Own messages: long-press to recall
+    return Align(
+      alignment: Alignment.centerRight,
+      child: GestureDetector(
+        onLongPress: () => _confirmRecall(msg),
+        child: bubble,
+      ),
+    );
+  }
+
+  Future<void> _confirmRecall(ChatMessage msg) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('收回訊息'),
+        content: const Text('確定要收回這則訊息嗎？對方將看到「已收回」。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('收回'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await widget.chatService.recallMessage(msg);
+    }
   }
 
   Widget _buildInputBar() {

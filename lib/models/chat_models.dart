@@ -5,6 +5,7 @@ class ChatMessage {
     required this.text,
     required this.createdAt,
     this.isPending = false,
+    this.isRecalled = false,
     this.pendingId,
   });
 
@@ -16,8 +17,14 @@ class ChatMessage {
   /// True when the message was sent via offline relay and not yet ack'd.
   final bool isPending;
 
+  /// True when the sender has recalled this message.
+  final bool isRecalled;
+
   /// Server-assigned id from pending_messages table (used for ack).
   final int? pendingId;
+
+  /// Unique key used for local storage and recall lookup.
+  String get messageKey => '${createdAt}_$senderId';
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(
@@ -29,13 +36,14 @@ class ChatMessage {
     );
   }
 
-  ChatMessage copyWith({bool? isPending, int? pendingId}) {
+  ChatMessage copyWith({bool? isPending, bool? isRecalled, int? pendingId}) {
     return ChatMessage(
       senderId: senderId,
       receiverId: receiverId,
       text: text,
       createdAt: createdAt,
       isPending: isPending ?? this.isPending,
+      isRecalled: isRecalled ?? this.isRecalled,
       pendingId: pendingId ?? this.pendingId,
     );
   }

@@ -19,11 +19,10 @@ class LocalChatRepository {
     return Hive.openBox<String>(_boxName(userIdA, userIdB));
   }
 
-  /// Persist a message. Uses `createdAt` as a sortable key to avoid duplicates.
+  /// Persist a message. Uses `createdAt_senderId` as a sortable key to avoid duplicates.
   Future<void> saveMessage(int selfId, ChatMessage msg) async {
     final box = await _openBox(selfId, msg.senderId == selfId ? msg.receiverId : msg.senderId);
-    // Key: ISO timestamp + senderId makes it unique and sorted
-    final key = '${msg.createdAt}_${msg.senderId}';
+    final key = msg.messageKey;
     if (!box.containsKey(key)) {
       await box.put(key, jsonEncode({
         'senderId': msg.senderId,
@@ -31,9 +30,22 @@ class LocalChatRepository {
         'text': msg.text,
         'createdAt': msg.createdAt,
         'isPending': msg.isPending,
+          'isRecalled': msg.isRecalled,
         'pendingId': msg.pendingId,
       }));
     }
+  }
+
+  /// Delete a message by its original createdAt + senderId key.
+  Future<void> deleteMessage(
+    int selfId,
+    int friendId,
+    String createdAt,
+    int senderId,
+  ) async {
+    final box = await _openBox(selfId, friendId);
+    final key = '${createdAt}_$senderId';
+    await box.delete(key);
   }
 
   /// Load messages for a conversation, newest-last.
@@ -49,6 +61,7 @@ class LocalChatRepository {
         text: map['text'] as String? ?? '',
         createdAt: map['createdAt'] as String? ?? '',
         isPending: map['isPending'] as bool? ?? false,
+        isRecalled: map['isRecalled'] as bool? ?? false,
         pendingId: map['pendingId'] != null ? (map['pendingId'] as num).toInt() : null,
       );
     }).toList();
@@ -64,6 +77,39 @@ class LocalChatRepository {
     map['isPending'] = false;
     map['pendingId'] = null;
     await box.put(key, jsonEncode(map));
+  }
+
+  /// Mark a message as recalled in local storage.
+  Future<void> markRecalled(int selfId, int friendId, String messageKey) async {
+    final box = await _openBox(selfId, friendId);
+    final raw = box.get(messageKey);
+    if (raw == null) return;
+    final map = jsonDecode(raw) as Map<String, dynamic>;
+    map['isRecalled'] = true;
+    await box.put(messageKey, jsonEncode(map));
+  }
+
+  /// Read a single message by its messageKey. Returns null if not found.
+  Future<ChatMessage?> getMessage(
+    int selfId,
+    int friendId,
+    String messageKey,
+  ) async {
+    final box = await _openBox(selfId, friendId);
+    final raw = box.get(messageKey);
+    if (raw == null) return null;
+    final map = jsonDecode(raw) as Map<String, dynamic>;
+    return ChatMessage(
+      senderId: (map['senderId'] as num).toInt(),
+      receiverId: (map['receiverId'] as num).toInt(),
+      text: map['text'] as String? ?? '',
+      createdAt: map['createdAt'] as String? ?? '',
+      isPending: map['isPending'] as bool? ?? false,
+      isRecalled: map['isRecalled'] as bool? ?? false,
+      pendingId: map['pendingId'] != null
+          ? (map['pendingId'] as num).toInt()
+          : null,
+    );
   }
 
   Future<void> closeAll() async {
