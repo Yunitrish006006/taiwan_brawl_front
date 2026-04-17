@@ -41,7 +41,18 @@ class _DmPageState extends State<DmPage> {
       isCaller: true,
     );
     _subscription = widget.chatService.messageStream.listen((msg) {
-      setState(() => _messages.add(msg));
+      setState(() {
+        // Replace existing message with same key (e.g. pending → delivered)
+        final key = '${msg.createdAt}_${msg.senderId}';
+        final idx = _messages.indexWhere(
+          (m) => '${m.createdAt}_${m.senderId}' == key,
+        );
+        if (idx >= 0) {
+          _messages[idx] = msg;
+        } else {
+          _messages.add(msg);
+        }
+      });
       _scrollToBottom();
     });
   }
