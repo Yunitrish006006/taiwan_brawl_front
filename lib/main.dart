@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'constants/app_constants.dart';
+import 'constants/locale_catalog.dart';
 import 'pages/admin/card_management_page.dart';
 import 'pages/admin/role_management_page.dart';
 import 'pages/general/auth_page.dart';
@@ -54,7 +55,10 @@ Future<void> main() async {
           create: (_) => ThemeProvider(),
           update: (_, auth, themeProvider) {
             final provider = themeProvider ?? ThemeProvider();
-            provider.syncFromUser(auth.user);
+            provider.syncForUser(
+              auth.user?.id,
+              themeMode: auth.user?.themeMode,
+            );
             return provider;
           },
         ),
@@ -62,11 +66,29 @@ Future<void> main() async {
           create: (_) => UiSettingsProvider(),
           update: (_, auth, uiSettingsProvider) {
             final provider = uiSettingsProvider ?? UiSettingsProvider();
-            provider.syncFromUser(auth.user);
+            provider.syncForUser(
+              auth.user?.id,
+              fontScale: auth.user?.fontSizeScale,
+            );
             return provider;
           },
         ),
-        ChangeNotifierProvider(create: (_) => LocaleProvider()),
+        ChangeNotifierProxyProvider<AuthService, LocaleProvider>(
+          create: (_) => LocaleProvider(
+            defaultLocale: defaultLocaleCode,
+            translationResolver: translationForLocale,
+          ),
+          update: (_, auth, localeProvider) {
+            final provider =
+                localeProvider ??
+                LocaleProvider(
+                  defaultLocale: defaultLocaleCode,
+                  translationResolver: translationForLocale,
+                );
+            provider.syncForUser(auth.user?.id, locale: auth.user?.locale);
+            return provider;
+          },
+        ),
       ],
       child: const MainApp(),
     ),
