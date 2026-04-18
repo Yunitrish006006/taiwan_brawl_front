@@ -81,3 +81,19 @@ String getNotificationPermission() {
   final result = bridge.callMethod<JSAny?>('getPermissionState'.toJS);
   return (result.dartify() as String?) ?? 'unsupported';
 }
+
+({bool isStandalone, bool isMobile}) getDisplayContext() {
+  final bridge = _bridge();
+  if (bridge == null) {
+    return (isStandalone: false, isMobile: false);
+  }
+  final raw = bridge.callMethod<JSAny?>('getDisplayContext'.toJS);
+  final map = raw?.dartify();
+  if (map is Map) {
+    return (
+      isStandalone: map['isStandalone'] == true,
+      isMobile: map['isMobile'] == true,
+    );
+  }
+  return (isStandalone: false, isMobile: false);
+}

@@ -13,3 +13,6 @@ Future<int?> consumePendingConversationUserId() async {
 }
 
 String getNotificationPermission() => 'unsupported';
+
+({bool isStandalone, bool isMobile}) getDisplayContext() =>
+    (isStandalone: false, isMobile: false);

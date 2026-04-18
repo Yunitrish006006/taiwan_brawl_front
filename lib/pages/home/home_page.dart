@@ -15,6 +15,7 @@ import '../../services/locale_provider.dart';
 import '../../services/chat_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/royale_service.dart';
+import '../../services/web_push_bridge.dart' as web_push_bridge;
 import '../../constants/app_constants.dart';
 import '../social/dm_page.dart';
 import '../../main.dart';
@@ -40,6 +41,11 @@ class _HomePageState extends State<HomePage> with RouteAware {
   int? _overviewRequestedForUserId;
   PageRoute<dynamic>? _observedRoute;
   int? _openingConversationUserId;
+  bool _installBannerDismissed = false;
+
+  void _dismissInstallBanner() {
+    setState(() => _installBannerDismissed = true);
+  }
 
   Map<String, String> get _t => context.read<LocaleProvider>().translation;
 
@@ -352,7 +358,11 @@ class _HomePageState extends State<HomePage> with RouteAware {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 760),
-          child: _buildPrimaryActionList(user, t),
+          child: _buildPrimaryActionList(
+            user,
+            t,
+            installBannerDismissed: _installBannerDismissed,
+          ),
         ),
       ),
     );

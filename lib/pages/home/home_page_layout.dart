@@ -1,6 +1,40 @@
 part of 'home_page.dart';
 
 extension _HomePageLayout on _HomePageState {
+  bool _shouldShowInstallBanner() {
+    final ctx = web_push_bridge.getDisplayContext();
+    return ctx.isMobile && !ctx.isStandalone;
+  }
+
+  Widget _buildInstallBanner(Map<String, String> t) {
+    return Material(
+      color: Theme.of(context).colorScheme.primaryContainer,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            const Icon(Icons.install_mobile_outlined, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                t.text('Install the app for the best experience'),
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: _dismissInstallBanner,
+              icon: const Icon(Icons.close, size: 18),
+              visualDensity: VisualDensity.compact,
+              tooltip: t.text('Dismiss'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   String _friendStatusText(SocialUser friend) {
     if (friend.isOnline) {
       return _t.text('Online');
@@ -417,10 +451,18 @@ extension _HomePageLayout on _HomePageState {
     );
   }
 
-  Widget _buildPrimaryActionList(AppUser user, Map<String, String> t) {
+  Widget _buildPrimaryActionList(
+    AppUser user,
+    Map<String, String> t, {
+    required bool installBannerDismissed,
+  }) {
+    final showInstallBanner =
+        kIsWeb && !installBannerDismissed && _shouldShowInstallBanner();
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (showInstallBanner) _buildInstallBanner(t),
+        if (showInstallBanner) const SizedBox(height: 12),
         Text(
           '${t.text('Welcome back')}，${user.name}',
           style: Theme.of(context).textTheme.headlineSmall,
