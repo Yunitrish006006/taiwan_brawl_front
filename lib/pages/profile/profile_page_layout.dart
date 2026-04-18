@@ -206,8 +206,6 @@ extension _ProfilePageLayout on _ProfilePageState {
             FilledButton(onPressed: _save, child: Text(t.text('Save'))),
             const SizedBox(height: 24),
             const SettingsPanel(),
-            const SizedBox(height: 12),
-            const ChatSyncPanel(),
           ],
         ),
       ),

@@ -74,17 +74,18 @@ class ChatService {
     return _localRepo.getMessages(selfId, friendId);
   }
 
-  /// Export all local chat history for the given friend IDs and upload to server.
-  /// Returns when the upload succeeds. Valid for 1 hour, one-time download.
-  Future<void> uploadSyncData(int selfId, List<int> friendIds) async {
-    final data = await _localRepo.exportAll(selfId, friendIds);
-    final body = jsonEncode(data);
-    await _apiClient.postRaw('/api/chat/sync/upload', body);
+  /// Export local chat history for one conversation and upload to server.
+  /// Valid for 1 hour, one-time download. Both participants share the same key.
+  Future<void> uploadSyncData(int selfId, int friendId) async {
+    final exported = await _localRepo.exportAll(selfId, [friendId]);
+    if (exported.isEmpty) return;
+    final body = jsonEncode(exported);
+    await _apiClient.postRaw('/api/chat/dm/$friendId/sync-upload', body);
   }
 
-  /// Download sync data uploaded by the same user from another device and merge.
-  Future<void> downloadAndMergeSyncData() async {
-    final raw = await _apiClient.getRaw('/api/chat/sync/download');
+  /// Download sync data for one conversation and merge into local cache.
+  Future<void> downloadAndMergeSyncData(int friendId) async {
+    final raw = await _apiClient.getRaw('/api/chat/dm/$friendId/sync-download');
     final data = jsonDecode(raw) as Map<String, dynamic>;
     await _localRepo.importAll(data);
   }

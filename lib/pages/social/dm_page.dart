@@ -33,6 +33,8 @@ class _DmPageState extends State<DmPage> {
   late final NotificationService _notificationService;
   bool _loading = true;
   bool _syncing = false;
+  bool _uploading = false;
+  bool _downloading = false;
   String? _error;
 
   @override
@@ -134,12 +136,89 @@ class _DmPageState extends State<DmPage> {
     await widget.chatService.sendMessage(widget.friendId, text);
   }
 
+  Future<void> _uploadSync() async {
+    setState(() => _uploading = true);
+    try {
+      await widget.chatService.uploadSyncData(
+        widget.currentUserId,
+        widget.friendId,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已上傳，請在 1 小時內於另一台裝置下載')));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('上傳失敗')));
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  Future<void> _downloadSync() async {
+    setState(() => _downloading = true);
+    try {
+      await widget.chatService.downloadAndMergeSyncData(widget.friendId);
+      // Reload messages from local after merge
+      final history = await widget.chatService.syncFromServer(
+        widget.currentUserId,
+        widget.friendId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _messages
+          ..clear()
+          ..addAll(history);
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('聊天記錄已同步')));
+    } catch (e) {
+      if (!mounted) return;
+      final msg =
+          e.toString().contains('No data') || e.toString().contains('404')
+          ? '沒有可下載的資料（請先從另一台裝置上傳）'
+          : '下載失敗';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    } finally {
+      if (mounted) setState(() => _downloading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.friendName),
         actions: [
+          IconButton(
+            icon: _uploading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.upload),
+            tooltip: '上傳記錄到伺服器',
+            onPressed: (_uploading || _downloading || _syncing)
+                ? null
+                : _uploadSync,
+          ),
+          IconButton(
+            icon: _downloading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download),
+            tooltip: '從伺服器下載記錄',
+            onPressed: (_uploading || _downloading || _syncing)
+                ? null
+                : _downloadSync,
+          ),
           IconButton(
             icon: const Icon(Icons.sync),
             tooltip: '從伺服器同步',
