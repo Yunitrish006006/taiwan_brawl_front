@@ -95,6 +95,28 @@ class ApiClient {
     return _parseResponse(response);
   }
 
+  Future<void> postRaw(String path, String body) async {
+    final response = await _runWithTimeout(
+      () => _client.post(_buildUri(path), headers: _headers(), body: body),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException('Request failed', statusCode: response.statusCode);
+    }
+  }
+
+  Future<String> getRaw(String path) async {
+    final response = await _runWithTimeout(
+      () => _client.get(_buildUri(path), headers: _headers()),
+    );
+    if (response.statusCode == 404) {
+      throw ApiException('No data available', statusCode: 404);
+    }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException('Request failed', statusCode: response.statusCode);
+    }
+    return response.body;
+  }
+
   static void clearMobileSession() {
     _mobileSessionId = null;
   }

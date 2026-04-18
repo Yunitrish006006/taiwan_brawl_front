@@ -112,6 +112,42 @@ class LocalChatRepository {
     );
   }
 
+  /// Clear all locally cached messages for a conversation.
+  Future<void> clearMessages(int selfId, int friendId) async {
+    final box = await _openBox(selfId, friendId);
+    await box.clear();
+  }
+
+  /// Export all messages for the given conversations as a JSON-serialisable map.
+  /// Format: { "chat_<low>_<high>": { "<messageKey>": <rawJson> } }
+  Future<Map<String, Map<String, String>>> exportAll(
+    int selfId,
+    List<int> friendIds,
+  ) async {
+    final result = <String, Map<String, String>>{};
+    for (final friendId in friendIds) {
+      final box = await _openBox(selfId, friendId);
+      if (box.isEmpty) continue;
+      final name = _boxName(selfId, friendId);
+      result[name] = {for (final k in box.keys) k as String: box.get(k)!};
+    }
+    return result;
+  }
+
+  /// Import messages from an exported map, skipping already-existing keys.
+  Future<void> importAll(Map<String, dynamic> data) async {
+    for (final entry in data.entries) {
+      final boxName = entry.key;
+      final messages = entry.value as Map<String, dynamic>;
+      final box = await Hive.openBox<String>(boxName);
+      for (final msgEntry in messages.entries) {
+        if (!box.containsKey(msgEntry.key)) {
+          await box.put(msgEntry.key, msgEntry.value as String);
+        }
+      }
+    }
+  }
+
   Future<void> closeAll() async {
     await Hive.close();
   }

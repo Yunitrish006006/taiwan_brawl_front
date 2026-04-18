@@ -32,6 +32,7 @@ class _DmPageState extends State<DmPage> {
   StreamSubscription<ChatMessage>? _subscription;
   late final NotificationService _notificationService;
   bool _loading = true;
+  bool _syncing = false;
   String? _error;
 
   @override
@@ -108,6 +109,24 @@ class _DmPageState extends State<DmPage> {
     }
   }
 
+  Future<void> _syncFromServer() async {
+    setState(() => _syncing = true);
+    try {
+      final history = await widget.chatService.syncFromServer(
+        widget.currentUserId,
+        widget.friendId,
+      );
+      setState(() {
+        _messages
+          ..clear()
+          ..addAll(history);
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    } finally {
+      setState(() => _syncing = false);
+    }
+  }
+
   Future<void> _sendMessage() async {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
@@ -118,7 +137,16 @@ class _DmPageState extends State<DmPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.friendName)),
+      appBar: AppBar(
+        title: Text(widget.friendName),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.sync),
+            tooltip: '從伺服器同步',
+            onPressed: _syncing ? null : _syncFromServer,
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(child: _buildMessageList()),

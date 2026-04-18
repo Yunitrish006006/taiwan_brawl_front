@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -60,6 +61,32 @@ class ChatService {
       await _localRepo.saveMessage(selfId, msg);
     }
     return serverMessages;
+  }
+
+  /// Force-fetch history from server and merge into local cache (no data loss).
+  Future<List<ChatMessage>> syncFromServer(int selfId, int friendId) async {
+    final res = await _apiClient.getJson('/api/chat/dm/$friendId/history');
+    final serverMessages = jsonModelList(res, 'messages', ChatMessage.fromJson);
+    for (final msg in serverMessages) {
+      await _localRepo.saveMessage(selfId, msg);
+    }
+    // Return merged result (local + server)
+    return _localRepo.getMessages(selfId, friendId);
+  }
+
+  /// Export all local chat history for the given friend IDs and upload to server.
+  /// Returns when the upload succeeds. Valid for 1 hour, one-time download.
+  Future<void> uploadSyncData(int selfId, List<int> friendIds) async {
+    final data = await _localRepo.exportAll(selfId, friendIds);
+    final body = jsonEncode(data);
+    await _apiClient.postRaw('/api/chat/sync/upload', body);
+  }
+
+  /// Download sync data uploaded by the same user from another device and merge.
+  Future<void> downloadAndMergeSyncData() async {
+    final raw = await _apiClient.getRaw('/api/chat/sync/download');
+    final data = jsonDecode(raw) as Map<String, dynamic>;
+    await _localRepo.importAll(data);
   }
 
   // ── connect ───────────────────────────────────────────────────────────────
