@@ -9,6 +9,7 @@ class AuthService extends ChangeNotifier {
 
   final ApiClient _apiClient;
   AppUser? _user;
+  bool _hasInitialized = false;
 
   Future<void> updateLocale(String locale) async {
     await _apiClient.putJson('/api/users/locale', {'locale': locale});
@@ -20,6 +21,7 @@ class AuthService extends ChangeNotifier {
   AppUser? get user => _user;
   bool get isLoading => _isLoading;
   bool get isLoggedIn => _user != null;
+  bool get hasInitialized => _hasInitialized;
 
   AppUser _readUser(Map<String, dynamic> response) {
     return jsonModel(response, 'user', AppUser.fromJson);
@@ -44,6 +46,7 @@ class AuthService extends ChangeNotifier {
     } catch (_) {
       _user = null;
     } finally {
+      _hasInitialized = true;
       _setLoading(false);
       notifyListeners();
     }
@@ -55,10 +58,12 @@ class AuthService extends ChangeNotifier {
       final res = await _apiClient.postJson('/api/google-login', {
         'id_token': idToken,
       });
+      _hasInitialized = true;
       _saveUser(res);
     } catch (_) {
       ApiClient.clearMobileSession();
       _user = null;
+      _hasInitialized = true;
       rethrow;
     } finally {
       _setLoading(false);
@@ -139,6 +144,7 @@ class AuthService extends ChangeNotifier {
     }
     ApiClient.clearMobileSession();
     _user = null;
+    _hasInitialized = true;
     notifyListeners();
   }
 

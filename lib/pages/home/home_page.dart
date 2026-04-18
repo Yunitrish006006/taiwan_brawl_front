@@ -12,6 +12,7 @@ import '../../services/friends_service.dart';
 import '../../services/friends_overview_sync_service.dart';
 import '../../services/locale_provider.dart';
 import '../../services/chat_service.dart';
+import '../../services/notification_service.dart';
 import '../../services/royale_service.dart';
 import '../../constants/app_constants.dart';
 import '../social/dm_page.dart';
@@ -37,6 +38,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
   String? _busyKey;
   int? _overviewRequestedForUserId;
   PageRoute<dynamic>? _observedRoute;
+  int? _openingConversationUserId;
 
   Map<String, String> get _t => context.read<LocaleProvider>().translation;
 
@@ -255,6 +257,38 @@ class _HomePageState extends State<HomePage> with RouteAware {
     );
   }
 
+  void _maybeOpenConversationFromPush(
+    NotificationService notificationService,
+    FriendsOverview? overview,
+  ) {
+    final pendingUserId = notificationService.pendingConversationUserId;
+    if (pendingUserId == null || overview == null) {
+      return;
+    }
+
+    SocialUser? friend;
+    for (final item in overview.friends) {
+      if (item.userId == pendingUserId) {
+        friend = item;
+        break;
+      }
+    }
+    if (friend == null || _openingConversationUserId == pendingUserId) {
+      return;
+    }
+
+    final resolvedFriend = friend;
+    _openingConversationUserId = pendingUserId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      notificationService.clearPendingConversationUserId();
+      _openingConversationUserId = null;
+      _openDmPage(resolvedFriend);
+    });
+  }
+
   Future<void> _openFriendSearchDialog() async {
     await showFriendSearchDialog(
       context: context,
@@ -275,10 +309,13 @@ class _HomePageState extends State<HomePage> with RouteAware {
   Widget build(BuildContext context) {
     final user = context.watch<AuthService>().user;
     final friendsSync = context.watch<FriendsOverviewSyncService>();
+    final notificationService = context.watch<NotificationService>();
     final t = context.watch<LocaleProvider>().translation;
     if (user == null) {
       return Scaffold(body: Center(child: Text(t.text('Please log in first'))));
     }
+
+    _maybeOpenConversationFromPush(notificationService, friendsSync.overview);
 
     return Scaffold(
       drawer: _buildDrawer(

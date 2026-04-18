@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/chat_models.dart';
 import '../../services/chat_service.dart';
+import '../../services/notification_service.dart';
 
 class DmPage extends StatefulWidget {
   const DmPage({
@@ -28,12 +30,15 @@ class _DmPageState extends State<DmPage> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   StreamSubscription<ChatMessage>? _subscription;
+  late final NotificationService _notificationService;
   bool _loading = true;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    _notificationService = context.read<NotificationService>();
+    _notificationService.setActiveConversation(widget.friendId);
     _loadHistory();
     widget.chatService.connectToDm(
       widget.currentUserId,
@@ -67,6 +72,7 @@ class _DmPageState extends State<DmPage> {
   @override
   void dispose() {
     _subscription?.cancel();
+    _notificationService.setActiveConversation(null);
     widget.chatService.disconnect();
     _textController.dispose();
     _scrollController.dispose();

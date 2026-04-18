@@ -15,9 +15,10 @@ import 'services/api_client.dart';
 import 'services/auth_service.dart';
 import 'services/chat_service.dart';
 import 'services/friends_overview_sync_service.dart';
+import 'services/locale_provider.dart';
+import 'services/notification_service.dart';
 import 'services/theme_provider.dart';
 import 'services/ui_settings_provider.dart';
-import 'services/locale_provider.dart';
 
 final RouteObserver<PageRoute<dynamic>> appRouteObserver =
     RouteObserver<PageRoute<dynamic>>();
@@ -26,10 +27,20 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ChatService.initHive();
   final apiClient = ApiClient();
+  final notificationService = NotificationService(apiClient);
+  await notificationService.initialize();
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService(apiClient)),
+        ChangeNotifierProxyProvider<AuthService, NotificationService>(
+          create: (_) => notificationService,
+          update: (_, auth, service) {
+            final nextService = service ?? notificationService;
+            nextService.syncAuth(auth);
+            return nextService;
+          },
+        ),
         ChangeNotifierProxyProvider<AuthService, FriendsOverviewSyncService>(
           create: (_) => FriendsOverviewSyncService(apiClient),
           update: (_, auth, friendsSyncService) {
