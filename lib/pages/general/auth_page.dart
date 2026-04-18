@@ -9,6 +9,7 @@ import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 import '../../services/locale_provider.dart';
 import '../../constants/app_constants.dart';
+import '../../constants/psn_theme.dart';
 import '../../utils/snackbar.dart';
 import '../../widgets/google_sign_in_web_button.dart';
 
@@ -195,28 +196,57 @@ class _AuthPageState extends State<AuthPage> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
+        color: PsnColors.consoleBlack.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             t.text('Login Guide'),
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
+            style: const TextStyle(
+              color: PsnColors.inverseWhite,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           for (final text in guideTexts) ...[
-            Text(text, style: theme.textTheme.bodyMedium),
-            if (text != guideTexts.last) const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 5),
+                  child: SizedBox(
+                    width: 6,
+                    height: 6,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: PsnColors.playstationBlue,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    text,
+                    style: const TextStyle(
+                      color: Color(0xFFAAAAAA),
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (text != guideTexts.last) const SizedBox(height: 8),
           ],
         ],
       ),
@@ -230,13 +260,26 @@ class _AuthPageState extends State<AuthPage> {
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 56,
+      height: 52,
       child: icon == null
-          ? OutlinedButton(onPressed: onPressed, child: child)
+          ? OutlinedButton(
+              onPressed: onPressed,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: PsnColors.inverseWhite,
+                side: const BorderSide(color: Color(0xFF444444)),
+                shape: const StadiumBorder(),
+              ),
+              child: child,
+            )
           : OutlinedButton.icon(
               onPressed: onPressed,
-              icon: Icon(icon),
+              icon: Icon(icon, color: PsnColors.inverseWhite),
               label: child,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: PsnColors.inverseWhite,
+                side: const BorderSide(color: Color(0xFF444444)),
+                shape: const StadiumBorder(),
+              ),
             ),
     );
   }
@@ -310,38 +353,43 @@ class _AuthPageState extends State<AuthPage> {
         constraints: const BoxConstraints(maxWidth: 440),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surface.withValues(alpha: 0.86),
+            color: PsnColors.shadowBlack,
             borderRadius: BorderRadius.circular(24),
-            boxShadow: [
+            boxShadow: const [
               BoxShadow(
-                color: theme.colorScheme.shadow.withValues(alpha: 0.08),
+                color: Color(0xCC000000),
                 blurRadius: 28,
-                offset: const Offset(0, 14),
+                offset: Offset(0, 14),
               ),
             ],
-            border: Border.all(
-              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                t.text('Sign in with Google'),
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
+              const Text(
+                '鬼島亂鬥',
+                style: TextStyle(
+                  color: PsnColors.inverseWhite,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w300,
+                  letterSpacing: 0.1,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Text(
-                t.text('Sign in to continue to the portal and game pages.'),
-                style: theme.textTheme.bodyMedium,
+                t.text('Sign in with Google'),
+                style: const TextStyle(
+                  color: Color(0xFFAAAAAA),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               _buildGoogleSignInButton(
                 theme,
                 t,
@@ -350,19 +398,34 @@ class _AuthPageState extends State<AuthPage> {
                 useDarkTheme,
               ),
               if (loading) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      PsnColors.playstationBlue,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Text(
                   t.text('Verifying Google sign-in...'),
                   textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFF888888),
+                    fontSize: 13,
+                  ),
                 ),
               ],
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
               Text(
                 t.text(
                   'Your session will be kept with a secure cookie after login',
                 ),
                 textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall,
+                style: const TextStyle(color: Color(0xFF666666), fontSize: 12),
               ),
             ],
           ),
@@ -380,31 +443,25 @@ class _AuthPageState extends State<AuthPage> {
     bool useDarkTheme,
   ) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            theme.colorScheme.surface,
-            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          ],
+          colors: [PsnColors.shadowBlack, PsnColors.consoleBlack],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
       ),
-      child: Padding(
-        padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
-        child: Column(
-          children: [
-            _buildLoginGuide(theme, t),
-            Expanded(
-              child: _buildAuthCard(
-                theme,
-                t,
-                loading,
-                frameWidth,
-                useDarkTheme,
-              ),
-            ),
-          ],
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 16 : 32,
+            vertical: isSmallScreen ? 24 : 48,
+          ),
+          child: Column(
+            children: [
+              _buildLoginGuide(theme, t),
+              _buildAuthCard(theme, t, loading, frameWidth, useDarkTheme),
+            ],
+          ),
         ),
       ),
     );
@@ -424,7 +481,20 @@ class _AuthPageState extends State<AuthPage> {
     final useDarkTheme = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: Text(AppConstants.appName)),
+      backgroundColor: PsnColors.consoleBlack,
+      appBar: AppBar(
+        backgroundColor: PsnColors.consoleBlack,
+        foregroundColor: PsnColors.inverseWhite,
+        elevation: 0,
+        title: Text(
+          AppConstants.appName,
+          style: const TextStyle(
+            color: PsnColors.inverseWhite,
+            fontSize: 22,
+            fontWeight: FontWeight.w300,
+          ),
+        ),
+      ),
       body: _buildAuthBody(
         theme,
         t,

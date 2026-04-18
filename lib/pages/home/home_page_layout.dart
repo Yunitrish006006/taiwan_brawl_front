@@ -8,24 +8,35 @@ extension _HomePageLayout on _HomePageState {
 
   Widget _buildInstallBanner(Map<String, String> t) {
     return Material(
-      color: Theme.of(context).colorScheme.primaryContainer,
+      color: PsnColors.playstationBlue.withValues(alpha: 0.15),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            const Icon(Icons.install_mobile_outlined, size: 22),
+            const Icon(
+              Icons.install_mobile_outlined,
+              size: 22,
+              color: PsnColors.playstationBlue,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 t.text('Install the app for the best experience'),
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: const TextStyle(
+                  color: PsnColors.inverseWhite,
+                  fontSize: 14,
+                ),
               ),
             ),
             const SizedBox(width: 8),
             IconButton(
               onPressed: _dismissInstallBanner,
-              icon: const Icon(Icons.close, size: 18),
+              icon: const Icon(
+                Icons.close,
+                size: 18,
+                color: PsnColors.inverseWhite,
+              ),
               visualDensity: VisualDensity.compact,
               tooltip: t.text('Dismiss'),
             ),
@@ -85,10 +96,10 @@ extension _HomePageLayout on _HomePageState {
         color: isEnabled
             ? backgroundColor
             : backgroundColor.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: isEnabled ? onTap : null,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
           child: Center(
             child: isLoading
                 ? SizedBox(
@@ -126,30 +137,33 @@ extension _HomePageLayout on _HomePageState {
         color: isEnabled
             ? backgroundColor
             : backgroundColor.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(999),
         child: InkWell(
           onTap: isEnabled ? onTap : null,
-          borderRadius: BorderRadius.circular(10),
-          child: Center(
-            child: isLoading
-                ? SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        effectiveForeground,
+          borderRadius: BorderRadius.circular(999),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Center(
+              child: isLoading
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          effectiveForeground,
+                        ),
+                      ),
+                    )
+                  : Text(
+                      label,
+                      style: TextStyle(
+                        color: effectiveForeground,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                  )
-                : Text(
-                    label,
-                    style: TextStyle(
-                      color: effectiveForeground,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+            ),
           ),
         ),
       ),
@@ -168,9 +182,9 @@ extension _HomePageLayout on _HomePageState {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(16),
-        border: borderColor == null ? null : Border.all(color: borderColor),
+        color: backgroundColor ?? const Color(0xFF1A1D1F),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor ?? const Color(0xFF2A2A2A)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -185,16 +199,20 @@ extension _HomePageLayout on _HomePageState {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: PsnColors.inverseWhite,
+                    fontSize: 14,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    color: Color(0xFF888888),
                   ),
                 ),
               ],
@@ -219,16 +237,16 @@ extension _HomePageLayout on _HomePageState {
       children: [
         _buildDrawerIconActionButton(
           icon: Icons.close_rounded,
-          backgroundColor: const Color(0xFFFFE1DE),
-          foregroundColor: const Color(0xFF9A2F22),
+          backgroundColor: const Color(0xFF3D1A17),
+          foregroundColor: const Color(0xFFFF6B5B),
           onTap: isActionLocked ? null : () => _rejectRoomInvite(invite),
           isLoading: isRejectBusy,
         ),
         const SizedBox(width: 8),
         _buildDrawerIconActionButton(
           icon: Icons.check_rounded,
-          backgroundColor: const Color(0xFFDDF4E4),
-          foregroundColor: const Color(0xFF17663A),
+          backgroundColor: const Color(0xFF0B3320),
+          foregroundColor: const Color(0xFF34C759),
           onTap: isActionLocked ? null : () => _acceptRoomInvite(invite),
           isLoading: isAcceptBusy,
         ),
@@ -276,14 +294,12 @@ extension _HomePageLayout on _HomePageState {
           ? _buildDrawerRoomInviteActions(roomInvite)
           : _buildDrawerIconActionButton(
               icon: Icons.chat_bubble_outline_rounded,
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+              backgroundColor: PsnColors.playstationBlue.withValues(alpha: 0.2),
+              foregroundColor: PsnColors.playstationBlue,
               onTap: () => _openDmPage(friend),
             ),
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      borderColor: Theme.of(
-        context,
-      ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+      backgroundColor: const Color(0xFF1A1D1F),
+      borderColor: const Color(0xFF2A2A2A),
     );
   }
 
@@ -307,25 +323,23 @@ extension _HomePageLayout on _HomePageState {
         children: [
           _buildDrawerTextActionButton(
             label: _t.text('Accept'),
-            backgroundColor: const Color(0xFFDDF4E4),
-            foregroundColor: const Color(0xFF17663A),
+            backgroundColor: const Color(0xFF0B3320),
+            foregroundColor: const Color(0xFF34C759),
             onTap: isActionLocked ? null : () => _acceptIncomingRequest(item),
             isLoading: isAcceptBusy,
           ),
           const SizedBox(height: 8),
           _buildDrawerTextActionButton(
             label: _t.text('Reject'),
-            backgroundColor: const Color(0xFFFFE1DE),
-            foregroundColor: const Color(0xFF9A2F22),
+            backgroundColor: const Color(0xFF3D1A17),
+            foregroundColor: const Color(0xFFFF6B5B),
             onTap: isActionLocked ? null : () => _rejectIncomingRequest(item),
             isLoading: isRejectBusy,
           ),
         ],
       ),
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      borderColor: Theme.of(
-        context,
-      ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+      backgroundColor: const Color(0xFF1A1D1F),
+      borderColor: const Color(0xFF2A2A2A),
     );
   }
 
@@ -334,7 +348,7 @@ extension _HomePageLayout on _HomePageState {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF16324F), Color(0xFF294C60), Color(0xFF3E7C59)],
+          colors: [Color(0xFF003F7A), PsnColors.playstationBlue],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -350,7 +364,7 @@ extension _HomePageLayout on _HomePageState {
             fallbackStyle: const TextStyle(
               color: Colors.white,
               fontSize: 22,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 12),
@@ -359,13 +373,13 @@ extension _HomePageLayout on _HomePageState {
             style: const TextStyle(
               color: Colors.white,
               fontSize: 20,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w300,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             user.email,
-            style: const TextStyle(color: Colors.white70),
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -380,10 +394,23 @@ extension _HomePageLayout on _HomePageState {
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading: Icon(icon),
-      title: Text(label),
-      trailing: const Icon(Icons.chevron_right),
+      leading: Icon(icon, color: PsnColors.playstationBlue, size: 20),
+      title: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: PsnColors.deepCharcoal,
+        ),
+      ),
+      trailing: const Icon(
+        Icons.chevron_right,
+        size: 18,
+        color: Color(0xFFAAAAAA),
+      ),
       onTap: onTap,
+      minLeadingWidth: 20,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
     );
   }
 
@@ -428,25 +455,235 @@ extension _HomePageLayout on _HomePageState {
 
   Widget _buildDrawerFriendHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
       child: Row(
         children: [
           Expanded(
             child: Text(
               _t.text('Friend List'),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: PsnColors.deepCharcoal,
+                letterSpacing: 0.4,
+              ),
             ),
           ),
           FilledButton.icon(
             onPressed: _openFriendSearchDialog,
-            icon: const Icon(Icons.person_search_rounded, size: 18),
+            icon: const Icon(Icons.person_search_rounded, size: 16),
             label: Text(_t.text('Search players')),
             style: FilledButton.styleFrom(
+              backgroundColor: PsnColors.playstationBlue,
+              foregroundColor: PsnColors.inverseWhite,
               visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              textStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+              shape: const StadiumBorder(),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGameModeCard({
+    required String title,
+    required String subtitle,
+    required String tag,
+    required IconData icon,
+    required Color accentColor,
+    required VoidCallback onTap,
+    bool isPrimary = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        decoration: BoxDecoration(
+          color: isPrimary
+              ? accentColor.withValues(alpha: 0.12)
+              : const Color(0xFF111214),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isPrimary
+                ? accentColor.withValues(alpha: 0.5)
+                : const Color(0xFF2A2A2A),
+            width: isPrimary ? 1.5 : 1,
+          ),
+        ),
+        child: Stack(
+          children: [
+            // Background glow for primary card
+            if (isPrimary)
+              Positioned(
+                top: -30,
+                right: -30,
+                child: Container(
+                  width: 140,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        accentColor.withValues(alpha: 0.15),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: accentColor.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Icon(icon, color: accentColor, size: 26),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: accentColor.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Text(
+                          tag,
+                          style: TextStyle(
+                            color: accentColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: PsnColors.inverseWhite,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Color(0xFF888888),
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Text(
+                        _t.text('Play now'),
+                        style: TextStyle(
+                          color: accentColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        color: accentColor,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeckBuilderCard(Map<String, String> t) {
+    return GestureDetector(
+      onTap: () => _openRoute('/royale-deck'),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF111214),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF2A2A2A)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1D22),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF333333)),
+              ),
+              child: const Icon(
+                Icons.style_outlined,
+                color: Color(0xFFAAAAAA),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    t.text('Mini Royale Deck Builder'),
+                    style: const TextStyle(
+                      color: PsnColors.inverseWhite,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    t.text('Build and manage your decks'),
+                    style: const TextStyle(
+                      color: Color(0xFF666666),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFF444444),
+              size: 20,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -459,41 +696,87 @@ extension _HomePageLayout on _HomePageState {
     final showInstallBanner =
         kIsWeb && !installBannerDismissed && _shouldShowInstallBanner();
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
       children: [
         if (showInstallBanner) _buildInstallBanner(t),
-        if (showInstallBanner) const SizedBox(height: 12),
+        if (showInstallBanner) const SizedBox(height: 16),
+
+        // Hero greeting
         Text(
-          '${t.text('Welcome back')}，${user.name}',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 8),
-        const SizedBox(height: 24),
-        Text(
-          t.text('Mini Royale Lobby Battle'),
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w800,
+          '${t.text('Welcome back')}',
+          style: const TextStyle(
+            color: Color(0xFF888888),
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.4,
           ),
         ),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: () => _openRoute('/royale-deck'),
-          icon: const Icon(Icons.style_outlined),
-          label: Text(t.text('Mini Royale Deck Builder')),
+        const SizedBox(height: 4),
+        Text(
+          user.name,
+          style: const TextStyle(
+            color: PsnColors.inverseWhite,
+            fontSize: 32,
+            fontWeight: FontWeight.w300,
+            letterSpacing: 0.1,
+          ),
+        ),
+        const SizedBox(height: 32),
+
+        // Section label
+        const Text(
+          'GAME MODES',
+          style: TextStyle(
+            color: Color(0xFF555555),
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.2,
+          ),
         ),
         const SizedBox(height: 12),
-        ElevatedButton.icon(
-          onPressed: () => _openRoute('/royale-lobby'),
-          icon: const Icon(Icons.sports_esports_outlined),
-          label: Text(t.text('Mini Royale Lobby Battle')),
+
+        // Mini Royale — primary hero card
+        _buildGameModeCard(
+          title: t.text('Mini Royale Lobby Battle'),
+          subtitle: t.text(
+            'Join a lobby, build your strategy and fight to the top.',
+          ),
+          tag: 'MULTIPLAYER',
+          icon: Icons.sports_esports_outlined,
+          accentColor: PsnColors.playstationBlue,
+          isPrimary: true,
+          onTap: () => _openRoute('/royale-lobby'),
         ),
         const SizedBox(height: 12),
-        ElevatedButton.icon(
-          onPressed: () => _openRoute('/archery'),
-          icon: const Icon(Icons.architecture),
-          label: Text(t.text('Archery Game')),
+
+        // Archery — secondary card
+        _buildGameModeCard(
+          title: t.text('Archery Game'),
+          subtitle: t.text(
+            'Test your precision in this single-player archery challenge.',
+          ),
+          tag: 'SOLO',
+          icon: Icons.architecture,
+          accentColor: const Color(0xFF34C759),
+          onTap: () => _openRoute('/archery'),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 28),
+
+        // Section label
+        const Text(
+          'COLLECTION',
+          style: TextStyle(
+            color: Color(0xFF555555),
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Deck Builder — compact row
+        _buildDeckBuilderCard(t),
+        const SizedBox(height: 48),
         const AppVersionText(),
       ],
     );
@@ -505,6 +788,7 @@ extension _HomePageLayout on _HomePageState {
     required bool isLoadingFriends,
   }) {
     return Drawer(
+      backgroundColor: PsnColors.paperWhite,
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

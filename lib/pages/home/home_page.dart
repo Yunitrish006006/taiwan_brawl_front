@@ -17,6 +17,7 @@ import '../../services/notification_service.dart';
 import '../../services/royale_service.dart';
 import '../../services/web_push_bridge.dart' as web_push_bridge;
 import '../../constants/app_constants.dart';
+import '../../constants/psn_theme.dart';
 import '../social/dm_page.dart';
 import '../../main.dart';
 import '../../utils/snackbar.dart';
@@ -325,23 +326,38 @@ class _HomePageState extends State<HomePage> with RouteAware {
     _maybeOpenConversationFromPush(notificationService, friendsSync.overview);
 
     return Scaffold(
+      backgroundColor: PsnColors.consoleBlack,
       drawer: _buildDrawer(
         user,
         overview: friendsSync.overview,
         isLoadingFriends: friendsSync.isLoading,
       ),
       appBar: AppBar(
-        title: const Text(AppConstants.appName),
+        backgroundColor: PsnColors.consoleBlack,
+        foregroundColor: PsnColors.inverseWhite,
+        elevation: 0,
+        title: const Text(
+          AppConstants.appName,
+          style: TextStyle(
+            color: PsnColors.inverseWhite,
+            fontSize: 22,
+            fontWeight: FontWeight.w300,
+            letterSpacing: 0.1,
+          ),
+        ),
         actions: [
           if (kIsWeb && notificationService.canRequestWebPushPermission)
             IconButton(
               onPressed: () => notificationService.requestPushPermission(user),
-              icon: const Icon(Icons.notifications_outlined),
+              icon: const Icon(
+                Icons.notifications_outlined,
+                color: PsnColors.inverseWhite,
+              ),
               tooltip: t.text('Enable Notifications'),
             ),
           IconButton(
             onPressed: () => Navigator.of(context).pushNamed('/profile'),
-            icon: const Icon(Icons.person),
+            icon: const Icon(Icons.person, color: PsnColors.inverseWhite),
             tooltip: t.text('Profile'),
           ),
           IconButton(
@@ -350,18 +366,27 @@ class _HomePageState extends State<HomePage> with RouteAware {
               if (!context.mounted) return;
               Navigator.of(context).pushReplacementNamed('/login');
             },
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: PsnColors.inverseWhite),
             tooltip: t.text('Logout'),
           ),
         ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 760),
-          child: _buildPrimaryActionList(
-            user,
-            t,
-            installBannerDismissed: _installBannerDismissed,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [PsnColors.shadowBlack, PsnColors.consoleBlack],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: _buildPrimaryActionList(
+              user,
+              t,
+              installBannerDismissed: _installBannerDismissed,
+            ),
           ),
         ),
       ),

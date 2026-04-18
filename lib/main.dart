@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'constants/app_constants.dart';
 import 'constants/locale_catalog.dart';
+import 'constants/psn_theme.dart';
 import 'pages/admin/card_management_page.dart';
 import 'pages/admin/role_management_page.dart';
 import 'pages/general/auth_page.dart';
@@ -106,22 +107,8 @@ class MainApp extends StatelessWidget {
         return MaterialApp(
           title: AppConstants.appName,
           navigatorObservers: [appRouteObserver],
-          theme: ThemeData(
-            brightness: Brightness.light,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF007A78),
-              brightness: Brightness.light,
-            ),
-            useMaterial3: true,
-          ),
-          darkTheme: ThemeData(
-            brightness: Brightness.dark,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF007A78),
-              brightness: Brightness.dark,
-            ),
-            useMaterial3: true,
-          ),
+          theme: PsnTheme.light(),
+          darkTheme: PsnTheme.dark(),
           themeMode: themeProvider.themeMode,
           builder: (context, child) {
             return MediaQuery(
