@@ -96,6 +96,12 @@ class NotificationService extends ChangeNotifier {
 
   int? get pendingConversationUserId => _pendingConversationUserId;
 
+  bool get canRequestWebPushPermission {
+    if (!kIsWeb) return false;
+    final permission = web_push_bridge.getNotificationPermission();
+    return permission == 'default';
+  }
+
   Future<void> initialize() async {
     await _ensurePlatformHooksInitialized();
   }
@@ -297,6 +303,14 @@ class NotificationService extends ChangeNotifier {
       debugPrint('Register push device failed: $error');
       debugPrintStack(stackTrace: stackTrace);
     }
+  }
+
+  /// 由使用者手勢觸發，用於 iOS Safari PWA 等需要 user gesture 才能請求通知權限的情境。
+  Future<void> requestPushPermission(AppUser user) async {
+    _registeredPushUserId = null;
+    await _registerCurrentDevice(user);
+    _registeredPushUserId = user.id;
+    notifyListeners();
   }
 
   Future<Map<String, dynamic>?> _buildRegistrationBody(

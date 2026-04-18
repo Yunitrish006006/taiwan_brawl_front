@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -326,6 +327,12 @@ class _HomePageState extends State<HomePage> with RouteAware {
       appBar: AppBar(
         title: const Text(AppConstants.appName),
         actions: [
+          if (kIsWeb && notificationService.canRequestWebPushPermission)
+            IconButton(
+              onPressed: () => notificationService.requestPushPermission(user),
+              icon: const Icon(Icons.notifications_outlined),
+              tooltip: t.text('Enable Notifications'),
+            ),
           IconButton(
             onPressed: () => Navigator.of(context).pushNamed('/profile'),
             icon: const Icon(Icons.person),

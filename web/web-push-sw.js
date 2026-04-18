@@ -19,10 +19,17 @@ self.addEventListener('notificationclick', (event) => {
   const targetUrl = String(rawUrl || self.location.origin);
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      if (clients.length > 0) {
-        return clients[0].navigate(targetUrl).then(() => clients[0].focus());
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // 找到任何已開啟的 app 視窗，導航後 focus
+      for (const client of clientList) {
+        if ('navigate' in client) {
+          return client.navigate(targetUrl).then(() => client.focus());
+        }
+        if ('focus' in client) {
+          return client.focus();
+        }
       }
+      // 沒有視窗，開新的
       return self.clients.openWindow(targetUrl);
     })
   );

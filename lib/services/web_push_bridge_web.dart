@@ -72,3 +72,12 @@ Future<int?> consumePendingConversationUserId() async {
   final result = bridge.callMethod<JSAny?>('consumePendingConversationUserId'.toJS);
   return _intFromJs(result);
 }
+
+String getNotificationPermission() {
+  final bridge = _bridge();
+  if (bridge == null) {
+    return 'unsupported';
+  }
+  final result = bridge.callMethod<JSAny?>('getPermissionState'.toJS);
+  return (result.dartify() as String?) ?? 'unsupported';
+}

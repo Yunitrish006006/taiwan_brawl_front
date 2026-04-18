@@ -11,3 +11,5 @@ Future<void> unregisterWebPush() async {}
 Future<int?> consumePendingConversationUserId() async {
   return null;
 }
+
+String getNotificationPermission() => 'unsupported';

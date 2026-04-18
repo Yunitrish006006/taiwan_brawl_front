@@ -91,9 +91,17 @@
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   }
 
+  function getPermissionState() {
+    if (!('Notification' in window)) {
+      return 'unsupported';
+    }
+    return Notification.permission;
+  }
+
   window.taiwanBrawlPush = {
     register,
     unregister,
     consumePendingConversationUserId,
+    getPermissionState,
   };
 })();
