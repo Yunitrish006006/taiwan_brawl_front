@@ -1,5 +1,9 @@
 {
   "Accept": "接受",
+  "LLM connection test succeeded": "LLM 連線測試成功",
+  "LLM connection test failed": "LLM 連線測試失敗",
+  "Test Connection": "測試連線",
+  "Please enter an API key first": "請先輸入 API Key",
   "Play now": "立即進行",
   "Join a lobby, build your strategy and fight to the top.": "加入大廳，制定策略，奮戰到頂！",
   "Test your precision in this single-player archery challenge.": "在單人射箭挑戰中測試你的精準度。",

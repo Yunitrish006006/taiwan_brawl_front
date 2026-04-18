@@ -1,5 +1,9 @@
 {
   "Accept": "Accept",
+  "LLM connection test succeeded": "LLM connection test succeeded",
+  "LLM connection test failed": "LLM connection test failed",
+  "Test Connection": "Test Connection",
+  "Please enter an API key first": "Please enter an API key first",
   "Play now": "Play now",
   "Join a lobby, build your strategy and fight to the top.": "Join a lobby, build your strategy and fight to the top.",
   "Test your precision in this single-player archery challenge.": "Test your precision in this single-player archery challenge.",

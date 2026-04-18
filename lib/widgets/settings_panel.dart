@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 import '../models/app_user.dart';
@@ -140,6 +143,8 @@ class _LlmBotSettingsSectionState extends State<_LlmBotSettingsSection> {
   int? _seededUserId;
   bool _apiKeyDirty = false;
   bool _isSaving = false;
+  bool _isTesting = false;
+  String? _testResult; // 'ok', 'fail', or null
 
   @override
   void didChangeDependencies() {
@@ -218,6 +223,123 @@ class _LlmBotSettingsSectionState extends State<_LlmBotSettingsSection> {
     await _save();
   }
 
+  Future<void> _testConnection() async {
+    final t = context.read<LocaleProvider>().translation;
+    final rawBaseUrl = _baseUrlController.text.trim();
+    final model = _modelController.text.trim();
+    final apiKey = _apiKeyController.text.trim();
+    final user = context.read<AuthService>().user ?? widget.user;
+
+    // Need either a freshly entered key or a saved one (use backend as proxy)
+    final usingBackendProxy = apiKey.isEmpty && user.hasLlmApiKey;
+    final hasKey = apiKey.isNotEmpty || user.hasLlmApiKey;
+
+    if (!hasKey) {
+      showAppSnackBar(context, t.text('Please enter an API key first'));
+      return;
+    }
+
+    setState(() {
+      _isTesting = true;
+      _testResult = null;
+    });
+
+    try {
+      if (usingBackendProxy) {
+        // Use the backend as a proxy — call /api/llm-bot/decide with a minimal dummy state.
+        final apiClient = context.read<ApiClient>();
+        const dummyDeckCards = [
+          {'id': 'test_card', 'name': 'Test Card', 'energyCost': 1},
+        ];
+        try {
+          await apiClient.postJson('/api/llm-bot/decide', {
+            'state': {
+              'roomCode': 'TEST',
+              'playerSide': 'left',
+              'timeRemainingMs': 60000,
+              'players': {
+                'left': {
+                  'userId': 0,
+                  'deckCards': dummyDeckCards,
+                  'handCardIds': [],
+                  'queueCardIds': [],
+                  'towerHp': 1000,
+                  'maxTowerHp': 1000,
+                },
+                'right': {
+                  'userId': 1,
+                  'deckCards': dummyDeckCards,
+                  'handCardIds': [],
+                  'queueCardIds': [],
+                  'towerHp': 1000,
+                  'maxTowerHp': 1000,
+                },
+              },
+              'units': [],
+              'events': [],
+            },
+          });
+          if (!mounted) return;
+          setState(() => _testResult = 'ok');
+          showAppSnackBar(context, t.text('LLM connection test succeeded'));
+        } on ApiException catch (e) {
+          if (!mounted) return;
+          setState(() => _testResult = 'fail');
+          showAppSnackBar(
+            context,
+            '${t.text('LLM connection test failed')}: ${e.message}',
+          );
+        }
+      } else {
+        // Direct call with user-entered key
+        final baseUrl = rawBaseUrl.isEmpty
+            ? 'https://api.openai.com/v1'
+            : rawBaseUrl.replaceAll(RegExp(r'/+$'), '');
+        final url = baseUrl.endsWith('/chat/completions')
+            ? baseUrl
+            : '$baseUrl/chat/completions';
+        final effectiveModel = model.isEmpty ? 'gpt-4o-mini' : model;
+
+        final resp = await http.post(
+          Uri.parse(url),
+          headers: {
+            'Authorization': 'Bearer $apiKey',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            'model': effectiveModel,
+            'messages': [
+              {'role': 'user', 'content': 'reply with ok'},
+            ],
+            'max_tokens': 8,
+          }),
+        );
+        if (!mounted) return;
+        if (resp.statusCode == 200) {
+          setState(() => _testResult = 'ok');
+          showAppSnackBar(context, t.text('LLM connection test succeeded'));
+        } else {
+          setState(() => _testResult = 'fail');
+          String errMsg = '';
+          try {
+            final body = jsonDecode(resp.body);
+            errMsg = body['error']?['message'] ?? body['error'] ?? '';
+          } catch (_) {}
+          showAppSnackBar(
+            context,
+            '${t.text('LLM connection test failed')}: ${errMsg.isEmpty ? resp.statusCode : errMsg}',
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _testResult = 'fail');
+      showAppSnackBar(context, '${t.text('LLM connection test failed')}: $e');
+    } finally {
+      if (mounted) setState(() => _isTesting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.watch<LocaleProvider>().translation;
@@ -284,6 +406,28 @@ class _LlmBotSettingsSectionState extends State<_LlmBotSettingsSection> {
                     )
                   : const Icon(Icons.smart_toy_outlined),
               label: Text(t.text('Save LLM Settings')),
+            ),
+            OutlinedButton.icon(
+              onPressed: (_isSaving || _isTesting) ? null : _testConnection,
+              icon: _isTesting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      _testResult == 'ok'
+                          ? Icons.check_circle_outline
+                          : _testResult == 'fail'
+                          ? Icons.error_outline
+                          : Icons.wifi_tethering,
+                      color: _testResult == 'ok'
+                          ? Colors.green
+                          : _testResult == 'fail'
+                          ? Theme.of(context).colorScheme.error
+                          : null,
+                    ),
+              label: Text(t.text('Test Connection')),
             ),
             OutlinedButton.icon(
               onPressed: _isSaving || !user.hasLlmApiKey
