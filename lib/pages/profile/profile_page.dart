@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:front/widgets/settings_panel.dart';
+import 'package:taiwan_brawl/widgets/settings_panel.dart';
 import '../../services/locale_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

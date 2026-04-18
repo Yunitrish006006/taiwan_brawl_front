@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "front" "\0"
+            VALUE "FileDescription", "Taiwan Brawl" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "front" "\0"
+            VALUE "InternalName", "taiwan_brawl" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "front.exe" "\0"
-            VALUE "ProductName", "front" "\0"
+            VALUE "OriginalFilename", "taiwan_brawl.exe" "\0"
+            VALUE "ProductName", "Taiwan Brawl" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

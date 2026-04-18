@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:front/constants/locale_catalog.dart';
+import 'package:taiwan_brawl/constants/locale_catalog.dart';
 
 void main() {
   test('all locale maps expose the same translation keys', () {

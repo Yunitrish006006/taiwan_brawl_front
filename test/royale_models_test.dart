@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:front/models/royale_models.dart';
+import 'package:taiwan_brawl/models/royale_models.dart';
 
 void main() {
   test('card localizedName falls back to English and legacy name', () {
