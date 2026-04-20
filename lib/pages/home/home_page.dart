@@ -34,10 +34,12 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with RouteAware {
+class _HomePageState extends State<HomePage>
+    with RouteAware, TickerProviderStateMixin {
   late final FriendsService _friendsService;
   late final RoyaleService _royaleService;
   late final ChatService _chatService;
+  late final AnimationController _entranceController;
   String? _busyKey;
   int? _overviewRequestedForUserId;
   PageRoute<dynamic>? _observedRoute;
@@ -57,6 +59,13 @@ class _HomePageState extends State<HomePage> with RouteAware {
     _friendsService = FriendsService(apiClient);
     _royaleService = RoyaleService(apiClient);
     _chatService = ChatService(apiClient);
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _entranceController.forward();
+    });
   }
 
   bool _canManageCards(AppUser user) {
@@ -105,6 +114,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
 
   @override
   void dispose() {
+    _entranceController.dispose();
     if (_observedRoute != null) {
       appRouteObserver.unsubscribe(this);
     }

@@ -1,6 +1,29 @@
 part of 'home_page.dart';
 
 extension _HomePageLayout on _HomePageState {
+  /// 建立一個以 [Interval(begin, end)] 為時間範圍的入場動畫包裝。
+  /// 子 Widget 會在指定時間點淡入並向上滑動出現。
+  Widget _animatedSection({
+    required double begin,
+    required double end,
+    required Widget child,
+  }) {
+    final anim = CurvedAnimation(
+      parent: _entranceController,
+      curve: Interval(begin, end, curve: Curves.easeOut),
+    );
+    return FadeTransition(
+      opacity: anim,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.05),
+          end: Offset.zero,
+        ).animate(anim),
+        child: child,
+      ),
+    );
+  }
+
   bool _shouldShowInstallBanner() {
     final ctx = web_push_bridge.getDisplayContext();
     return ctx.isMobile && !ctx.isStandalone;
@@ -698,86 +721,119 @@ extension _HomePageLayout on _HomePageState {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
       children: [
-        if (showInstallBanner) _buildInstallBanner(t),
-        if (showInstallBanner) const SizedBox(height: 16),
+        // 區塊一：安裝橫幅（web only）
+        if (showInstallBanner) ...[
+          _animatedSection(begin: 0.0, end: 0.4, child: _buildInstallBanner(t)),
+          const SizedBox(height: 16),
+        ],
 
-        // Hero greeting
-        Text(
-          t.text('Welcome back'),
-          style: const TextStyle(
-            color: Color(0xFF888888),
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 0.4,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          user.name,
-          style: const TextStyle(
-            color: PsnColors.inverseWhite,
-            fontSize: 32,
-            fontWeight: FontWeight.w300,
-            letterSpacing: 0.1,
+        // 區塊二：歡迎語 + 使用者名稱
+        _animatedSection(
+          begin: 0.0,
+          end: 0.45,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                t.text('Welcome back'),
+                style: const TextStyle(
+                  color: Color(0xFF888888),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                user.name,
+                style: const TextStyle(
+                  color: PsnColors.inverseWhite,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w300,
+                  letterSpacing: 0.1,
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 32),
 
-        // Section label
-        const Text(
-          'GAME MODES',
-          style: TextStyle(
-            color: Color(0xFF555555),
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
+        // 區塊三：遊戲模式標題
+        _animatedSection(
+          begin: 0.15,
+          end: 0.55,
+          child: const Text(
+            'GAME MODES',
+            style: TextStyle(
+              color: Color(0xFF555555),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+            ),
           ),
         ),
         const SizedBox(height: 12),
 
-        // Mini Royale — primary hero card
-        _buildGameModeCard(
-          title: t.text('Mini Royale Lobby Battle'),
-          subtitle: t.text(
-            'Join a lobby, build your strategy and fight to the top.',
+        // 區塊四：Mini Royale 主卡
+        _animatedSection(
+          begin: 0.2,
+          end: 0.65,
+          child: _buildGameModeCard(
+            title: t.text('Mini Royale Lobby Battle'),
+            subtitle: t.text(
+              'Join a lobby, build your strategy and fight to the top.',
+            ),
+            tag: 'MULTIPLAYER',
+            icon: Icons.sports_esports_outlined,
+            accentColor: PsnColors.playstationBlue,
+            isPrimary: true,
+            onTap: () => _openRoute('/royale-lobby'),
           ),
-          tag: 'MULTIPLAYER',
-          icon: Icons.sports_esports_outlined,
-          accentColor: PsnColors.playstationBlue,
-          isPrimary: true,
-          onTap: () => _openRoute('/royale-lobby'),
         ),
         const SizedBox(height: 12),
 
-        // Archery — secondary card
-        _buildGameModeCard(
-          title: t.text('Archery Game'),
-          subtitle: t.text(
-            'Test your precision in this single-player archery challenge.',
+        // 區塊五：射箭遊戲卡
+        _animatedSection(
+          begin: 0.3,
+          end: 0.75,
+          child: _buildGameModeCard(
+            title: t.text('Archery Game'),
+            subtitle: t.text(
+              'Test your precision in this single-player archery challenge.',
+            ),
+            tag: 'SOLO',
+            icon: Icons.architecture,
+            accentColor: const Color(0xFF34C759),
+            onTap: () => _openRoute('/archery'),
           ),
-          tag: 'SOLO',
-          icon: Icons.architecture,
-          accentColor: const Color(0xFF34C759),
-          onTap: () => _openRoute('/archery'),
         ),
         const SizedBox(height: 28),
 
-        // Section label
-        const Text(
-          'COLLECTION',
-          style: TextStyle(
-            color: Color(0xFF555555),
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
+        // 區塊六：收藏標題 + 牌組建造器
+        _animatedSection(
+          begin: 0.45,
+          end: 0.9,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'COLLECTION',
+                style: TextStyle(
+                  color: Color(0xFF555555),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildDeckBuilderCard(t),
+            ],
           ),
         ),
-        const SizedBox(height: 12),
-
-        // Deck Builder — compact row
-        _buildDeckBuilderCard(t),
         const SizedBox(height: 48),
-        const AppVersionText(),
+
+        // 區塊七：版本號
+        _animatedSection(begin: 0.6, end: 1.0, child: const AppVersionText()),
       ],
     );
   }
