@@ -31,6 +31,8 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   String? _error;
   List<RoyaleCard> _cards = const [];
   List<RoyaleDeck> _decks = const [];
+  List<RoyaleHero> _heroes = const [];
+  String _selectedHeroId = 'ordinary_person';
   final TextEditingController _nameController = TextEditingController(
     text: 'Battle Deck',
   );
@@ -63,6 +65,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     try {
       final cards = await _service.fetchCards();
       final decks = await _service.fetchDecks();
+      final heroes = await _service.fetchHeroes();
       final sortedDecks = [...decks]..sort((a, b) => a.slot.compareTo(b.slot));
       final targetSlot = _resolveSlotForLoad(sortedDecks);
       final deck = _deckForSlot(targetSlot, decks: sortedDecks);
@@ -74,6 +77,10 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
       setState(() {
         _cards = cards;
         _decks = sortedDecks;
+        _heroes = heroes;
+        _selectedHeroId = heroes.any((h) => h.id == _selectedHeroId)
+            ? _selectedHeroId
+            : (heroes.isNotEmpty ? heroes.first.id : 'ordinary_person');
         _activeSlot = targetSlot;
         _selectedCardIds
           ..clear()
@@ -348,6 +355,184 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
         .where(_matchesCategoryFilter)
         .where(_matchesEnergyFilter)
         .toList(growable: false);
+  }
+
+  String _heroMeterSummary(RoyaleResourceDefinition value) {
+    return '${value.initial.toStringAsFixed(1)} / ${value.max.toStringAsFixed(1)} / ${value.regenPerSecond.toStringAsFixed(1)}';
+  }
+
+  Widget _buildHeroCard(RoyaleHero hero, ThemeData theme, String locale) {
+    final isSelected = _selectedHeroId == hero.id;
+    return SizedBox(
+      width: 220,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => setState(() => _selectedHeroId = hero.id),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? theme.colorScheme.primaryContainer
+                  : theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.6,
+                    ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isSelected
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.outlineVariant,
+                width: isSelected ? 2 : 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        hero.localizedName(locale),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: isSelected
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    if (isSelected)
+                      Icon(
+                        Icons.check_circle_rounded,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  hero.localizedBonusSummary(locale),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _buildHeroStatRow(
+                  theme,
+                  icon: Icons.favorite_border_rounded,
+                  label: 'PH',
+                  value: _heroMeterSummary(hero.physicalHealth),
+                ),
+                const SizedBox(height: 2),
+                _buildHeroStatRow(
+                  theme,
+                  icon: Icons.psychology_outlined,
+                  label: 'SH',
+                  value: _heroMeterSummary(hero.spiritHealth),
+                ),
+                const SizedBox(height: 2),
+                _buildHeroStatRow(
+                  theme,
+                  icon: Icons.bolt_rounded,
+                  label: 'PE',
+                  value: _heroMeterSummary(hero.physicalEnergy),
+                ),
+                const SizedBox(height: 2),
+                _buildHeroStatRow(
+                  theme,
+                  icon: Icons.auto_awesome_rounded,
+                  label: 'SP',
+                  value: _heroMeterSummary(hero.spiritEnergy),
+                ),
+                const SizedBox(height: 2),
+                _buildHeroStatRow(
+                  theme,
+                  icon: Icons.attach_money_rounded,
+                  label: r'$',
+                  value: _heroMeterSummary(hero.money),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeroStatRow(
+    ThemeData theme, {
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 12, color: theme.colorScheme.onSurfaceVariant),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeroSection(
+    ThemeData theme,
+    Map<String, String> t,
+    String locale,
+  ) {
+    if (_heroes.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            t.text('Select Hero'),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 232,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _heroes.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (context, index) =>
+                  _buildHeroCard(_heroes[index], theme, locale),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildDeckSlotCard(
@@ -1323,6 +1508,8 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                 children: [
                   _buildDeckSlotSection(theme, t),
                   const SizedBox(height: 16),
+                  _buildHeroSection(theme, t, locale),
+                  const SizedBox(height: 16),
                   _buildPreviewPanel(theme, t, locale),
                   const SizedBox(height: 16),
                   Text(
@@ -1357,8 +1544,20 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                       ),
                       const SizedBox(width: 12),
                       OutlinedButton.icon(
-                        onPressed: () =>
-                            Navigator.of(context).pushNamed('/royale-lobby'),
+                        onPressed: () {
+                          final hero = _heroes
+                              .where((h) => h.id == _selectedHeroId)
+                              .firstOrNull;
+                          Navigator.of(context).pushNamed(
+                            '/royale-lobby',
+                            arguments: {
+                              'heroId': _selectedHeroId,
+                              'heroName':
+                                  hero?.localizedName(locale) ??
+                                  _selectedHeroId,
+                            },
+                          );
+                        },
                         icon: const Icon(Icons.sports_esports_outlined),
                         label: Text(t.text('Go to Lobby')),
                       ),

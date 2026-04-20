@@ -194,9 +194,17 @@ class MainApp extends StatelessWidget {
               loadLibrary: royale_deck_page.loadLibrary,
               builder: (_) => royale_deck_page.RoyaleDeckPage(),
             ),
-            '/royale-lobby': (_) => _DeferredWidget(
+            '/royale-lobby': (context) => _DeferredWidget(
               loadLibrary: royale_lobby_page.loadLibrary,
-              builder: (_) => royale_lobby_page.RoyaleLobbyPage(),
+              builder: (ctx) {
+                final args =
+                    ModalRoute.of(ctx)?.settings.arguments
+                        as Map<String, dynamic>?;
+                return royale_lobby_page.RoyaleLobbyPage(
+                  initialHeroId: args?['heroId'] as String?,
+                  initialHeroName: args?['heroName'] as String?,
+                );
+              },
             ),
           },
         );
