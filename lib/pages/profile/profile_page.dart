@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -32,6 +33,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _pendingAvatarFileName;
   bool _isUploadingAvatar = false;
   bool _isRemovingAvatar = false;
+  Timer? _autoSaveTimer;
 
   AuthService get _auth => context.read<AuthService>();
   Map<String, String> get _t => context.read<LocaleProvider>().translation;
@@ -60,28 +62,26 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   void dispose() {
+    _autoSaveTimer?.cancel();
     _nameController.dispose();
     _bioController.dispose();
     _customAvatarUrlController.dispose();
     super.dispose();
   }
 
-  Future<void> _save() async {
+  void _scheduleAutoSave() {
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (mounted) unawaited(_save(silent: true));
+    });
+  }
+
+  Future<void> _save({bool silent = false}) async {
     try {
       if (_avatarSource == 'upload' && _pendingAvatarBytes != null) {
         await _uploadAvatarImage(showSuccessMessage: false);
       }
       if (!mounted) return;
-      final latestUser = _auth.user;
-      if (_avatarSource == 'upload' &&
-          (latestUser?.uploadedAvatarUrl == null ||
-              latestUser!.uploadedAvatarUrl!.isEmpty)) {
-        showAppSnackBar(
-          context,
-          _t.text('Please upload an avatar image first'),
-        );
-        return;
-      }
       await _auth.updateProfile(
         name: _nameController.text.trim(),
         bio: _bioController.text.trim(),
@@ -89,7 +89,7 @@ class _ProfilePageState extends State<ProfilePage> {
         customAvatarUrl: _customAvatarUrlController.text.trim(),
       );
       if (!mounted) return;
-      showAppSnackBar(context, _t.text('Profile updated'));
+      if (!silent) showAppSnackBar(context, _t.text('Profile updated'));
     } on ApiException catch (e) {
       if (!mounted) return;
       showAppSnackBar(context, e.message);
@@ -141,15 +141,15 @@ class _ProfilePageState extends State<ProfilePage> {
       );
       return;
     }
-    if (nextSource == 'upload' &&
-        _pendingAvatarBytes == null &&
-        !_hasUploadedAvatar(user)) {
-      showAppSnackBar(context, _t.text('Please upload an avatar image first'));
+    if (nextSource == 'upload') {
+      // 切換到 upload 時直接開啟選圖，不需要先切換再手動按上傳
+      unawaited(_pickAndUploadAvatarImage());
       return;
     }
     setState(() {
       _avatarSource = nextSource;
     });
+    unawaited(_save(silent: true));
   }
 
   String? _detectImageMimeType(PlatformFile file) {
@@ -169,13 +169,15 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _pickAvatarImage() async {
+  Future<void> _pickAndUploadAvatarImage() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       withData: true,
       allowedExtensions: const ['png', 'jpg', 'jpeg', 'webp', 'gif'],
     );
-    if (!mounted || result == null || result.files.isEmpty) {
+    if (!mounted) return;
+    if (result == null || result.files.isEmpty) {
+      _removeAvatarImage();
       return;
     }
 
@@ -203,6 +205,9 @@ class _ProfilePageState extends State<ProfilePage> {
       _pendingAvatarFileName = file.name;
       _avatarSource = 'upload';
     });
+
+    // 選完後立刻上傳，不需要使用者再按一次
+    await _uploadAvatarImage();
   }
 
   Future<void> _uploadAvatarImage({bool showSuccessMessage = true}) async {
@@ -290,6 +295,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _refreshProfileDraftPreview() {
     setState(() {});
+    _scheduleAutoSave();
   }
 
   @override

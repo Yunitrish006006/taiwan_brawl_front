@@ -39,10 +39,10 @@ extension _ProfilePageLayout on _ProfilePageState {
         ),
         const SizedBox(height: 10),
         Text(
-          hasPendingAvatar
-              ? t.text('Avatar Preview (Pending Upload)')
-              : hasAvatar
-              ? t.text('Avatar Preview')
+          hasAvatar
+              ? (_isUploadingAvatar
+                    ? t.text('Uploading...')
+                    : t.text('Avatar Preview'))
               : t.text('No avatar available'),
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -129,26 +129,27 @@ extension _ProfilePageLayout on _ProfilePageState {
               spacing: 8,
               runSpacing: 8,
               children: [
-                OutlinedButton.icon(
-                  onPressed: _pickAvatarImage,
-                  icon: const Icon(Icons.image_outlined),
-                  label: Text(t.text('Choose Avatar Image')),
-                ),
                 FilledButton.icon(
-                  onPressed: _isUploadingAvatar || _pendingAvatarBytes == null
+                  onPressed: _isUploadingAvatar
                       ? null
-                      : () => _uploadAvatarImage(),
+                      : _pickAndUploadAvatarImage,
                   icon: _buildLoadingActionIcon(
                     _isUploadingAvatar,
-                    Icons.cloud_upload_outlined,
+                    _hasUploadedAvatar(user)
+                        ? Icons.swap_horiz_outlined
+                        : Icons.cloud_upload_outlined,
                   ),
-                  label: Text(t.text('Upload Selected Image')),
+                  label: Text(
+                    _isUploadingAvatar
+                        ? t.text('Uploading...')
+                        : _hasUploadedAvatar(user)
+                        ? t.text('Replace Image')
+                        : t.text('Upload Image'),
+                  ),
                 ),
                 OutlinedButton.icon(
                   onPressed:
-                      _isRemovingAvatar ||
-                          (!_hasUploadedAvatar(user) &&
-                              _pendingAvatarBytes == null)
+                      _isRemovingAvatar || !_hasUploadedAvatar(user)
                       ? null
                       : _removeAvatarImage,
                   icon: _buildLoadingActionIcon(
@@ -158,17 +159,6 @@ extension _ProfilePageLayout on _ProfilePageState {
                   label: Text(t.text('Remove Uploaded Image')),
                 ),
               ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _pendingAvatarFileName != null
-                  ? '${t.text('Selected file')}: $_pendingAvatarFileName'
-                  : _hasUploadedAvatar(user)
-                  ? t.text('An uploaded avatar image is ready to use')
-                  : t.text('No uploaded avatar image yet'),
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
             ),
           ],
         ),
@@ -201,10 +191,9 @@ extension _ProfilePageLayout on _ProfilePageState {
               controller: _bioController,
               maxLines: 4,
               decoration: InputDecoration(labelText: t.text('Bio')),
+              onChanged: (_) => _scheduleAutoSave(),
             ),
             const SizedBox(height: 16),
-            FilledButton(onPressed: _save, child: Text(t.text('Save'))),
-            const SizedBox(height: 24),
             const SettingsPanel(),
           ],
         ),
