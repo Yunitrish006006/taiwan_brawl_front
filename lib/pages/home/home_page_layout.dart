@@ -703,7 +703,7 @@ extension _HomePageLayout on _HomePageState {
 
         // Hero greeting
         Text(
-          '${t.text('Welcome back')}',
+          t.text('Welcome back'),
           style: const TextStyle(
             color: Color(0xFF888888),
             fontSize: 13,

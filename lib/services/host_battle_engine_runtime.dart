@@ -1223,8 +1223,14 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
 
     _llmDecisionPending = true;
     try {
+      // ignore: avoid_print
+      print('[LLM Bot] Calling decideLlmBotAction for side=$side');
       final decision = await service.decideLlmBotAction(
         exportLlmBotDecisionState(side),
+      );
+      // ignore: avoid_print
+      print(
+        '[LLM Bot] Got decision: usedFallback=${decision.usedFallback}, isWait=${decision.isWait}',
       );
       if (_result != null) {
         return;
@@ -1267,7 +1273,9 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         return;
       }
       _emitSnapshot();
-    } catch (_) {
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('[LLM Bot] decideLlmBotAction error: $e\n$st');
       _notifyLlmFallback();
       _playHeuristicBotTurn(_playerForSide(side));
     } finally {
@@ -1294,9 +1302,17 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     }
 
     if (botPlayer.botController == 'llm') {
+      // ignore: avoid_print
+      print(
+        '[LLM Bot] botController=llm, requesting LLM turn for side=${botPlayer.side}',
+      );
       unawaited(_requestLlmBotTurn(botPlayer.side));
       return;
     }
+    // ignore: avoid_print
+    print(
+      '[LLM Bot] botController=${botPlayer.botController}, using heuristic',
+    );
 
     _playHeuristicBotTurn(botPlayer);
     botPlayer.botThinkMs = _randomBotThinkMs();
