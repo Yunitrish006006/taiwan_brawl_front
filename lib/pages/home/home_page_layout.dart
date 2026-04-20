@@ -205,9 +205,13 @@ extension _HomePageLayout on _HomePageState {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: backgroundColor ?? const Color(0xFF1A1D1F),
+        color:
+            backgroundColor ??
+            Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor ?? const Color(0xFF2A2A2A)),
+        border: Border.all(
+          color: borderColor ?? Theme.of(context).colorScheme.outlineVariant,
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -222,9 +226,9 @@ extension _HomePageLayout on _HomePageState {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: PsnColors.inverseWhite,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 14,
                   ),
                 ),
@@ -233,9 +237,11 @@ extension _HomePageLayout on _HomePageState {
                   subtitle,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: Color(0xFF888888),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.55),
                   ),
                 ),
               ],
@@ -321,8 +327,6 @@ extension _HomePageLayout on _HomePageState {
               foregroundColor: PsnColors.playstationBlue,
               onTap: () => _openDmPage(friend),
             ),
-      backgroundColor: const Color(0xFF1A1D1F),
-      borderColor: const Color(0xFF2A2A2A),
     );
   }
 
@@ -361,8 +365,6 @@ extension _HomePageLayout on _HomePageState {
           ),
         ],
       ),
-      backgroundColor: const Color(0xFF1A1D1F),
-      borderColor: const Color(0xFF2A2A2A),
     );
   }
 
@@ -420,16 +422,16 @@ extension _HomePageLayout on _HomePageState {
       leading: Icon(icon, color: PsnColors.playstationBlue, size: 20),
       title: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w500,
-          color: PsnColors.deepCharcoal,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
       ),
-      trailing: const Icon(
+      trailing: Icon(
         Icons.chevron_right,
         size: 18,
-        color: Color(0xFFAAAAAA),
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
       ),
       onTap: onTap,
       minLeadingWidth: 20,
@@ -484,10 +486,10 @@ extension _HomePageLayout on _HomePageState {
           Expanded(
             child: Text(
               _t.text('Friend List'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: PsnColors.deepCharcoal,
+                color: Theme.of(context).colorScheme.onSurface,
                 letterSpacing: 0.4,
               ),
             ),
@@ -529,12 +531,12 @@ extension _HomePageLayout on _HomePageState {
         decoration: BoxDecoration(
           color: isPrimary
               ? accentColor.withValues(alpha: 0.12)
-              : const Color(0xFF111214),
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isPrimary
                 ? accentColor.withValues(alpha: 0.5)
-                : const Color(0xFF2A2A2A),
+                : Theme.of(context).colorScheme.outlineVariant,
             width: isPrimary ? 1.5 : 1,
           ),
         ),
@@ -606,8 +608,8 @@ extension _HomePageLayout on _HomePageState {
                   const SizedBox(height: 20),
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: PsnColors.inverseWhite,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
                     ),
@@ -615,8 +617,10 @@ extension _HomePageLayout on _HomePageState {
                   const SizedBox(height: 6),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: Color(0xFF888888),
+                    style: TextStyle(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.55),
                       fontSize: 13,
                       height: 1.5,
                     ),
@@ -655,9 +659,11 @@ extension _HomePageLayout on _HomePageState {
       onTap: () => _openRoute('/royale-deck'),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF111214),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF2A2A2A)),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Row(
@@ -666,13 +672,17 @@ extension _HomePageLayout on _HomePageState {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: const Color(0xFF1A1D22),
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF333333)),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.style_outlined,
-                color: Color(0xFFAAAAAA),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
                 size: 22,
               ),
             ),
@@ -683,8 +693,8 @@ extension _HomePageLayout on _HomePageState {
                 children: [
                   Text(
                     t.text('Mini Royale Deck Builder'),
-                    style: const TextStyle(
-                      color: PsnColors.inverseWhite,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
                     ),
@@ -692,17 +702,21 @@ extension _HomePageLayout on _HomePageState {
                   const SizedBox(height: 3),
                   Text(
                     t.text('Build and manage your decks'),
-                    style: const TextStyle(
-                      color: Color(0xFF666666),
+                    style: TextStyle(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.4),
                       fontSize: 12,
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(
+            Icon(
               Icons.chevron_right_rounded,
-              color: Color(0xFF444444),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.27),
               size: 20,
             ),
           ],
@@ -736,8 +750,10 @@ extension _HomePageLayout on _HomePageState {
             children: [
               Text(
                 t.text('Welcome back'),
-                style: const TextStyle(
-                  color: Color(0xFF888888),
+                style: TextStyle(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.55),
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                   letterSpacing: 0.4,
@@ -746,8 +762,8 @@ extension _HomePageLayout on _HomePageState {
               const SizedBox(height: 4),
               Text(
                 user.name,
-                style: const TextStyle(
-                  color: PsnColors.inverseWhite,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 32,
                   fontWeight: FontWeight.w300,
                   letterSpacing: 0.1,
@@ -762,10 +778,12 @@ extension _HomePageLayout on _HomePageState {
         _animatedSection(
           begin: 0.15,
           end: 0.55,
-          child: const Text(
+          child: Text(
             'GAME MODES',
             style: TextStyle(
-              color: Color(0xFF555555),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.35),
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.2,
@@ -816,10 +834,12 @@ extension _HomePageLayout on _HomePageState {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'COLLECTION',
                 style: TextStyle(
-                  color: Color(0xFF555555),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.35),
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.2,
@@ -844,7 +864,6 @@ extension _HomePageLayout on _HomePageState {
     required bool isLoadingFriends,
   }) {
     return Drawer(
-      backgroundColor: PsnColors.paperWhite,
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

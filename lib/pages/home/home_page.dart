@@ -346,38 +346,23 @@ class _HomePageState extends State<HomePage>
     _maybeOpenConversationFromPush(notificationService, friendsSync.overview);
 
     return Scaffold(
-      backgroundColor: PsnColors.consoleBlack,
       drawer: _buildDrawer(
         user,
         overview: friendsSync.overview,
         isLoadingFriends: friendsSync.isLoading,
       ),
       appBar: AppBar(
-        backgroundColor: PsnColors.consoleBlack,
-        foregroundColor: PsnColors.inverseWhite,
-        elevation: 0,
-        title: const Text(
-          AppConstants.appName,
-          style: TextStyle(
-            color: PsnColors.inverseWhite,
-            fontSize: 22,
-            fontWeight: FontWeight.w300,
-            letterSpacing: 0.1,
-          ),
-        ),
+        title: const Text(AppConstants.appName),
         actions: [
           if (kIsWeb && notificationService.canRequestWebPushPermission)
             IconButton(
               onPressed: () => notificationService.requestPushPermission(user),
-              icon: const Icon(
-                Icons.notifications_outlined,
-                color: PsnColors.inverseWhite,
-              ),
+              icon: const Icon(Icons.notifications_outlined),
               tooltip: t.text('Enable Notifications'),
             ),
           IconButton(
             onPressed: () => Navigator.of(context).pushNamed('/profile'),
-            icon: const Icon(Icons.person, color: PsnColors.inverseWhite),
+            icon: const Icon(Icons.person),
             tooltip: t.text('Profile'),
           ),
           IconButton(
@@ -386,27 +371,18 @@ class _HomePageState extends State<HomePage>
               if (!context.mounted) return;
               Navigator.of(context).pushReplacementNamed('/login');
             },
-            icon: const Icon(Icons.logout, color: PsnColors.inverseWhite),
+            icon: const Icon(Icons.logout),
             tooltip: t.text('Logout'),
           ),
         ],
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [PsnColors.shadowBlack, PsnColors.consoleBlack],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760),
-            child: _buildPrimaryActionList(
-              user,
-              t,
-              installBannerDismissed: _installBannerDismissed,
-            ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: _buildPrimaryActionList(
+            user,
+            t,
+            installBannerDismissed: _installBannerDismissed,
           ),
         ),
       ),
