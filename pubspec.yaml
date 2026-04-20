@@ -1,7 +1,7 @@
 name: taiwan_brawl
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.83.0
+version: 0.84.0
 
 environment:
   sdk: ^3.11.1
@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   user_ui_settings: ^0.1.0
+  user_basic_system:
+    path: ../user_basic_system
   cupertino_icons: ^1.0.8
   http: ^1.6.0
   provider: ^6.1.5+1

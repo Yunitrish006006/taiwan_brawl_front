@@ -20,6 +20,7 @@ import 'services/chat_service.dart';
 import 'services/friends_overview_sync_service.dart';
 import 'services/locale_provider.dart';
 import 'services/notification_service.dart';
+import 'services/taiwan_brawl_profile_service.dart';
 import 'services/theme_provider.dart';
 import 'services/ui_settings_provider.dart';
 
@@ -118,6 +119,10 @@ Future<void> main() async {
             );
             return provider;
           },
+        ),
+        ChangeNotifierProxyProvider<AuthService, TaiwanBrawlProfileService>(
+          create: (ctx) => TaiwanBrawlProfileService(ctx.read<AuthService>()),
+          update: (_, auth, prev) => prev ?? TaiwanBrawlProfileService(auth),
         ),
         ChangeNotifierProxyProvider<AuthService, LocaleProvider>(
           create: (_) => LocaleProvider(

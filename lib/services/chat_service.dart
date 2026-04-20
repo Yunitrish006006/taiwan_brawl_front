@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'package:user_basic_system/user_basic_system.dart' show DmService;
+
 import '../models/chat_models.dart';
 import 'api_client.dart';
 import 'local_chat_repository.dart';
@@ -14,7 +16,7 @@ import 'service_utils.dart';
 /// - Receive: Timer.periodic polls /api/chat/dm/pending every 2 seconds,
 ///   acks received messages, saves to Hive, pushes to UI stream.
 /// - History: local Hive first, falls back to server /history on first open.
-class ChatService {
+class ChatService implements DmService {
   ChatService(this._apiClient) {
     _localRepo = LocalChatRepository();
   }
