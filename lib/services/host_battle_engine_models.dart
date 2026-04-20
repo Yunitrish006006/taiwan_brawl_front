@@ -90,6 +90,8 @@ class _HostUnit {
     required this.nameEn,
     required this.nameJa,
     required this.imageUrl,
+    required this.characterImageUrl,
+    required this.bgImageUrl,
     required this.type,
     required this.side,
     required this.progress,
@@ -113,6 +115,8 @@ class _HostUnit {
   final String nameEn;
   final String nameJa;
   final String? imageUrl;
+  final String? characterImageUrl;
+  final String? bgImageUrl;
   final String type;
   final String side;
   double progress;

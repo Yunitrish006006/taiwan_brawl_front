@@ -583,73 +583,43 @@ class _UnitToken extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = friendly ? const Color(0xFF039BE5) : const Color(0xFFD32F2F);
     final progress = unit.maxHp == 0 ? 0.0 : unit.hp / unit.maxHp;
-    final iconSize = size;
     final barWidth = size - 2;
     final labelFontSize = size * 0.32;
-    final shadowOffset = (size * 0.2).clamp(6.0, 12.0);
+    final locale = context.watch<LocaleProvider>().locale;
+    final charUrl = unit.characterImageUrl ?? unit.imageUrl;
+    final hasCharImage = charUrl != null && charUrl.isNotEmpty;
 
     return Stack(
       clipBehavior: Clip.none,
       children: [
         Column(
           children: [
-            Container(
-              width: iconSize,
-              height: iconSize,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [color, color.withValues(alpha: 0.72)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.24),
-                    blurRadius: 12,
-                    offset: Offset(0, shadowOffset),
-                  ),
-                ],
-              ),
-              alignment: Alignment.center,
-              clipBehavior: Clip.antiAlias,
-              child: unit.imageUrl != null && unit.imageUrl!.isNotEmpty
+            SizedBox(
+              width: size,
+              height: size,
+              child: hasCharImage
                   ? Image.network(
-                      unit.imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Text(
-                        unit
-                            .localizedName(
-                              context.watch<LocaleProvider>().locale,
-                            )
-                            .characters
-                            .first,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: labelFontSize,
-                        ),
+                      charUrl,
+                      fit: BoxFit.contain,
+                      gaplessPlayback: true,
+                      errorBuilder: (_, _, _) => _buildFallbackToken(
+                        color: color,
+                        labelFontSize: labelFontSize,
+                        locale: locale,
                       ),
                     )
-                  : Text(
-                      unit
-                          .localizedName(context.watch<LocaleProvider>().locale)
-                          .characters
-                          .first,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: labelFontSize,
-                      ),
+                  : _buildFallbackToken(
+                      color: color,
+                      labelFontSize: labelFontSize,
+                      locale: locale,
                     ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Container(
               width: barWidth,
-              height: 6,
+              height: 5,
               decoration: BoxDecoration(
-                color: Colors.black12,
+                color: Colors.black26,
                 borderRadius: BorderRadius.circular(999),
               ),
               alignment: Alignment.centerLeft,
@@ -686,6 +656,33 @@ class _UnitToken extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildFallbackToken({
+    required Color color,
+    required double labelFontSize,
+    required String locale,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color, color.withValues(alpha: 0.72)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        unit.localizedName(locale).characters.first,
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: labelFontSize,
+        ),
+      ),
     );
   }
 }

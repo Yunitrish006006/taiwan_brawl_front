@@ -46,6 +46,51 @@ class AdminService {
     return jsonModel(res, 'card', RoyaleCard.fromJson);
   }
 
+  Future<RoyaleCard> uploadCardCharacterImage({
+    required String cardId,
+    required String bytesBase64,
+    required String contentType,
+    String? fileName,
+  }) async {
+    final res = await _apiClient.postJson(
+      '/api/admin/cards/$cardId/character-image',
+      {
+        'bytesBase64': bytesBase64,
+        'contentType': contentType,
+        'fileName': fileName,
+      },
+    );
+    return jsonModel(res, 'card', RoyaleCard.fromJson);
+  }
+
+  Future<RoyaleCard?> deleteCardCharacterImage(String cardId) async {
+    final res = await _apiClient.deleteJson(
+      '/api/admin/cards/$cardId/character-image',
+    );
+    return jsonNullableModel(res, 'card', RoyaleCard.fromJson);
+  }
+
+  Future<RoyaleCard> uploadCardBgImage({
+    required String cardId,
+    required String bytesBase64,
+    required String contentType,
+    String? fileName,
+  }) async {
+    final res = await _apiClient.postJson('/api/admin/cards/$cardId/bg-image', {
+      'bytesBase64': bytesBase64,
+      'contentType': contentType,
+      'fileName': fileName,
+    });
+    return jsonModel(res, 'card', RoyaleCard.fromJson);
+  }
+
+  Future<RoyaleCard?> deleteCardBgImage(String cardId) async {
+    final res = await _apiClient.deleteJson(
+      '/api/admin/cards/$cardId/bg-image',
+    );
+    return jsonNullableModel(res, 'card', RoyaleCard.fromJson);
+  }
+
   Future<RoyaleCard?> deleteCardImage(String cardId) async {
     final res = await _apiClient.deleteJson('/api/admin/cards/$cardId/image');
     return jsonNullableModel(res, 'card', RoyaleCard.fromJson);

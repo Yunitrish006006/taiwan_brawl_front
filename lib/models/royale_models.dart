@@ -8,6 +8,8 @@ class RoyaleCard {
     required this.nameEn,
     required this.nameJa,
     required this.imageUrl,
+    required this.characterImageUrl,
+    required this.bgImageUrl,
     required this.imageVersion,
     required this.energyCost,
     required this.energyCostType,
@@ -32,6 +34,8 @@ class RoyaleCard {
   final String nameEn;
   final String nameJa;
   final String? imageUrl;
+  final String? characterImageUrl;
+  final String? bgImageUrl;
   final int imageVersion;
   final int energyCost;
   final String energyCostType;
@@ -81,6 +85,10 @@ class RoyaleCard {
       nameEn: (json['nameEn'] as String?) ?? (json['name'] as String? ?? ''),
       nameJa: (json['nameJa'] as String?) ?? (json['name'] as String? ?? ''),
       imageUrl: resolveRemoteImageUrl(json['imageUrl'] as String?),
+      characterImageUrl: resolveRemoteImageUrl(
+        (json['characterImageUrl'] as String?) ?? (json['imageUrl'] as String?),
+      ),
+      bgImageUrl: resolveRemoteImageUrl(json['bgImageUrl'] as String?),
       imageVersion: (json['imageVersion'] as num?)?.toInt() ?? 0,
       energyCost:
           (json['energyCost'] as num?)?.toInt() ??
@@ -616,6 +624,8 @@ class RoyaleUnitView {
     required this.nameEn,
     required this.nameJa,
     required this.imageUrl,
+    required this.characterImageUrl,
+    required this.bgImageUrl,
     required this.side,
     required this.type,
     required this.progress,
@@ -635,6 +645,8 @@ class RoyaleUnitView {
   final String nameEn;
   final String nameJa;
   final String? imageUrl;
+  final String? characterImageUrl;
+  final String? bgImageUrl;
   final String side;
   final String type;
   final int progress;
@@ -669,6 +681,10 @@ class RoyaleUnitView {
       nameEn: (json['nameEn'] as String?) ?? (json['name'] as String? ?? ''),
       nameJa: (json['nameJa'] as String?) ?? (json['name'] as String? ?? ''),
       imageUrl: resolveRemoteImageUrl(json['imageUrl'] as String?),
+      characterImageUrl: resolveRemoteImageUrl(
+        (json['characterImageUrl'] as String?) ?? (json['imageUrl'] as String?),
+      ),
+      bgImageUrl: resolveRemoteImageUrl(json['bgImageUrl'] as String?),
       side: json['side'] as String,
       type: json['type'] as String,
       progress: ((json['progress'] ?? json['x']) as num).toInt(),

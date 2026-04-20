@@ -647,6 +647,8 @@ class HostBattleEngine {
                 nameEn: unit.nameEn,
                 nameJa: unit.nameJa,
                 imageUrl: unit.imageUrl,
+                characterImageUrl: unit.characterImageUrl,
+                bgImageUrl: unit.bgImageUrl,
                 side: unit.side,
                 type: unit.type,
                 progress: unit.progress.round(),

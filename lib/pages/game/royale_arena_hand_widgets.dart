@@ -137,23 +137,45 @@ class _HandCard extends StatelessWidget {
                   ],
                 ),
                 SizedBox(height: compact ? 8 : 14),
-                if (card.imageUrl != null && card.imageUrl!.isNotEmpty) ...[
-                  Container(
+                if (card.bgImageUrl != null && card.bgImageUrl!.isNotEmpty ||
+                    card.characterImageUrl != null &&
+                        card.characterImageUrl!.isNotEmpty ||
+                    card.imageUrl != null && card.imageUrl!.isNotEmpty) ...[
+                  SizedBox(
                     width: double.infinity,
                     height: compact ? 40 : 72,
-                    margin: EdgeInsets.only(bottom: compact ? 6 : 10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Image.network(
-                      card.imageUrl!,
-                      fit: BoxFit.cover,
-                      gaplessPlayback: true,
-                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (card.bgImageUrl != null &&
+                            card.bgImageUrl!.isNotEmpty)
+                          Image.network(
+                            card.bgImageUrl!,
+                            fit: BoxFit.cover,
+                            gaplessPlayback: true,
+                            errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                          ),
+                        if (card.characterImageUrl != null &&
+                            card.characterImageUrl!.isNotEmpty)
+                          Image.network(
+                            card.characterImageUrl!,
+                            fit: BoxFit.contain,
+                            gaplessPlayback: true,
+                            errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                          )
+                        else if (card.bgImageUrl == null &&
+                            card.imageUrl != null &&
+                            card.imageUrl!.isNotEmpty)
+                          Image.network(
+                            card.imageUrl!,
+                            fit: BoxFit.contain,
+                            gaplessPlayback: true,
+                            errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                          ),
+                      ],
                     ),
                   ),
+                  SizedBox(height: compact ? 6 : 10),
                 ],
                 Text(
                   card.localizedName(context.watch<LocaleProvider>().locale),

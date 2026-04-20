@@ -682,6 +682,8 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
           nameEn: card.nameEn,
           nameJa: card.nameJa,
           imageUrl: card.imageUrl,
+          characterImageUrl: card.characterImageUrl,
+          bgImageUrl: card.bgImageUrl,
           type: card.type,
           side: side,
           progress: dropPoint.progress,
