@@ -6,7 +6,7 @@ import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 import '../../services/locale_provider.dart';
 import '../../services/royale_service.dart';
-import 'royale_arena_page.dart';
+import 'royale_arena_page.dart' deferred as royale_arena_lib;
 
 class RoyaleLobbyPage extends StatefulWidget {
   const RoyaleLobbyPage({super.key, this.initialRoomCode});
@@ -108,8 +108,14 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
       if (!mounted) {
         return;
       }
+      await royale_arena_lib.loadLibrary();
+      if (!mounted) {
+        return;
+      }
       await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => RoyaleArenaPage(roomCode: room.code)),
+        MaterialPageRoute(
+          builder: (_) => royale_arena_lib.RoyaleArenaPage(roomCode: room.code),
+        ),
       );
       if (mounted) {
         _loadLobbyData();

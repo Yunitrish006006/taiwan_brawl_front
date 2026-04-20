@@ -18,12 +18,12 @@ import '../../services/royale_service.dart';
 import '../../services/web_push_bridge.dart' as web_push_bridge;
 import '../../constants/app_constants.dart';
 import '../../constants/psn_theme.dart';
-import '../social/dm_page.dart';
+import '../social/dm_page.dart' deferred as dm_page_lib;
 import '../../main.dart';
 import '../../utils/snackbar.dart';
-import '../../widgets/friend_search_dialog.dart';
+import '../../widgets/friend_search_dialog.dart' deferred as friend_search_lib;
 import '../../widgets/app_version_text.dart';
-import '../game/royale_arena_page.dart';
+import '../game/royale_arena_page.dart' deferred as royale_arena_lib;
 
 part 'home_page_layout.dart';
 
@@ -246,10 +246,16 @@ class _HomePageState extends State<HomePage>
       if (!mounted) {
         return;
       }
+      await royale_arena_lib.loadLibrary();
+      if (!mounted) {
+        return;
+      }
       final navigator = Navigator.of(context);
       navigator.pop();
       navigator.push(
-        MaterialPageRoute(builder: (_) => RoyaleArenaPage(roomCode: room.code)),
+        MaterialPageRoute(
+          builder: (_) => royale_arena_lib.RoyaleArenaPage(roomCode: room.code),
+        ),
       );
     });
   }
@@ -261,11 +267,13 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  void _openDmPage(SocialUser friend) {
+  Future<void> _openDmPage(SocialUser friend) async {
     final currentUserId = context.read<AuthService>().user?.id ?? 0;
+    await dm_page_lib.loadLibrary();
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => DmPage(
+        builder: (_) => dm_page_lib.DmPage(
           chatService: _chatService,
           friendId: friend.userId,
           friendName: friend.name,
@@ -308,7 +316,9 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _openFriendSearchDialog() async {
-    await showFriendSearchDialog(
+    await friend_search_lib.loadLibrary();
+    if (!mounted) return;
+    await friend_search_lib.showFriendSearchDialog(
       context: context,
       friendsService: _friendsService,
       onRefreshFriends: _refreshFriendsOverview,
