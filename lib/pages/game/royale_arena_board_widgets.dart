@@ -572,11 +572,13 @@ class _UnitToken extends StatelessWidget {
   const _UnitToken({
     required this.unit,
     required this.friendly,
+    required this.viewerSide,
     this.size = 44,
   });
 
   final RoyaleUnitView unit;
   final bool friendly;
+  final String viewerSide;
   final double size;
 
   @override
@@ -586,7 +588,7 @@ class _UnitToken extends StatelessWidget {
     final barWidth = size - 2;
     final labelFontSize = size * 0.32;
     final locale = context.watch<LocaleProvider>().locale;
-    final charUrl = unit.characterImageUrl ?? unit.imageUrl;
+    final charUrl = unit.characterImageUrlForViewer(viewerSide);
     final hasCharImage = charUrl != null && charUrl.isNotEmpty;
 
     return Stack(

@@ -178,6 +178,7 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
             _UnitToken(
               unit: unit,
               friendly: unit.side == mySide,
+              viewerSide: mySide,
               size: tokenSize,
             ),
           ],

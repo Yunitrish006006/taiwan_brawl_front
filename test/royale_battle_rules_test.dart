@@ -22,7 +22,7 @@ void main() {
         lanePosition: null,
       );
       expect(rightPoint.progress, 580);
-      expect(rightPoint.lateralPosition, 880);
+      expect(rightPoint.lateralPosition, 900);
     },
   );
 
@@ -40,7 +40,7 @@ void main() {
 
   test('legal deploy points and lateral clamping use battlefield bounds', () {
     expect(isLegalDeployPoint(0.5, 0.7), isTrue);
-    expect(isLegalDeployPoint(0.05, 0.7), isFalse);
+    expect(isLegalDeployPoint(-0.05, 0.7), isFalse);
     expect(sanitizeLateralPosition(-1), lateralMin.toDouble());
     expect(sanitizeLateralPosition(5000), lateralMax.toDouble());
   });

@@ -10,6 +10,10 @@ class RoyaleCard {
     required this.imageUrl,
     required this.characterImageUrl,
     required this.bgImageUrl,
+    this.characterFrontImageUrl,
+    this.characterBackImageUrl,
+    this.characterLeftImageUrl,
+    this.characterRightImageUrl,
     required this.imageVersion,
     required this.energyCost,
     required this.energyCostType,
@@ -36,6 +40,10 @@ class RoyaleCard {
   final String? imageUrl;
   final String? characterImageUrl;
   final String? bgImageUrl;
+  final String? characterFrontImageUrl;
+  final String? characterBackImageUrl;
+  final String? characterLeftImageUrl;
+  final String? characterRightImageUrl;
   final int imageVersion;
   final int energyCost;
   final String energyCostType;
@@ -63,6 +71,20 @@ class RoyaleCard {
 
   bool get usesPhysicalEnergy => !usesSpiritEnergy && !usesMoney;
 
+  String? characterImageUrlFor(String direction) {
+    switch (direction) {
+      case 'back':
+        return characterBackImageUrl;
+      case 'left':
+        return characterLeftImageUrl;
+      case 'right':
+        return characterRightImageUrl;
+      case 'front':
+      default:
+        return characterFrontImageUrl ?? characterImageUrl;
+    }
+  }
+
   String localizedName(String locale) {
     final englishFallback = nameEn.isNotEmpty ? nameEn : name;
     switch (locale) {
@@ -77,6 +99,14 @@ class RoyaleCard {
   }
 
   factory RoyaleCard.fromJson(Map<String, dynamic> json) {
+    final characterImageUrls =
+        json['characterImageUrls'] as Map<String, dynamic>? ?? const {};
+    final frontImageUrl = resolveRemoteImageUrl(
+      (json['characterFrontImageUrl'] as String?) ??
+          (characterImageUrls['front'] as String?) ??
+          (json['characterImageUrl'] as String?) ??
+          (json['imageUrl'] as String?),
+    );
     return RoyaleCard(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -85,22 +115,30 @@ class RoyaleCard {
       nameEn: (json['nameEn'] as String?) ?? (json['name'] as String? ?? ''),
       nameJa: (json['nameJa'] as String?) ?? (json['name'] as String? ?? ''),
       imageUrl: resolveRemoteImageUrl(json['imageUrl'] as String?),
-      characterImageUrl: resolveRemoteImageUrl(
-        (json['characterImageUrl'] as String?) ?? (json['imageUrl'] as String?),
-      ),
+      characterImageUrl: frontImageUrl,
       bgImageUrl: resolveRemoteImageUrl(json['bgImageUrl'] as String?),
+      characterFrontImageUrl: frontImageUrl,
+      characterBackImageUrl: resolveRemoteImageUrl(
+        (json['characterBackImageUrl'] as String?) ??
+            (characterImageUrls['back'] as String?),
+      ),
+      characterLeftImageUrl: resolveRemoteImageUrl(
+        (json['characterLeftImageUrl'] as String?) ??
+            (characterImageUrls['left'] as String?),
+      ),
+      characterRightImageUrl: resolveRemoteImageUrl(
+        (json['characterRightImageUrl'] as String?) ??
+            (characterImageUrls['right'] as String?),
+      ),
       imageVersion: (json['imageVersion'] as num?)?.toInt() ?? 0,
       energyCost:
           (json['energyCost'] as num?)?.toInt() ??
           (json['elixirCost'] as num?)?.toInt() ??
           0,
-      energyCostType:
-          (json['type'] as String?) == 'equipment'
-              ? 'money'
-              : (json['energyCostType'] as String?) ??
-                    ((json['type'] as String?) == 'spell'
-                        ? 'spirit'
-                        : 'physical'),
+      energyCostType: (json['type'] as String?) == 'equipment'
+          ? 'money'
+          : (json['energyCostType'] as String?) ??
+                ((json['type'] as String?) == 'spell' ? 'spirit' : 'physical'),
       type: json['type'] as String,
       hp: (json['hp'] as num).toInt(),
       damage: (json['damage'] as num).toInt(),
@@ -429,16 +467,16 @@ class RoyaleBattleEvent {
           (json['cardNameZhHant'] as String?) ??
           (json['cardName'] as String? ?? ''),
       cardNameEn:
-          (json['cardNameEn'] as String?) ?? (json['cardName'] as String? ?? ''),
+          (json['cardNameEn'] as String?) ??
+          (json['cardName'] as String? ?? ''),
       cardNameJa:
-          (json['cardNameJa'] as String?) ?? (json['cardName'] as String? ?? ''),
+          (json['cardNameJa'] as String?) ??
+          (json['cardName'] as String? ?? ''),
       title: json['title'] as String? ?? '',
       titleZhHant:
           (json['titleZhHant'] as String?) ?? (json['title'] as String? ?? ''),
-      titleEn:
-          (json['titleEn'] as String?) ?? (json['title'] as String? ?? ''),
-      titleJa:
-          (json['titleJa'] as String?) ?? (json['title'] as String? ?? ''),
+      titleEn: (json['titleEn'] as String?) ?? (json['title'] as String? ?? ''),
+      titleJa: (json['titleJa'] as String?) ?? (json['title'] as String? ?? ''),
       description: json['description'] as String? ?? '',
       descriptionZhHant:
           (json['descriptionZhHant'] as String?) ??
@@ -454,12 +492,10 @@ class RoyaleBattleEvent {
       moneyDelta: (json['moneyDelta'] as num?)?.toDouble() ?? 0,
       physicalHealthDelta:
           (json['physicalHealthDelta'] as num?)?.toDouble() ?? 0,
-      spiritHealthDelta:
-          (json['spiritHealthDelta'] as num?)?.toDouble() ?? 0,
+      spiritHealthDelta: (json['spiritHealthDelta'] as num?)?.toDouble() ?? 0,
       physicalEnergyDelta:
           (json['physicalEnergyDelta'] as num?)?.toDouble() ?? 0,
-      spiritEnergyDelta:
-          (json['spiritEnergyDelta'] as num?)?.toDouble() ?? 0,
+      spiritEnergyDelta: (json['spiritEnergyDelta'] as num?)?.toDouble() ?? 0,
     );
   }
 }
@@ -507,8 +543,7 @@ class RoyalePlayerView {
   final int towerHp;
   final int maxTowerHp;
 
-  double get totalEnergy =>
-      physicalEnergy.current + spiritEnergy.current;
+  double get totalEnergy => physicalEnergy.current + spiritEnergy.current;
 
   double get maxEnergy => physicalEnergy.max + spiritEnergy.max;
 
@@ -626,6 +661,11 @@ class RoyaleUnitView {
     required this.imageUrl,
     required this.characterImageUrl,
     required this.bgImageUrl,
+    this.characterFrontImageUrl,
+    this.characterBackImageUrl,
+    this.characterLeftImageUrl,
+    this.characterRightImageUrl,
+    this.facingDirection = 'forward',
     required this.side,
     required this.type,
     required this.progress,
@@ -647,6 +687,11 @@ class RoyaleUnitView {
   final String? imageUrl;
   final String? characterImageUrl;
   final String? bgImageUrl;
+  final String? characterFrontImageUrl;
+  final String? characterBackImageUrl;
+  final String? characterLeftImageUrl;
+  final String? characterRightImageUrl;
+  final String facingDirection;
   final String side;
   final String type;
   final int progress;
@@ -671,7 +716,57 @@ class RoyaleUnitView {
     }
   }
 
+  String? characterImageUrlFor(String direction) {
+    switch (direction) {
+      case 'back':
+        return characterBackImageUrl;
+      case 'left':
+        return characterLeftImageUrl;
+      case 'right':
+        return characterRightImageUrl;
+      case 'front':
+      default:
+        return characterFrontImageUrl ?? characterImageUrl;
+    }
+  }
+
+  String characterImageDirectionForViewer(String viewerSide) {
+    switch (facingDirection) {
+      case 'front':
+      case 'back':
+      case 'left':
+      case 'right':
+        return facingDirection;
+      case 'forward':
+      default:
+        return side == viewerSide ? 'back' : 'front';
+    }
+  }
+
+  String? characterImageUrlForViewer(String viewerSide) {
+    final direction = characterImageDirectionForViewer(viewerSide);
+    final directionalUrl = characterImageUrlFor(direction);
+    if (directionalUrl != null && directionalUrl.isNotEmpty) {
+      return directionalUrl;
+    }
+
+    final fallbackDirection = side == viewerSide ? 'back' : 'front';
+    final fallbackUrl = characterImageUrlFor(fallbackDirection);
+    if (fallbackUrl != null && fallbackUrl.isNotEmpty) {
+      return fallbackUrl;
+    }
+    return characterImageUrl ?? imageUrl;
+  }
+
   factory RoyaleUnitView.fromJson(Map<String, dynamic> json) {
+    final characterImageUrls =
+        json['characterImageUrls'] as Map<String, dynamic>? ?? const {};
+    final frontImageUrl = resolveRemoteImageUrl(
+      (json['characterFrontImageUrl'] as String?) ??
+          (characterImageUrls['front'] as String?) ??
+          (json['characterImageUrl'] as String?) ??
+          (json['imageUrl'] as String?),
+    );
     return RoyaleUnitView(
       id: json['id'] as String,
       cardId: json['cardId'] as String,
@@ -681,10 +776,22 @@ class RoyaleUnitView {
       nameEn: (json['nameEn'] as String?) ?? (json['name'] as String? ?? ''),
       nameJa: (json['nameJa'] as String?) ?? (json['name'] as String? ?? ''),
       imageUrl: resolveRemoteImageUrl(json['imageUrl'] as String?),
-      characterImageUrl: resolveRemoteImageUrl(
-        (json['characterImageUrl'] as String?) ?? (json['imageUrl'] as String?),
-      ),
+      characterImageUrl: frontImageUrl,
       bgImageUrl: resolveRemoteImageUrl(json['bgImageUrl'] as String?),
+      characterFrontImageUrl: frontImageUrl,
+      characterBackImageUrl: resolveRemoteImageUrl(
+        (json['characterBackImageUrl'] as String?) ??
+            (characterImageUrls['back'] as String?),
+      ),
+      characterLeftImageUrl: resolveRemoteImageUrl(
+        (json['characterLeftImageUrl'] as String?) ??
+            (characterImageUrls['left'] as String?),
+      ),
+      characterRightImageUrl: resolveRemoteImageUrl(
+        (json['characterRightImageUrl'] as String?) ??
+            (characterImageUrls['right'] as String?),
+      ),
+      facingDirection: (json['facingDirection'] as String?) ?? 'forward',
       side: json['side'] as String,
       type: json['type'] as String,
       progress: ((json['progress'] ?? json['x']) as num).toInt(),

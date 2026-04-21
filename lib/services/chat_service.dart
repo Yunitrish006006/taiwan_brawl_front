@@ -27,6 +27,7 @@ class ChatService implements DmService {
   final StreamController<ChatMessage> _messageStream =
       StreamController.broadcast();
 
+  @override
   Stream<ChatMessage> get messageStream => _messageStream.stream;
 
   int? _currentSelfId;
@@ -44,6 +45,7 @@ class ChatService implements DmService {
   // ── history ───────────────────────────────────────────────────────────────
 
   /// Returns locally stored messages. If empty, falls back to server history.
+  @override
   Future<List<ChatMessage>> fetchHistory(
     int selfId,
     int friendId, {
@@ -66,6 +68,7 @@ class ChatService implements DmService {
   }
 
   /// Force-fetch history from server and merge into local cache (no data loss).
+  @override
   Future<List<ChatMessage>> syncFromServer(int selfId, int friendId) async {
     final res = await _apiClient.getJson('/api/chat/dm/$friendId/history');
     final serverMessages = jsonModelList(res, 'messages', ChatMessage.fromJson);
@@ -78,6 +81,7 @@ class ChatService implements DmService {
 
   /// Export local chat history for one conversation and upload to server.
   /// Valid for 1 hour, one-time download. Both participants share the same key.
+  @override
   Future<void> uploadSyncData(int selfId, int friendId) async {
     final exported = await _localRepo.exportAll(selfId, [friendId]);
     if (exported.isEmpty) return;
@@ -86,6 +90,7 @@ class ChatService implements DmService {
   }
 
   /// Download sync data for one conversation and merge into local cache.
+  @override
   Future<void> downloadAndMergeSyncData(int friendId) async {
     final raw = await _apiClient.getRaw('/api/chat/dm/$friendId/sync-download');
     final data = jsonDecode(raw) as Map<String, dynamic>;
@@ -94,6 +99,7 @@ class ChatService implements DmService {
 
   // ── connect ───────────────────────────────────────────────────────────────
 
+  @override
   Future<void> connectToDm(
     int selfId,
     int friendId, {
@@ -112,6 +118,7 @@ class ChatService implements DmService {
 
   // ── send ──────────────────────────────────────────────────────────────────
 
+  @override
   Future<void> sendMessage(int receiverId, String text) async {
     final createdAt = DateTime.now().toIso8601String();
     final selfId = _currentSelfId;
@@ -161,6 +168,7 @@ class ChatService implements DmService {
   // ── recall ────────────────────────────────────────────────────────────────
 
   /// Recalls a message. Marks it locally and notifies the receiver via server.
+  @override
   Future<void> recallMessage(ChatMessage msg) async {
     final selfId = _currentSelfId;
     final friendId = _currentFriendId;
@@ -235,6 +243,7 @@ class ChatService implements DmService {
 
   // ── disconnect / dispose ──────────────────────────────────────────────────
 
+  @override
   void disconnect() {
     _pollTimer?.cancel();
     _pollTimer = null;
@@ -245,4 +254,3 @@ class ChatService implements DmService {
     _messageStream.close();
   }
 }
-

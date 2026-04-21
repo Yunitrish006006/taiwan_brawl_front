@@ -91,9 +91,14 @@ class _HostUnit {
     required this.nameJa,
     required this.imageUrl,
     required this.characterImageUrl,
+    required this.characterFrontImageUrl,
+    required this.characterBackImageUrl,
+    required this.characterLeftImageUrl,
+    required this.characterRightImageUrl,
     required this.bgImageUrl,
     required this.type,
     required this.side,
+    required this.facingDirection,
     required this.progress,
     required this.lateralPosition,
     required this.hp,
@@ -116,9 +121,14 @@ class _HostUnit {
   final String nameJa;
   final String? imageUrl;
   final String? characterImageUrl;
+  final String? characterFrontImageUrl;
+  final String? characterBackImageUrl;
+  final String? characterLeftImageUrl;
+  final String? characterRightImageUrl;
   final String? bgImageUrl;
   final String type;
   final String side;
+  String facingDirection;
   double progress;
   double lateralPosition;
   int hp;

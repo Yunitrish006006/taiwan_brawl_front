@@ -21,18 +21,24 @@ class LocalChatRepository {
 
   /// Persist a message. Uses `createdAt_senderId` as a sortable key to avoid duplicates.
   Future<void> saveMessage(int selfId, ChatMessage msg) async {
-    final box = await _openBox(selfId, msg.senderId == selfId ? msg.receiverId : msg.senderId);
+    final box = await _openBox(
+      selfId,
+      msg.senderId == selfId ? msg.receiverId : msg.senderId,
+    );
     final key = msg.messageKey;
     if (!box.containsKey(key)) {
-      await box.put(key, jsonEncode({
-        'senderId': msg.senderId,
-        'receiverId': msg.receiverId,
-        'text': msg.text,
-        'createdAt': msg.createdAt,
-        'isPending': msg.isPending,
+      await box.put(
+        key,
+        jsonEncode({
+          'senderId': msg.senderId,
+          'receiverId': msg.receiverId,
+          'text': msg.text,
+          'createdAt': msg.createdAt,
+          'isPending': msg.isPending,
           'isRecalled': msg.isRecalled,
-        'pendingId': msg.pendingId,
-      }));
+          'pendingId': msg.pendingId,
+        }),
+      );
     }
   }
 
@@ -62,13 +68,20 @@ class LocalChatRepository {
         createdAt: map['createdAt'] as String? ?? '',
         isPending: map['isPending'] as bool? ?? false,
         isRecalled: map['isRecalled'] as bool? ?? false,
-        pendingId: map['pendingId'] != null ? (map['pendingId'] as num).toInt() : null,
+        pendingId: map['pendingId'] != null
+            ? (map['pendingId'] as num).toInt()
+            : null,
       );
     }).toList();
   }
 
   /// Remove pending flag once message is ack'd (update in-place).
-  Future<void> markDelivered(int selfId, int friendId, String createdAt, int senderId) async {
+  Future<void> markDelivered(
+    int selfId,
+    int friendId,
+    String createdAt,
+    int senderId,
+  ) async {
     final box = await _openBox(selfId, friendId);
     final key = '${createdAt}_$senderId';
     final raw = box.get(key);
@@ -119,7 +132,7 @@ class LocalChatRepository {
   }
 
   /// Export all messages for the given conversations as a JSON-serialisable map.
-  /// Format: { "chat_<low>_<high>": { "<messageKey>": <rawJson> } }
+  /// Format: `{ "chat_<low>_<high>": { "<messageKey>": <rawJson> } }`
   Future<Map<String, Map<String, String>>> exportAll(
     int selfId,
     List<int> friendIds,

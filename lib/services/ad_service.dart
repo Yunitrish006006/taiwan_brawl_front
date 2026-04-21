@@ -15,8 +15,7 @@ class _AdUnitIds {
   static const String _iosInterstitial =
       'ca-app-pub-3940256099942544/4411468910';
 
-  static String get banner =>
-      Platform.isAndroid ? _androidBanner : _iosBanner;
+  static String get banner => Platform.isAndroid ? _androidBanner : _iosBanner;
 
   static String get interstitial =>
       Platform.isAndroid ? _androidInterstitial : _iosInterstitial;
@@ -44,7 +43,6 @@ class AdService {
     AdSize size = AdSize.banner,
     void Function(Ad, LoadAdError)? onFailed,
   }) {
-    final completer = Future<BannerAd>.value;
     late final BannerAd ad;
     final future = Future<BannerAd>(() async {
       await Future.microtask(() {});

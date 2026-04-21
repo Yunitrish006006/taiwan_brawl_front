@@ -79,8 +79,11 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
 
   double _cardEnergyCost(RoyaleCard card) => card.energyCost.toDouble();
 
-  String _cardEnergyType(RoyaleCard card) =>
-      card.usesMoney ? 'money' : card.usesSpiritEnergy ? 'spirit' : 'physical';
+  String _cardEnergyType(RoyaleCard card) => card.usesMoney
+      ? 'money'
+      : card.usesSpiritEnergy
+      ? 'spirit'
+      : 'physical';
 
   void _syncPlayerTotals(_HostPlayer player) {
     player.physicalHealth = _clamp(
@@ -112,7 +115,9 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     double amount, {
     required bool preferSpirit,
   }) {
-    final available = preferSpirit ? player.spiritEnergy : player.physicalEnergy;
+    final available = preferSpirit
+        ? player.spiritEnergy
+        : player.physicalEnergy;
     if (available + 1e-6 < amount) {
       return false;
     }
@@ -245,8 +250,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
             descriptionZhHant: '趕單趕到差點出事，雖然有收入，但身體明顯被消耗。',
             descriptionEn:
                 'You pushed too hard chasing the order and almost crashed. Your body paid for it.',
-            descriptionJa:
-                '配達を急ぎすぎて事故寸前。収入はあっても体への負担が大きい。',
+            descriptionJa: '配達を急ぎすぎて事故寸前。収入はあっても体への負担が大きい。',
             moneyFactor: 0.92,
             physicalHealthDelta: -45,
             physicalEnergyDelta: -1,
@@ -477,10 +481,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
   void _appendBattleEvent(RoyaleBattleEvent event) {
     _battleEvents
       ..add(event)
-      ..removeRange(
-        0,
-        math.max(0, _battleEvents.length - 6),
-      );
+      ..removeRange(0, math.max(0, _battleEvents.length - 6));
   }
 
   _DropPoint _normalizeDropPoint(String side, double dropX, double dropY) {
@@ -533,10 +534,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     final picked = _pickWeightedJobEvent(player, profile);
     final finalStage = picked.mentalStage <= 0
         ? 0
-        : math.max(
-            picked.mentalStage,
-            player.hero.mentalIllnessStageFloor,
-          );
+        : math.max(picked.mentalStage, player.hero.mentalIllnessStageFloor);
 
     var spiritHealthDelta = picked.spiritHealthDelta;
     var spiritEnergyDelta = picked.spiritEnergyDelta;
@@ -622,9 +620,10 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     final enemySide = _enemySide(side);
     final enemyPlayer = _playerForSide(enemySide);
     final caster = _playerForSide(side);
-    final spellDamage = (card.spellDamage *
-            _heroBonusMultiplier(caster, 'spell_damage_multiplier'))
-        .round();
+    final spellDamage =
+        (card.spellDamage *
+                _heroBonusMultiplier(caster, 'spell_damage_multiplier'))
+            .round();
 
     for (final unit in _units) {
       if (unit.side == side) {
@@ -683,9 +682,14 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
           nameJa: card.nameJa,
           imageUrl: card.imageUrl,
           characterImageUrl: card.characterImageUrl,
+          characterFrontImageUrl: card.characterFrontImageUrl,
+          characterBackImageUrl: card.characterBackImageUrl,
+          characterLeftImageUrl: card.characterLeftImageUrl,
+          characterRightImageUrl: card.characterRightImageUrl,
           bgImageUrl: card.bgImageUrl,
           type: card.type,
           side: side,
+          facingDirection: 'forward',
           progress: dropPoint.progress,
           lateralPosition: _sanitizeLateralPosition(
             dropPoint.lateralPosition + offset,
@@ -769,6 +773,32 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     return null;
   }
 
+  String _facingDirectionForVector(double progressDelta, double lateralDelta) {
+    final weightedLateralDelta = lateralDelta * _fieldAspectRatio;
+    if (weightedLateralDelta.abs() > math.max(16, progressDelta.abs() * 0.35)) {
+      return lateralDelta < 0 ? 'left' : 'right';
+    }
+    return 'forward';
+  }
+
+  void _updateUnitFacing(_HostUnit unit, _TargetSelection? target) {
+    if (target == null) {
+      unit.facingDirection = 'forward';
+      return;
+    }
+
+    final targetProgress = target.kind == 'unit'
+        ? target.unitTarget!.progress
+        : _enemyTowerProgressForSide(unit.side);
+    final targetLateral = target.kind == 'unit'
+        ? target.unitTarget!.lateralPosition
+        : (_worldScale / 2).toDouble();
+    unit.facingDirection = _facingDirectionForVector(
+      targetProgress - unit.progress,
+      targetLateral - unit.lateralPosition,
+    );
+  }
+
   void _performAttack(_HostUnit unit, _TargetSelection target) {
     if (target.kind == 'unit') {
       target.unitTarget!.hp -= unit.damage;
@@ -780,6 +810,10 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
 
   double _ownTowerProgressForSide(String side) {
     return side == 'left' ? _leftTowerX.toDouble() : _rightTowerX.toDouble();
+  }
+
+  double _enemyTowerProgressForSide(String side) {
+    return side == 'left' ? _rightTowerX.toDouble() : _leftTowerX.toDouble();
   }
 
   double _averageLateralPosition(Iterable<_HostUnit> units) {
@@ -880,11 +914,14 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         (sum, unit) =>
             sum + math.min(unit.hp, spellCard.spellDamage).toDouble(),
       );
-      final killCount = hitUnits.where((unit) => unit.hp <= spellCard.spellDamage).length;
+      final killCount = hitUnits
+          .where((unit) => unit.hp <= spellCard.spellDamage)
+          .length;
       final minimumThreatDistance = hitUnits
           .map((unit) => _distanceToOwnTower(side, unit.progress))
           .reduce(math.min);
-      final score = totalDamage +
+      final score =
+          totalDamage +
           hitUnits.length * 110 +
           killCount * 160 +
           (minimumThreatDistance < 260 ? 120 : 0);
@@ -1073,9 +1110,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     final playableUnits = affordable
         .where(
           (card) =>
-              !card.isJob &&
-              card.type != 'equipment' &&
-              card.type != 'spell',
+              !card.isJob && card.type != 'equipment' && card.type != 'spell',
         )
         .toList();
     final playableSpells = affordable
@@ -1133,16 +1168,17 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       remainingEnergy[_cardEnergyType(primaryCard)] =
           (remainingEnergy[_cardEnergyType(primaryCard)] ?? 0) -
           _cardEnergyCost(primaryCard);
-      final scoredEquipment = playableEquipment
-          .map(
-            (card) => _BotCardScore(
-              card: card,
-              score: _scoreEquipmentCard(primaryCard, card),
-            ),
-          )
-          .where((entry) => entry.score > 45)
-          .toList()
-        ..sort((a, b) => b.score.compareTo(a.score));
+      final scoredEquipment =
+          playableEquipment
+              .map(
+                (card) => _BotCardScore(
+                  card: card,
+                  score: _scoreEquipmentCard(primaryCard, card),
+                ),
+              )
+              .where((entry) => entry.score > 45)
+              .toList()
+            ..sort((a, b) => b.score.compareTo(a.score));
 
       for (final entry in scoredEquipment) {
         if (comboCards.length >= _maxComboCards) {
@@ -1350,7 +1386,9 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       return 'Not enough Money';
     }
 
-    final dropPoint = hasJobCard ? null : _normalizeDropPoint(side, dropX, dropY);
+    final dropPoint = hasJobCard
+        ? null
+        : _normalizeDropPoint(side, dropX, dropY);
     final equipmentEffects = _equipmentEffects(cards);
     for (final card in cards) {
       if (card.usesMoney) {
@@ -1404,20 +1442,22 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
           ? _effectiveAttackReachToUnit(unit, target.unitTarget!)
           : _effectiveAttackReachToTower(unit);
       if (target != null && target.distance <= attackReach) {
+        _updateUnitFacing(unit, target);
         if (unit.cooldown <= 0) {
           _performAttack(unit, target);
           unit.cooldown = unit.attackSpeed;
         }
       } else {
-        unit.progress = _clamp(
-          unit.progress + _sideDirection(unit.side) * unit.moveSpeed * dt,
-          80,
-          920,
-        );
+        final progressDelta = _sideDirection(unit.side) * unit.moveSpeed * dt;
         final desiredLateral = target?.kind == 'unit'
             ? target!.unitTarget!.lateralPosition
             : (_worldScale / 2).toDouble();
         final lateralDelta = desiredLateral - unit.lateralPosition;
+        unit.facingDirection = _facingDirectionForVector(
+          progressDelta,
+          lateralDelta,
+        );
+        unit.progress = _clamp(unit.progress + progressDelta, 80, 920);
         final lateralStep = (unit.moveSpeed * 0.45 * dt) / _fieldAspectRatio;
         unit.lateralPosition = _sanitizeLateralPosition(
           unit.lateralPosition +

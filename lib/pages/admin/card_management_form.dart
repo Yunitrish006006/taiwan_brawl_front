@@ -609,16 +609,10 @@ extension _CardManagementFormLayout on _CardManagementPageState {
               final vertical = constraints.maxWidth < 1100;
               if (phoneLayout) {
                 if (_showMobileEditor) {
-                  return ListView(
-                    children: [
-                      _buildForm(t),
-                    ],
-                  );
+                  return ListView(children: [_buildForm(t)]);
                 }
                 return ListView(
-                  children: [
-                    _buildCardList(t, phoneLayout: true),
-                  ],
+                  children: [_buildCardList(t, phoneLayout: true)],
                 );
               }
               if (vertical) {
@@ -684,17 +678,15 @@ extension _CardManagementFormLayout on _CardManagementPageState {
               translation: t,
             ),
             const SizedBox(height: 12),
-            _CardLayerImageEditor(
-              title: t.text('Character Image (Transparent PNG)'),
-              imageUrl: selectedCard?.characterImageUrl,
+            _CharacterDirectionImageSection(
+              selectedCard: selectedCard,
               pendingImageBytes: _pendingCharImageBytes,
               onPickImage: _pickCharImage,
               onUploadImage: _uploadCharImage,
               onRemoveImage: _removeCharImage,
               isCreatingNew: _isCreatingNew,
-              isUploadingImage: _isUploadingCharImage,
-              isRemovingImage: _isRemovingCharImage,
-              hasPendingImage: _pendingCharImageBytes != null,
+              uploadingDirections: _uploadingCharImageDirections,
+              removingDirections: _removingCharImageDirections,
               translation: t,
             ),
             const SizedBox(height: 12),

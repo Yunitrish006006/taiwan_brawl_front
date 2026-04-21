@@ -48,12 +48,13 @@ class AdminService {
 
   Future<RoyaleCard> uploadCardCharacterImage({
     required String cardId,
+    required String direction,
     required String bytesBase64,
     required String contentType,
     String? fileName,
   }) async {
     final res = await _apiClient.postJson(
-      '/api/admin/cards/$cardId/character-image',
+      '/api/admin/cards/$cardId/character-images/$direction',
       {
         'bytesBase64': bytesBase64,
         'contentType': contentType,
@@ -63,9 +64,12 @@ class AdminService {
     return jsonModel(res, 'card', RoyaleCard.fromJson);
   }
 
-  Future<RoyaleCard?> deleteCardCharacterImage(String cardId) async {
+  Future<RoyaleCard?> deleteCardCharacterImage(
+    String cardId, {
+    required String direction,
+  }) async {
     final res = await _apiClient.deleteJson(
-      '/api/admin/cards/$cardId/character-image',
+      '/api/admin/cards/$cardId/character-images/$direction',
     );
     return jsonNullableModel(res, 'card', RoyaleCard.fromJson);
   }

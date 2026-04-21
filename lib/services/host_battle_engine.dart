@@ -71,9 +71,8 @@ class HostBattleEngine {
     required this.onSnapshot,
     this.llmService,
     this.onNotice,
-  })
-    : _code = room.code,
-      _viewerSide = room.viewerSide ?? 'left' {
+  }) : _code = room.code,
+       _viewerSide = room.viewerSide ?? 'left' {
     _leftPlayer = _buildPlayer(room, 'left');
     _rightPlayer = _buildPlayer(room, 'right');
     _battleEvents.addAll(room.battle?.events ?? const []);
@@ -141,6 +140,12 @@ class HostBattleEngine {
               'nameEn': unit.nameEn,
               'nameJa': unit.nameJa,
               'imageUrl': unit.imageUrl,
+              'characterImageUrl': unit.characterImageUrl,
+              'characterFrontImageUrl': unit.characterFrontImageUrl,
+              'characterBackImageUrl': unit.characterBackImageUrl,
+              'characterLeftImageUrl': unit.characterLeftImageUrl,
+              'characterRightImageUrl': unit.characterRightImageUrl,
+              'facingDirection': unit.facingDirection,
               'type': unit.type,
               'side': unit.side,
               'progress': unit.progress.round(),
@@ -326,7 +331,9 @@ class HostBattleEngine {
       return 'Job cards must be played alone';
     }
 
-    final dropPoint = hasJobCard ? null : _normalizeDropPoint(side, dropX, dropY);
+    final dropPoint = hasJobCard
+        ? null
+        : _normalizeDropPoint(side, dropX, dropY);
     final equipmentEffects = _equipmentEffects(cards);
 
     for (final card in cards) {
@@ -385,10 +392,7 @@ class HostBattleEngine {
   bool _isEquipmentOnlyCast(List<RoyaleCard> cards) {
     final hasEquipment = cards.any((card) => card.type == 'equipment');
     final hasUnit = cards.any(
-      (card) =>
-          card.type != 'equipment' &&
-          card.type != 'spell' &&
-          !card.isJob,
+      (card) => card.type != 'equipment' && card.type != 'spell' && !card.isJob,
     );
     return hasEquipment && !hasUnit;
   }
@@ -545,9 +549,9 @@ class HostBattleEngine {
         deckCards: _leftPlayer.deckCards,
         handCardIds: _leftPlayer.hand,
         queueCardIds: _leftPlayer.queue,
-      hero: _leftPlayer.hero,
-      botController: _leftPlayer.botController,
-      ready: _leftPlayer.ready,
+        hero: _leftPlayer.hero,
+        botController: _leftPlayer.botController,
+        ready: _leftPlayer.ready,
         connected: _leftPlayer.connected,
         physicalHealth: RoyaleResourceState(
           current: _leftPlayer.physicalHealth,
@@ -586,9 +590,9 @@ class HostBattleEngine {
         deckCards: _rightPlayer.deckCards,
         handCardIds: _rightPlayer.hand,
         queueCardIds: _rightPlayer.queue,
-      hero: _rightPlayer.hero,
-      botController: _rightPlayer.botController,
-      ready: _rightPlayer.ready,
+        hero: _rightPlayer.hero,
+        botController: _rightPlayer.botController,
+        ready: _rightPlayer.ready,
         connected: _rightPlayer.connected,
         physicalHealth: RoyaleResourceState(
           current: _rightPlayer.physicalHealth,
@@ -648,7 +652,12 @@ class HostBattleEngine {
                 nameJa: unit.nameJa,
                 imageUrl: unit.imageUrl,
                 characterImageUrl: unit.characterImageUrl,
+                characterFrontImageUrl: unit.characterFrontImageUrl,
+                characterBackImageUrl: unit.characterBackImageUrl,
+                characterLeftImageUrl: unit.characterLeftImageUrl,
+                characterRightImageUrl: unit.characterRightImageUrl,
                 bgImageUrl: unit.bgImageUrl,
+                facingDirection: unit.facingDirection,
                 side: unit.side,
                 type: unit.type,
                 progress: unit.progress.round(),

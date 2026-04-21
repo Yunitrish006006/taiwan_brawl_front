@@ -15,6 +15,18 @@ import '../../services/locale_provider.dart';
 
 part 'card_management_form.dart';
 
+enum _CharacterImageDirection {
+  front('front', 'Front'),
+  back('back', 'Back'),
+  left('left', 'Left'),
+  right('right', 'Right');
+
+  const _CharacterImageDirection(this.apiValue, this.labelKey);
+
+  final String apiValue;
+  final String labelKey;
+}
+
 class CardManagementPage extends StatefulWidget {
   const CardManagementPage({super.key});
 
@@ -50,7 +62,11 @@ class _CardManagementPageState extends State<CardManagementPage> {
     'job_delivery',
     'job_day_labor',
   ];
-  static const List<String> _energyCostTypeOptions = ['physical', 'spirit', 'money'];
+  static const List<String> _energyCostTypeOptions = [
+    'physical',
+    'spirit',
+    'money',
+  ];
 
   late final AdminService _adminService;
 
@@ -74,9 +90,9 @@ class _CardManagementPageState extends State<CardManagementPage> {
   Uint8List? _pendingImageBytes;
   String? _pendingImageMimeType;
   String? _pendingImageFileName;
-  Uint8List? _pendingCharImageBytes;
-  String? _pendingCharImageMimeType;
-  String? _pendingCharImageFileName;
+  final Map<_CharacterImageDirection, Uint8List> _pendingCharImageBytes = {};
+  final Map<_CharacterImageDirection, String> _pendingCharImageMimeTypes = {};
+  final Map<_CharacterImageDirection, String?> _pendingCharImageFileNames = {};
   Uint8List? _pendingBgImageBytes;
   String? _pendingBgImageMimeType;
   String? _pendingBgImageFileName;
@@ -85,8 +101,8 @@ class _CardManagementPageState extends State<CardManagementPage> {
   bool _isDeleting = false;
   bool _isUploadingImage = false;
   bool _isRemovingImage = false;
-  bool _isUploadingCharImage = false;
-  bool _isRemovingCharImage = false;
+  final Set<_CharacterImageDirection> _uploadingCharImageDirections = {};
+  final Set<_CharacterImageDirection> _removingCharImageDirections = {};
   bool _isUploadingBgImage = false;
   bool _isRemovingBgImage = false;
   bool _isCreatingNew = true;
@@ -143,9 +159,9 @@ class _CardManagementPageState extends State<CardManagementPage> {
     _pendingImageBytes = null;
     _pendingImageMimeType = null;
     _pendingImageFileName = null;
-    _pendingCharImageBytes = null;
-    _pendingCharImageMimeType = null;
-    _pendingCharImageFileName = null;
+    _pendingCharImageBytes.clear();
+    _pendingCharImageMimeTypes.clear();
+    _pendingCharImageFileNames.clear();
     _pendingBgImageBytes = null;
     _pendingBgImageMimeType = null;
     _pendingBgImageFileName = null;
@@ -551,7 +567,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
     }
   }
 
-  Future<void> _pickCharImage() async {
+  Future<void> _pickCharImage(_CharacterImageDirection direction) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
       allowMultiple: false,
@@ -580,32 +596,41 @@ class _CardManagementPageState extends State<CardManagementPage> {
     }
 
     setState(() {
-      _pendingCharImageBytes = bytes;
-      _pendingCharImageMimeType = mimeType;
-      _pendingCharImageFileName = file.name;
+      _pendingCharImageBytes[direction] = bytes;
+      _pendingCharImageMimeTypes[direction] = mimeType;
+      _pendingCharImageFileNames[direction] = file.name;
     });
   }
 
-  Future<void> _uploadCharImage() async {
+  Future<void> _uploadCharImage(_CharacterImageDirection direction) async {
     final card = _selectedCard();
     if (card == null || _isCreatingNew) {
       _showSnackBar(_t.text('Save the card first before uploading an image'));
       return;
     }
-    if (_pendingCharImageBytes == null || _pendingCharImageMimeType == null) {
+    final pendingBytes = _pendingCharImageBytes[direction];
+    final pendingMimeType = _pendingCharImageMimeTypes[direction];
+    if (pendingBytes == null || pendingMimeType == null) {
       return;
     }
+    final pendingBytesByDirection = Map.of(_pendingCharImageBytes)
+      ..remove(direction);
+    final pendingMimeTypesByDirection = Map.of(_pendingCharImageMimeTypes)
+      ..remove(direction);
+    final pendingFileNamesByDirection = Map.of(_pendingCharImageFileNames)
+      ..remove(direction);
 
     setState(() {
-      _isUploadingCharImage = true;
+      _uploadingCharImageDirections.add(direction);
     });
 
     try {
       final updated = await _adminService.uploadCardCharacterImage(
         cardId: card.id,
-        bytesBase64: base64Encode(_pendingCharImageBytes!),
-        contentType: _pendingCharImageMimeType!,
-        fileName: _pendingCharImageFileName,
+        direction: direction.apiValue,
+        bytesBase64: base64Encode(pendingBytes),
+        contentType: pendingMimeType,
+        fileName: _pendingCharImageFileNames[direction],
       );
       if (!mounted) {
         return;
@@ -614,30 +639,47 @@ class _CardManagementPageState extends State<CardManagementPage> {
       if (!mounted) {
         return;
       }
+      setState(() {
+        _pendingCharImageBytes
+          ..clear()
+          ..addAll(pendingBytesByDirection);
+        _pendingCharImageMimeTypes
+          ..clear()
+          ..addAll(pendingMimeTypesByDirection);
+        _pendingCharImageFileNames
+          ..clear()
+          ..addAll(pendingFileNamesByDirection);
+      });
       _showSnackBar(_t.text('Character image uploaded successfully'));
     } on ApiException catch (error) {
       _showSnackBar(error.message);
     } finally {
       if (mounted) {
         setState(() {
-          _isUploadingCharImage = false;
+          _uploadingCharImageDirections.remove(direction);
         });
       }
     }
   }
 
-  Future<void> _removeCharImage() async {
+  Future<void> _removeCharImage(_CharacterImageDirection direction) async {
     final card = _selectedCard();
     if (card == null || _isCreatingNew) {
       return;
     }
+    final pendingBytesByDirection = Map.of(_pendingCharImageBytes);
+    final pendingMimeTypesByDirection = Map.of(_pendingCharImageMimeTypes);
+    final pendingFileNamesByDirection = Map.of(_pendingCharImageFileNames);
 
     setState(() {
-      _isRemovingCharImage = true;
+      _removingCharImageDirections.add(direction);
     });
 
     try {
-      await _adminService.deleteCardCharacterImage(card.id);
+      await _adminService.deleteCardCharacterImage(
+        card.id,
+        direction: direction.apiValue,
+      );
       if (!mounted) {
         return;
       }
@@ -645,13 +687,24 @@ class _CardManagementPageState extends State<CardManagementPage> {
       if (!mounted) {
         return;
       }
+      setState(() {
+        _pendingCharImageBytes
+          ..clear()
+          ..addAll(pendingBytesByDirection);
+        _pendingCharImageMimeTypes
+          ..clear()
+          ..addAll(pendingMimeTypesByDirection);
+        _pendingCharImageFileNames
+          ..clear()
+          ..addAll(pendingFileNamesByDirection);
+      });
       _showSnackBar(_t.text('Character image removed successfully'));
     } on ApiException catch (error) {
       _showSnackBar(error.message);
     } finally {
       if (mounted) {
         setState(() {
-          _isRemovingCharImage = false;
+          _removingCharImageDirections.remove(direction);
         });
       }
     }
@@ -1134,6 +1187,94 @@ class _CardImageEditor extends StatelessWidget {
                     : const Icon(Icons.delete_outline_rounded),
                 label: Text(translation.text('Remove Image')),
               ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CharacterDirectionImageSection extends StatelessWidget {
+  const _CharacterDirectionImageSection({
+    required this.selectedCard,
+    required this.pendingImageBytes,
+    required this.onPickImage,
+    required this.onUploadImage,
+    required this.onRemoveImage,
+    required this.isCreatingNew,
+    required this.uploadingDirections,
+    required this.removingDirections,
+    required this.translation,
+  });
+
+  final RoyaleCard? selectedCard;
+  final Map<_CharacterImageDirection, Uint8List> pendingImageBytes;
+  final Future<void> Function(_CharacterImageDirection direction) onPickImage;
+  final Future<void> Function(_CharacterImageDirection direction) onUploadImage;
+  final Future<void> Function(_CharacterImageDirection direction) onRemoveImage;
+  final bool isCreatingNew;
+  final Set<_CharacterImageDirection> uploadingDirections;
+  final Set<_CharacterImageDirection> removingDirections;
+  final Map<String, String> translation;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.35,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            translation.text('Character Direction Images'),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            translation.text(
+              'Upload front, back, left, and right character art separately.',
+            ),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              for (final direction in _CharacterImageDirection.values)
+                SizedBox(
+                  width: 280,
+                  child: _CardLayerImageEditor(
+                    title:
+                        '${translation.text(direction.labelKey)} ${translation.text('Character Image')}',
+                    imageUrl: selectedCard?.characterImageUrlFor(
+                      direction.apiValue,
+                    ),
+                    pendingImageBytes: pendingImageBytes[direction],
+                    onPickImage: () => onPickImage(direction),
+                    onUploadImage: () => onUploadImage(direction),
+                    onRemoveImage: () => onRemoveImage(direction),
+                    isCreatingNew: isCreatingNew,
+                    isUploadingImage: uploadingDirections.contains(direction),
+                    isRemovingImage: removingDirections.contains(direction),
+                    hasPendingImage: pendingImageBytes.containsKey(direction),
+                    translation: translation,
+                  ),
+                ),
             ],
           ),
         ],
