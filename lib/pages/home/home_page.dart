@@ -22,6 +22,7 @@ import '../social/dm_page.dart' deferred as dm_page_lib;
 import '../../main.dart';
 import '../../utils/snackbar.dart';
 import '../../widgets/friend_search_dialog.dart' deferred as friend_search_lib;
+import '../../widgets/ad_banner_widget.dart';
 import '../../widgets/app_version_text.dart';
 import '../game/royale_arena_page.dart' deferred as royale_arena_lib;
 

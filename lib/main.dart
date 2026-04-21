@@ -14,6 +14,7 @@ import 'pages/profile/profile_page.dart' deferred as profile_page;
 import 'pages/game/archery_game_page.dart' deferred as archery_page;
 import 'pages/game/royale_deck_page.dart' deferred as royale_deck_page;
 import 'pages/game/royale_lobby_page.dart' deferred as royale_lobby_page;
+import 'services/ad_service.dart';
 import 'services/api_client.dart';
 import 'services/auth_service.dart';
 import 'services/chat_service.dart';
@@ -72,6 +73,7 @@ class _DeferredWidgetState extends State<_DeferredWidget> {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AdService.initialize();
   await ChatService.initHive();
   final apiClient = ApiClient();
   final notificationService = NotificationService(apiClient);

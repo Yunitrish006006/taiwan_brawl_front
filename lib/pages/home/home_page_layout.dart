@@ -852,7 +852,15 @@ extension _HomePageLayout on _HomePageState {
         ),
         const SizedBox(height: 48),
 
-        // 區塊七：版本號
+        // 區塊七：廣告 Banner（iOS / Android only）
+        _animatedSection(
+          begin: 0.6,
+          end: 1.0,
+          child: const Center(child: AdBannerWidget()),
+        ),
+        const SizedBox(height: 16),
+
+        // 區塊八：版本號
         _animatedSection(begin: 0.6, end: 1.0, child: const AppVersionText()),
       ],
     );
