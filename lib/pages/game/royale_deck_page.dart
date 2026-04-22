@@ -22,6 +22,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   static const String _categorySpell = 'spell';
   static const String _categoryBuilding = 'building';
   static const String _categoryJob = 'job';
+  static const String _categoryEvent = 'event';
   static const String _categoryFieldEvent = 'field_event';
 
   late final RoyaleService _service;
@@ -32,6 +33,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   List<RoyaleCard> _cards = const [];
   List<RoyaleDeck> _decks = const [];
   List<RoyaleHero> _heroes = const [];
+  List<RoyaleCharacterArchetype> _characterArchetypes = const [];
   String _selectedHeroId = 'ordinary_person';
   final TextEditingController _nameController = TextEditingController(
     text: 'Battle Deck',
@@ -66,6 +68,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
       final cards = await _service.fetchCards();
       final decks = await _service.fetchDecks();
       final heroes = await _service.fetchHeroes();
+      final progression = await _service.fetchProgression();
       final sortedDecks = [...decks]..sort((a, b) => a.slot.compareTo(b.slot));
       final targetSlot = _resolveSlotForLoad(sortedDecks);
       final deck = _deckForSlot(targetSlot, decks: sortedDecks);
@@ -78,6 +81,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
         _cards = cards;
         _decks = sortedDecks;
         _heroes = heroes;
+        _characterArchetypes = progression.characterArchetypes;
         _selectedHeroId = heroes.any((h) => h.id == _selectedHeroId)
             ? _selectedHeroId
             : (heroes.isNotEmpty ? heroes.first.id : 'ordinary_person');
@@ -126,6 +130,10 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     }
     return null;
   }
+
+  RoyaleDeck? get _activeDeck => _deckForSlot(_activeSlot);
+
+  RoyaleDeckProgression? get _activeProgression => _activeDeck?.progression;
 
   int _resolveSlotForLoad(List<RoyaleDeck> decks) {
     if (_hasLoadedDecksOnce) {
@@ -210,6 +218,46 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
       }
       _selectedCardIds.add(card.id);
     });
+  }
+
+  Future<void> _selectCharacter(String characterId) async {
+    final deck = _activeDeck;
+    if (deck == null) {
+      return;
+    }
+    final t = context.read<LocaleProvider>().translation;
+    try {
+      final progression = await _service.selectDeckCharacter(
+        deckId: deck.id,
+        characterId: characterId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _decks = _decks
+            .map(
+              (entry) => entry.id == deck.id
+                  ? RoyaleDeck(
+                      id: entry.id,
+                      name: entry.name,
+                      slot: entry.slot,
+                      updatedAt: entry.updatedAt,
+                      cards: entry.cards,
+                      progression: progression,
+                    )
+                  : entry,
+            )
+            .toList(growable: false);
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.message.isEmpty ? t.text('Action failed') : e.message,
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _save() async {
@@ -316,6 +364,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     return card.type != 'spell' &&
         card.type != 'equipment' &&
         card.type != 'building' &&
+        !card.isEvent &&
         !card.isJob;
   }
 
@@ -331,6 +380,8 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
         return card.type == 'building';
       case _categoryJob:
         return card.isJob;
+      case _categoryEvent:
+        return card.isEvent;
       case _categoryFieldEvent:
         return false; // field events not in card list
       case _categoryAll:
@@ -355,6 +406,18 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
         .where(_matchesCategoryFilter)
         .where(_matchesEnergyFilter)
         .toList(growable: false);
+  }
+
+  bool _isLockedForActiveDeck(RoyaleCard card) {
+    final age = _activeProgression?.age ?? 0;
+    return age < card.unlockAge;
+  }
+
+  String _unlockLabel(Map<String, String> t, RoyaleCard card) {
+    if (card.unlockAge <= 0) {
+      return t.text('Initially unlocked');
+    }
+    return '${t.text('Unlocks at age')} ${card.unlockAge}';
   }
 
   String _heroMeterSummary(RoyaleResourceDefinition value) {
@@ -544,6 +607,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     final deck = _deckForSlot(slot);
     final isActive = _activeSlot == slot;
     final isEmpty = deck == null;
+    final progression = deck?.progression;
 
     return SizedBox(
       width: width,
@@ -606,7 +670,9 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  deck == null ? '8/8' : '${deck.cards.length}/8',
+                  deck == null
+                      ? '8/8'
+                      : '${deck.cards.length}/8 · ${t.text('Age')} ${progression?.age ?? 0}',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -657,6 +723,170 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                 ),
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressionSection(
+    ThemeData theme,
+    Map<String, String> t,
+    String locale,
+  ) {
+    final progression = _activeProgression;
+    final activeDeck = _activeDeck;
+    if (progression == null) {
+      return const SizedBox.shrink();
+    }
+    final canSelectInitialCharacter =
+        activeDeck != null &&
+        progression.age == 0 &&
+        progression.rebirthCount == 0 &&
+        _characterArchetypes.isNotEmpty;
+    final selectedCharacter = _characterArchetypes
+        .where((entry) => entry.id == progression.characterId)
+        .firstOrNull;
+    final selectedCharacterId = selectedCharacter?.id;
+    final unlockedText = progression.unlockedTiers.entries
+        .where((entry) => entry.value)
+        .map((entry) => t.text(entry.key))
+        .join(' / ');
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.child_care_rounded,
+                color: theme.colorScheme.secondary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                t.text('Character Growth'),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _buildProgressionChip(
+                theme,
+                label: t.text('Age'),
+                value: '${progression.age}',
+                icon: Icons.cake_outlined,
+              ),
+              _buildProgressionChip(
+                theme,
+                label: t.text('Health'),
+                value: '${progression.health}/100',
+                icon: Icons.favorite_border_rounded,
+              ),
+              _buildProgressionChip(
+                theme,
+                label: t.text('Rebirths'),
+                value: '${progression.rebirthCount}',
+                icon: Icons.restart_alt_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '${t.text('Unlocked tiers')}: ${unlockedText.isEmpty ? t.text('None') : unlockedText}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (canSelectInitialCharacter)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: selectedCharacterId,
+                  decoration: InputDecoration(
+                    labelText: t.text('Initial Character'),
+                    border: const OutlineInputBorder(),
+                  ),
+                  items: _characterArchetypes
+                      .map(
+                        (entry) => DropdownMenuItem<String>(
+                          value: entry.id,
+                          child: Text(
+                            entry.kind == 'unit_card'
+                                ? '${entry.localizedName(locale)} · ${t.text('Unit')}'
+                                : entry.localizedName(locale),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                      .toList(growable: false),
+                  onChanged: (value) {
+                    if (value != null) {
+                      _selectCharacter(value);
+                    }
+                  },
+                ),
+                if (selectedCharacter != null &&
+                    selectedCharacter
+                        .localizedDescription(locale)
+                        .isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    selectedCharacter.localizedDescription(locale),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
+            )
+          else if (selectedCharacter != null)
+            Text(
+              '${t.text('Initial Character')}: ${selectedCharacter.localizedName(locale)}',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressionChip(
+    ThemeData theme, {
+    required String label,
+    required String value,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: theme.colorScheme.secondary),
+          const SizedBox(width: 6),
+          Text(
+            '$label $value',
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ],
       ),
@@ -748,6 +978,14 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                 icon: Icons.work_outline_rounded,
               ),
               _buildFilterChip(
+                label: t.text('Event'),
+                selected: _cardCategoryFilter == _categoryEvent,
+                onTap: () => setState(() {
+                  _cardCategoryFilter = _categoryEvent;
+                }),
+                icon: Icons.bolt_outlined,
+              ),
+              _buildFilterChip(
                 label: t.text('Field Event'),
                 selected: _cardCategoryFilter == _categoryFieldEvent,
                 onTap: () => setState(() {
@@ -813,6 +1051,8 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
         return const Color(0xFFC62828);
       case 'job':
         return const Color(0xFF6D8E23);
+      case 'event':
+        return const Color(0xFFAD6A00);
       default:
         return const Color(0xFF6D4C41);
     }
@@ -832,6 +1072,8 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
         return t.text('Equipment');
       case 'job':
         return t.text('Job');
+      case 'event':
+        return t.text('Event');
       default:
         return t.text('Melee');
     }
@@ -848,12 +1090,24 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
 
   String _energyTypeShortLabel(String locale, RoyaleCard card) {
     if (locale == 'ja') {
-      return card.usesMoney ? '金' : card.usesSpiritEnergy ? '精' : '体';
+      return card.usesMoney
+          ? '金'
+          : card.usesSpiritEnergy
+          ? '精'
+          : '体';
     }
     if (locale == 'zh-Hant') {
-      return card.usesMoney ? '金' : card.usesSpiritEnergy ? '精' : '生';
+      return card.usesMoney
+          ? '金'
+          : card.usesSpiritEnergy
+          ? '精'
+          : '生';
     }
-    return card.usesMoney ? r'$' : card.usesSpiritEnergy ? 'SP' : 'PH';
+    return card.usesMoney
+        ? r'$'
+        : card.usesSpiritEnergy
+        ? 'SP'
+        : 'PH';
   }
 
   String _energyCostLabel(
@@ -883,6 +1137,9 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   String _cardSummary(Map<String, String> t, RoyaleCard card) {
     if (card.isJob) {
       return '${_jobProfileLabel(t, card)} · ${t.text('Base Pay')} ${card.effectValue.toInt()}';
+    }
+    if (card.isEvent) {
+      return t.text('Event Card');
     }
     if (card.type == 'spell') {
       return '${t.text('Spell Damage')} ${card.spellDamage}';
@@ -915,6 +1172,8 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
         return t.text('Ally Combo');
       case 'self':
         return t.text('Self');
+      case 'hero':
+        return t.text('Main Character');
       default:
         return card.targetRule;
     }
@@ -1116,6 +1375,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     final selectionIndex = _selectedIndexFor(card.id);
     final isSelected = selectionIndex >= 0;
     final canAdd = isSelected || _selectedCardIds.length < 8;
+    final lockedForDeck = _isLockedForActiveDeck(card);
 
     final detailTiles = <Widget>[
       _buildDetailStatTile(
@@ -1135,6 +1395,14 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
         label: t.text('Target Rule'),
         value: _targetRuleLabel(t, card),
         icon: Icons.my_location_rounded,
+      ),
+      _buildDetailStatTile(
+        theme,
+        label: t.text('Unlock'),
+        value: _unlockLabel(t, card),
+        icon: lockedForDeck
+            ? Icons.lock_outline_rounded
+            : Icons.lock_open_rounded,
       ),
     ];
 
@@ -1279,6 +1547,11 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                 avatar: const Icon(Icons.check_circle_outline, size: 18),
                 label: Text('#${selectionIndex + 1} / 8'),
               ),
+            if (lockedForDeck)
+              Chip(
+                avatar: const Icon(Icons.lock_outline_rounded, size: 18),
+                label: Text(_unlockLabel(t, card)),
+              ),
           ],
         ),
         const SizedBox(height: 12),
@@ -1347,6 +1620,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     final isPreviewed = _previewCard?.id == card.id;
     final color = _cardColor(card.type, theme.colorScheme);
     final canAdd = isSelected || _selectedCardIds.length < 8;
+    final lockedForDeck = _isLockedForActiveDeck(card);
 
     return Material(
       color: Colors.transparent,
@@ -1408,7 +1682,9 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _cardTypeLabel(t, card),
+                          lockedForDeck
+                              ? '${_cardTypeLabel(t, card)} · ${_unlockLabel(t, card)}'
+                              : _cardTypeLabel(t, card),
                           style: const TextStyle(color: Colors.white70),
                         ),
                       ],
@@ -1507,6 +1783,8 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   _buildDeckSlotSection(theme, t),
+                  const SizedBox(height: 16),
+                  _buildProgressionSection(theme, t, locale),
                   const SizedBox(height: 16),
                   _buildHeroSection(theme, t, locale),
                   const SizedBox(height: 16),

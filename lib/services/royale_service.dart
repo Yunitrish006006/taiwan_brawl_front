@@ -34,6 +34,11 @@ class RoyaleService {
     return jsonModelList(res, 'heroes', RoyaleHero.fromJson);
   }
 
+  Future<RoyaleProgressionOverview> fetchProgression() async {
+    final res = await _apiClient.getJson('/api/progression');
+    return RoyaleProgressionOverview.fromJson(res);
+  }
+
   Future<List<RoyaleDeck>> fetchDecks() async {
     final res = await _apiClient.getJson('/api/decks');
     return jsonModelList(res, 'decks', RoyaleDeck.fromJson);
@@ -43,13 +48,26 @@ class RoyaleService {
     required String name,
     required int slot,
     required List<String> cardIds,
+    String? characterId,
   }) async {
     final res = await _apiClient.postJson('/api/decks', {
       'name': name,
       'slot': slot,
       'cardIds': cardIds,
+      'characterId': ?characterId,
     });
     return jsonModel(res, 'deck', RoyaleDeck.fromJson);
+  }
+
+  Future<RoyaleDeckProgression> selectDeckCharacter({
+    required int deckId,
+    required String characterId,
+  }) async {
+    final res = await _apiClient.postJson('/api/decks/character', {
+      'deckId': deckId,
+      'characterId': characterId,
+    });
+    return jsonModel(res, 'progression', RoyaleDeckProgression.fromJson);
   }
 
   Future<RoyaleRoomSnapshot> createRoom({

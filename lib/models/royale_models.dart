@@ -128,6 +128,9 @@ class RoyaleCard {
     required this.targetRule,
     required this.effectKind,
     required this.effectValue,
+    this.unlockAge = 0,
+    this.unlockTier = 'item',
+    this.locked = false,
   });
 
   final String id;
@@ -159,10 +162,15 @@ class RoyaleCard {
   final String targetRule;
   final String effectKind;
   final double effectValue;
+  final int unlockAge;
+  final String unlockTier;
+  final bool locked;
 
   bool get isEquipment => type == 'equipment';
 
   bool get isJob => type == 'job';
+
+  bool get isEvent => type == 'event';
 
   bool get usesMoney => energyCostType == 'money';
 
@@ -263,6 +271,171 @@ class RoyaleCard {
       targetRule: json['targetRule'] as String,
       effectKind: (json['effectKind'] as String?) ?? 'none',
       effectValue: (json['effectValue'] as num?)?.toDouble() ?? 0,
+      unlockAge: (json['unlockAge'] as num?)?.toInt() ?? 0,
+      unlockTier: json['unlockTier'] as String? ?? 'item',
+      locked: json['locked'] as bool? ?? false,
+    );
+  }
+}
+
+class RoyaleDeckProgression {
+  const RoyaleDeckProgression({
+    required this.deckId,
+    required this.userId,
+    required this.characterId,
+    required this.age,
+    required this.health,
+    required this.rebirthCount,
+    required this.unlockedTiers,
+    required this.unlockedStartOptions,
+    required this.achievements,
+    required this.talentHistory,
+    this.lastHealthRegenAt = '',
+    this.lastRebirthAt,
+  });
+
+  final int deckId;
+  final int userId;
+  final String characterId;
+  final int age;
+  final int health;
+  final int rebirthCount;
+  final Map<String, bool> unlockedTiers;
+  final List<String> unlockedStartOptions;
+  final Map<String, dynamic> achievements;
+  final Map<String, dynamic> talentHistory;
+  final String lastHealthRegenAt;
+  final String? lastRebirthAt;
+
+  factory RoyaleDeckProgression.fromJson(Map<String, dynamic> json) {
+    return RoyaleDeckProgression(
+      deckId: (json['deckId'] as num?)?.toInt() ?? 0,
+      userId: (json['userId'] as num?)?.toInt() ?? 0,
+      characterId: json['characterId'] as String? ?? 'ordinary_child',
+      age: (json['age'] as num?)?.toInt() ?? 0,
+      health: (json['health'] as num?)?.toInt() ?? 100,
+      rebirthCount: (json['rebirthCount'] as num?)?.toInt() ?? 0,
+      unlockedTiers:
+          (json['unlockedTiers'] as Map<String, dynamic>? ?? const {}).map(
+            (key, value) => MapEntry(key, value == true),
+          ),
+      unlockedStartOptions:
+          (json['unlockedStartOptions'] as List<dynamic>? ?? const [])
+              .map((value) => value.toString())
+              .toList(growable: false),
+      achievements: Map<String, dynamic>.from(
+        json['achievements'] as Map<String, dynamic>? ?? const {},
+      ),
+      talentHistory: Map<String, dynamic>.from(
+        json['talentHistory'] as Map<String, dynamic>? ?? const {},
+      ),
+      lastHealthRegenAt: json['lastHealthRegenAt'] as String? ?? '',
+      lastRebirthAt: json['lastRebirthAt'] as String?,
+    );
+  }
+}
+
+class RoyaleCharacterArchetype {
+  const RoyaleCharacterArchetype({
+    required this.id,
+    required this.name,
+    required this.nameZhHant,
+    required this.nameEn,
+    required this.nameJa,
+    required this.descriptionZhHant,
+    required this.descriptionEn,
+    required this.descriptionJa,
+    this.kind = 'archetype',
+    this.cardId,
+    this.type = '',
+    this.imageUrl,
+  });
+
+  final String id;
+  final String kind;
+  final String? cardId;
+  final String type;
+  final String? imageUrl;
+  final String name;
+  final String nameZhHant;
+  final String nameEn;
+  final String nameJa;
+  final String descriptionZhHant;
+  final String descriptionEn;
+  final String descriptionJa;
+
+  String localizedName(String locale) {
+    final englishFallback = nameEn.isNotEmpty ? nameEn : name;
+    switch (locale) {
+      case 'en':
+        return englishFallback;
+      case 'ja':
+        return nameJa.isNotEmpty ? nameJa : englishFallback;
+      case 'zh-Hant':
+      default:
+        return nameZhHant.isNotEmpty ? nameZhHant : englishFallback;
+    }
+  }
+
+  String localizedDescription(String locale) {
+    final englishFallback = descriptionEn;
+    switch (locale) {
+      case 'en':
+        return englishFallback;
+      case 'ja':
+        return descriptionJa.isNotEmpty ? descriptionJa : englishFallback;
+      case 'zh-Hant':
+      default:
+        return descriptionZhHant.isNotEmpty
+            ? descriptionZhHant
+            : englishFallback;
+    }
+  }
+
+  factory RoyaleCharacterArchetype.fromJson(Map<String, dynamic> json) {
+    return RoyaleCharacterArchetype(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      nameZhHant:
+          (json['nameZhHant'] as String?) ?? (json['name'] as String? ?? ''),
+      nameEn: (json['nameEn'] as String?) ?? (json['name'] as String? ?? ''),
+      nameJa: (json['nameJa'] as String?) ?? (json['name'] as String? ?? ''),
+      descriptionZhHant: json['descriptionZhHant'] as String? ?? '',
+      descriptionEn: json['descriptionEn'] as String? ?? '',
+      descriptionJa: json['descriptionJa'] as String? ?? '',
+      kind: json['kind'] as String? ?? 'archetype',
+      cardId: json['cardId'] as String?,
+      type: json['type'] as String? ?? '',
+      imageUrl: json['imageUrl'] as String?,
+    );
+  }
+}
+
+class RoyaleProgressionOverview {
+  const RoyaleProgressionOverview({
+    required this.characterArchetypes,
+    required this.progression,
+  });
+
+  final List<RoyaleCharacterArchetype> characterArchetypes;
+  final List<RoyaleDeckProgression> progression;
+
+  factory RoyaleProgressionOverview.fromJson(Map<String, dynamic> json) {
+    return RoyaleProgressionOverview(
+      characterArchetypes:
+          (json['characterArchetypes'] as List<dynamic>? ?? const [])
+              .map(
+                (entry) => RoyaleCharacterArchetype.fromJson(
+                  entry as Map<String, dynamic>,
+                ),
+              )
+              .toList(growable: false),
+      progression: (json['progression'] as List<dynamic>? ?? const [])
+          .map(
+            (entry) =>
+                RoyaleDeckProgression.fromJson(entry as Map<String, dynamic>),
+          )
+          .toList(growable: false),
     );
   }
 }
@@ -274,6 +447,7 @@ class RoyaleDeck {
     required this.slot,
     required this.updatedAt,
     required this.cards,
+    this.progression,
   });
 
   final int id;
@@ -281,6 +455,7 @@ class RoyaleDeck {
   final int slot;
   final String updatedAt;
   final List<RoyaleCard> cards;
+  final RoyaleDeckProgression? progression;
 
   factory RoyaleDeck.fromJson(Map<String, dynamic> json) {
     return RoyaleDeck(
@@ -291,6 +466,11 @@ class RoyaleDeck {
       cards: (json['cards'] as List<dynamic>)
           .map((card) => RoyaleCard.fromJson(card as Map<String, dynamic>))
           .toList(),
+      progression: json['progression'] is Map<String, dynamic>
+          ? RoyaleDeckProgression.fromJson(
+              json['progression'] as Map<String, dynamic>,
+            )
+          : null,
     );
   }
 }
@@ -621,6 +801,8 @@ class RoyalePlayerView {
     required this.deckCards,
     required this.handCardIds,
     required this.queueCardIds,
+    this.cardUses = const {},
+    this.cardUseLimits = const {},
     required this.hero,
     required this.botController,
     required this.ready,
@@ -642,6 +824,8 @@ class RoyalePlayerView {
   final List<RoyaleCard> deckCards;
   final List<String> handCardIds;
   final List<String> queueCardIds;
+  final Map<String, int> cardUses;
+  final Map<String, int> cardUseLimits;
   final RoyaleHero hero;
   final String botController;
   final bool ready;
@@ -676,6 +860,13 @@ class RoyalePlayerView {
       queueCardIds: (json['queueCardIds'] as List<dynamic>? ?? const [])
           .map((cardId) => cardId.toString())
           .toList(),
+      cardUses: (json['cardUses'] as Map<String, dynamic>? ?? const {}).map(
+        (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
+      ),
+      cardUseLimits:
+          (json['cardUseLimits'] as Map<String, dynamic>? ?? const {}).map(
+            (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
+          ),
       hero: RoyaleHero.fromJson(
         json['hero'] as Map<String, dynamic>? ?? const {},
       ),
@@ -1073,6 +1264,8 @@ class RoyaleBattleView {
     required this.yourMoney,
     required this.yourHand,
     required this.nextCardId,
+    this.yourCardUses = const {},
+    this.yourCardUseLimits = const {},
     required this.units,
     required this.events,
     required this.result,
@@ -1083,6 +1276,8 @@ class RoyaleBattleView {
   final double yourMoney;
   final List<RoyaleCard> yourHand;
   final String? nextCardId;
+  final Map<String, int> yourCardUses;
+  final Map<String, int> yourCardUseLimits;
   final List<RoyaleUnitView> units;
   final List<RoyaleBattleEvent> events;
   final RoyaleBattleResult? result;
@@ -1097,6 +1292,12 @@ class RoyaleBattleView {
           .map((card) => RoyaleCard.fromJson(card as Map<String, dynamic>))
           .toList(),
       nextCardId: json['nextCardId'] as String?,
+      yourCardUses: (json['yourCardUses'] as Map<String, dynamic>? ?? const {})
+          .map((key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0)),
+      yourCardUseLimits:
+          (json['yourCardUseLimits'] as Map<String, dynamic>? ?? const {}).map(
+            (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
+          ),
       units: (json['units'] as List<dynamic>? ?? const [])
           .map((unit) => RoyaleUnitView.fromJson(unit as Map<String, dynamic>))
           .toList(),

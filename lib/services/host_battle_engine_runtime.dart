@@ -110,6 +110,125 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     player.towerHp = (player.physicalHealth + player.spiritHealth).round();
   }
 
+  bool _isPlayerDefeated(_HostPlayer player) {
+    final hasPhysicalTrack = player.maxPhysicalHealth > 0;
+    final hasSpiritTrack = player.maxSpiritHealth > 0;
+    if (hasPhysicalTrack && player.physicalHealth <= 0) {
+      return true;
+    }
+    if (hasSpiritTrack && player.spiritHealth <= 0) {
+      return true;
+    }
+    if (!hasPhysicalTrack && !hasSpiritTrack) {
+      return player.towerHp <= 0;
+    }
+    return false;
+  }
+
+  String? _winnerSideFromPlayers() {
+    final leftDefeated = _isPlayerDefeated(_leftPlayer);
+    final rightDefeated = _isPlayerDefeated(_rightPlayer);
+    if (leftDefeated || rightDefeated) {
+      if (leftDefeated && rightDefeated) {
+        return null;
+      }
+      return leftDefeated ? 'right' : 'left';
+    }
+    if (_leftPlayer.towerHp == _rightPlayer.towerHp) {
+      return null;
+    }
+    return _leftPlayer.towerHp > _rightPlayer.towerHp ? 'left' : 'right';
+  }
+
+  _HeroAttack _heroAttackFor(_HostPlayer player) {
+    switch (player.hero.id) {
+      case 'rich_heir':
+        return const _HeroAttack(
+          damage: 48,
+          range: 260,
+          attackSpeed: 1.35,
+          damageType: 'spirit',
+        );
+      case 'low_income_household':
+        return const _HeroAttack(
+          damage: 76,
+          range: 205,
+          attackSpeed: 1.15,
+          damageType: 'physical',
+        );
+      case 'part_time_worker':
+        return const _HeroAttack(
+          damage: 58,
+          range: 220,
+          attackSpeed: 0.95,
+          damageType: 'physical',
+        );
+      case 'ordinary_person':
+      default:
+        return const _HeroAttack(
+          damage: 64,
+          range: 230,
+          attackSpeed: 1.25,
+          damageType: 'physical',
+        );
+    }
+  }
+
+  double _towerProgressForSide(String side) =>
+      side == 'left' ? _leftTowerX.toDouble() : _rightTowerX.toDouble();
+
+  _HostUnit? _selectHeroAttackTarget(_HostPlayer player, _HeroAttack attack) {
+    final originProgress = _towerProgressForSide(player.side);
+    final originLateral = (_worldScale / 2).toDouble();
+    final targets =
+        _units
+            .where((unit) => unit.side != player.side && unit.hp > 0)
+            .map(
+              (unit) => MapEntry(
+                unit,
+                _distanceBetweenPoints(
+                  originProgress,
+                  originLateral,
+                  unit.progress,
+                  unit.lateralPosition,
+                ),
+              ),
+            )
+            .where(
+              (entry) => entry.value <= attack.range + entry.key.bodyRadius,
+            )
+            .toList()
+          ..sort((a, b) => a.value.compareTo(b.value));
+    return targets.isEmpty ? null : targets.first.key;
+  }
+
+  void _tickHeroAttacks(double dt) {
+    for (final player in [_leftPlayer, _rightPlayer]) {
+      final attack = _heroAttackFor(player);
+      player.heroAttackCooldown = math.max(0, player.heroAttackCooldown - dt);
+      if (player.heroAttackCooldown > 0 ||
+          attack.damage <= 0 ||
+          attack.range <= 0) {
+        continue;
+      }
+      final target = _selectHeroAttackTarget(player, attack);
+      if (target == null) {
+        continue;
+      }
+      target.hp -= attack.damage;
+      player.heroAttackCooldown = attack.attackSpeed;
+      player.heroAttackEventId += 1;
+      player.heroAttackEvent = {
+        'id': player.heroAttackEventId,
+        'animation': 'attack',
+        'targetUnitId': target.id,
+        'damage': attack.damage,
+        'damageType': attack.damageType,
+      };
+    }
+    _units.removeWhere((unit) => unit.hp <= 0);
+  }
+
   bool _spendPlayerEnergy(
     _HostPlayer player,
     double amount, {
@@ -144,19 +263,15 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     int damage, {
     required bool preferSpirit,
   }) {
-    var remaining = damage.toDouble();
-    if (preferSpirit) {
-      final spiritDrain = math.min(player.spiritHealth, remaining);
-      player.spiritHealth -= spiritDrain;
-      remaining -= spiritDrain;
-      final physicalDrain = math.min(player.physicalHealth, remaining);
-      player.physicalHealth -= physicalDrain;
-    } else {
-      final physicalDrain = math.min(player.physicalHealth, remaining);
-      player.physicalHealth -= physicalDrain;
-      remaining -= physicalDrain;
-      final spiritDrain = math.min(player.spiritHealth, remaining);
-      player.spiritHealth -= spiritDrain;
+    final amount = damage.toDouble();
+    if (preferSpirit && player.maxSpiritHealth > 0) {
+      player.spiritHealth -= math.min(player.spiritHealth, amount);
+    } else if (!preferSpirit && player.maxPhysicalHealth > 0) {
+      player.physicalHealth -= math.min(player.physicalHealth, amount);
+    } else if (player.maxPhysicalHealth > 0) {
+      player.physicalHealth -= math.min(player.physicalHealth, amount);
+    } else if (player.maxSpiritHealth > 0) {
+      player.spiritHealth -= math.min(player.spiritHealth, amount);
     }
     _syncPlayerTotals(player);
   }
@@ -504,7 +619,10 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         continue;
       }
       player.hand.removeAt(handIndex);
-      player.queue.add(cardId);
+      final card = player.cardById(cardId);
+      if (card == null || player.remainingUsesFor(card) > 0) {
+        player.queue.add(cardId);
+      }
     }
 
     for (var index = 0; index < cardIds.length; index += 1) {
@@ -512,6 +630,13 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         break;
       }
       player.hand.add(player.queue.removeAt(0));
+    }
+  }
+
+  void _recordCardUses(_HostPlayer player, List<RoyaleCard> cards) {
+    for (final card in cards) {
+      player.cardUses[card.id] = (player.cardUses[card.id] ?? 0) + 1;
+      player.cardUseLimits.putIfAbsent(card.id, () => 8);
     }
   }
 
@@ -598,6 +723,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     var hp = card.hp.toDouble();
     var damage = card.damage.toDouble();
     var moveSpeed = card.moveSpeed * _globalMoveSpeedMultiplier;
+    var attackSpeedMultiplier = 1.0;
 
     for (final effect in effects) {
       if (effect.kind == 'damage_boost') {
@@ -606,6 +732,13 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         hp += effect.value;
       } else if (effect.kind == 'speed_boost') {
         moveSpeed *= 1 + effect.value;
+      } else if (effect.kind == 'betel_nut') {
+        moveSpeed *= 1.18;
+        attackSpeedMultiplier *= 0.82;
+      } else if (effect.kind == 'helmet_guard') {
+        hp += effect.value == 0 ? 140 : effect.value;
+      } else if (effect.kind == 'florida_water') {
+        attackSpeedMultiplier *= 0.92;
       }
     }
 
@@ -613,7 +746,97 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       hp: hp.round(),
       damage: damage.round(),
       moveSpeed: moveSpeed,
+      attackSpeedMultiplier: attackSpeedMultiplier,
     );
+  }
+
+  void _applySelfEquipmentEffects(_HostPlayer player, List<RoyaleCard> cards) {
+    for (final card in cards.where(_canCastEquipmentOnHero)) {
+      if (card.effectKind == 'betel_nut') {
+        player.maxPhysicalHealth += 80;
+        player.physicalHealth += 80;
+        player.physicalEnergy += 1;
+        player.physicalHealthRegen -= 0.45;
+      } else if (card.effectKind == 'helmet_guard') {
+        _adjustPlayerResources(
+          player,
+          physicalHealthDelta: card.effectValue == 0 ? 140.0 : card.effectValue,
+        );
+      } else if (card.effectKind == 'florida_water') {
+        _adjustPlayerResources(
+          player,
+          spiritHealthDelta: card.effectValue == 0 ? 24.0 : card.effectValue,
+        );
+      }
+    }
+    _syncPlayerTotals(player);
+  }
+
+  void _resolveEventCard(_HostPlayer player, RoyaleCard card) {
+    if (card.effectKind == 'event_money') {
+      final moneyDelta = card.effectValue == 0 ? 10.0 : card.effectValue;
+      _adjustPlayerResources(player, moneyDelta: moneyDelta);
+      _appendBattleEvent(
+        RoyaleBattleEvent(
+          id: 'event-${DateTime.now().microsecondsSinceEpoch}',
+          kind: 'card_event',
+          side: player.side,
+          cardId: card.id,
+          cardName: card.name,
+          cardNameZhHant: card.nameZhHant,
+          cardNameEn: card.nameEn,
+          cardNameJa: card.nameJa,
+          title: 'Mom Slipped You Cash',
+          titleZhHant: '媽媽砸摳',
+          titleEn: 'Mom Slipped You Cash',
+          titleJa: 'ママから小遣い',
+          description: 'Mom gave you cash immediately.',
+          descriptionZhHant: '媽媽塞了一筆錢，當場補進你的錢包。',
+          descriptionEn: 'Mom gave you cash immediately.',
+          descriptionJa: 'ママから小遣いをもらい、所持金が増えた。',
+          tone: 'positive',
+          mentalStage: 0,
+          moneyDelta: moneyDelta,
+          physicalHealthDelta: 0,
+          spiritHealthDelta: 0,
+          physicalEnergyDelta: 0,
+          spiritEnergyDelta: 0,
+        ),
+      );
+    } else if (card.effectKind == 'event_swap_card_uses') {
+      for (final deckCard in player.deckCards) {
+        final limit = player.cardUseLimits[deckCard.id] ?? 8;
+        final used = player.cardUses[deckCard.id] ?? 0;
+        player.cardUses[deckCard.id] = math.max(0, limit - used);
+      }
+      _appendBattleEvent(
+        RoyaleBattleEvent(
+          id: 'event-${DateTime.now().microsecondsSinceEpoch}',
+          kind: 'card_event',
+          side: player.side,
+          cardId: card.id,
+          cardName: card.name,
+          cardNameZhHant: card.nameZhHant,
+          cardNameEn: card.nameEn,
+          cardNameJa: card.nameJa,
+          title: 'Victory of the Living Meme',
+          titleZhHant: '活網仔的勝利',
+          titleEn: 'Victory of the Living Meme',
+          titleJa: '生きたネット民の勝利',
+          description: 'Your card durability was inverted.',
+          descriptionZhHant: '你的卡牌耐久被反轉。',
+          descriptionEn: 'Your card durability was inverted.',
+          descriptionJa: 'カード使用回数が反転した。',
+          tone: 'mixed',
+          mentalStage: 0,
+          moneyDelta: 0,
+          physicalHealthDelta: 0,
+          spiritHealthDelta: 0,
+          physicalEnergyDelta: 0,
+          spiritEnergyDelta: 0,
+        ),
+      );
+    }
   }
 
   void _resolveSpell(String side, RoyaleCard card, _DropPoint dropPoint) {
@@ -706,7 +929,10 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
               ? card.bodyRadius.toDouble()
               : _bodyRadiusForUnitType(card.type),
           moveSpeed: stats.moveSpeed,
-          attackSpeed: card.attackSpeed * _globalAttackSpeedMultiplier,
+          attackSpeed:
+              card.attackSpeed *
+              _globalAttackSpeedMultiplier *
+              stats.attackSpeedMultiplier,
           targetRule: card.targetRule,
           cooldown: 0,
           effects: equipmentEffects.map((effect) => effect.name).toList(),
@@ -1103,7 +1329,8 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         .where(
           (card) =>
               _playerEnergyForType(player, _cardEnergyType(card)) + 1e-6 >=
-              _cardEnergyCost(card),
+                  _cardEnergyCost(card) &&
+              player.remainingUsesFor(card) > 0,
         )
         .toList();
     if (affordable.isEmpty) {
@@ -1114,7 +1341,10 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     final playableUnits = affordable
         .where(
           (card) =>
-              !card.isJob && card.type != 'equipment' && card.type != 'spell',
+              !card.isJob &&
+              !card.isEvent &&
+              card.type != 'equipment' &&
+              card.type != 'spell',
         )
         .toList();
     final playableSpells = affordable
@@ -1368,8 +1598,19 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
   }) {
     final player = _playerForSide(side);
     final hasJobCard = cards.any((card) => card.isJob);
+    final hasEventCard = cards.any((card) => card.isEvent);
+    final selfEquipmentOnly = _isSelfEquipmentOnlyCast(cards);
+    if (cards.any((card) => player.remainingUsesFor(card) <= 0)) {
+      return 'Card deployment limit reached';
+    }
+    if (hasEventCard && cards.length != 1) {
+      return 'Event cards must be played alone';
+    }
     if (hasJobCard && cards.length != 1) {
       return 'Job cards must be played alone';
+    }
+    if (_isEquipmentOnlyCast(cards) && !selfEquipmentOnly) {
+      return 'Equipment cards need at least one unit in the same cast';
     }
     final physicalCost = cards
         .where((card) => card.usesPhysicalEnergy)
@@ -1390,7 +1631,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       return 'Not enough Money';
     }
 
-    final dropPoint = hasJobCard
+    final dropPoint = hasJobCard || hasEventCard || selfEquipmentOnly
         ? null
         : _normalizeDropPoint(side, dropX, dropY);
     final equipmentEffects = _equipmentEffects(cards);
@@ -1405,16 +1646,22 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         );
       }
     }
+    _recordCardUses(player, cards);
     _drawReplacementCards(player, cards.map((card) => card.id).toList());
 
     for (final card in cards) {
       if (card.type == 'spell') {
         _resolveSpell(side, card, dropPoint!);
+      } else if (card.isEvent) {
+        _resolveEventCard(player, card);
       } else if (card.isJob) {
         _resolveJobCard(player, card);
       } else if (card.type != 'equipment') {
         _spawnUnits(side, card, dropPoint!, equipmentEffects);
       }
+    }
+    if (selfEquipmentOnly) {
+      _applySelfEquipmentEffects(player, cards);
     }
     return null;
   }
@@ -1431,6 +1678,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     _regeneratePlayerResources(_rightPlayer, dt);
 
     _runBotTurns();
+    _tickHeroAttacks(dt);
     _tickFieldEvents(dt);
 
     for (final unit in _units) {
@@ -1476,24 +1724,13 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
 
     _units.removeWhere((unit) => unit.hp <= 0);
 
-    if (_leftPlayer.towerHp <= 0 || _rightPlayer.towerHp <= 0) {
-      final winnerSide = _leftPlayer.towerHp <= 0 && _rightPlayer.towerHp <= 0
-          ? null
-          : _leftPlayer.towerHp <= 0
-          ? 'right'
-          : 'left';
-      _finish(winnerSide, 'tower_destroyed');
+    if (_isPlayerDefeated(_leftPlayer) || _isPlayerDefeated(_rightPlayer)) {
+      _finish(_winnerSideFromPlayers(), 'tower_destroyed');
       return;
     }
 
     if (_timeRemainingMs <= 0) {
-      String? winnerSide;
-      if (_leftPlayer.towerHp != _rightPlayer.towerHp) {
-        winnerSide = _leftPlayer.towerHp > _rightPlayer.towerHp
-            ? 'left'
-            : 'right';
-      }
-      _finish(winnerSide, 'time_up');
+      _finish(_winnerSideFromPlayers(), 'time_up');
       return;
     }
 

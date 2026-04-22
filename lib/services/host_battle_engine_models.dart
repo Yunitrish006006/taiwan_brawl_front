@@ -15,6 +15,8 @@ class _HostPlayer {
     required this.deckCards,
     required this.hand,
     required this.queue,
+    required this.cardUses,
+    required this.cardUseLimits,
     required this.physicalHealth,
     required this.maxPhysicalHealth,
     required this.physicalHealthRegen,
@@ -32,6 +34,9 @@ class _HostPlayer {
     required this.moneyPerSecond,
     required this.towerHp,
     required this.maxTowerHp,
+    required this.heroAttackCooldown,
+    required this.heroAttackEventId,
+    required this.heroAttackEvent,
     required this.botThinkMs,
   });
 
@@ -48,6 +53,8 @@ class _HostPlayer {
   final List<RoyaleCard> deckCards;
   final List<String> hand;
   final List<String> queue;
+  final Map<String, int> cardUses;
+  final Map<String, int> cardUseLimits;
   double physicalHealth;
   double maxPhysicalHealth;
   double physicalHealthRegen;
@@ -65,6 +72,9 @@ class _HostPlayer {
   double moneyPerSecond;
   int towerHp;
   final int maxTowerHp;
+  double heroAttackCooldown;
+  int heroAttackEventId;
+  Map<String, dynamic>? heroAttackEvent;
   int botThinkMs;
 
   double get totalEnergy => physicalEnergy + spiritEnergy;
@@ -79,6 +89,26 @@ class _HostPlayer {
     }
     return null;
   }
+
+  int remainingUsesFor(RoyaleCard card) {
+    final limit = cardUseLimits[card.id] ?? 8;
+    final used = cardUses[card.id] ?? 0;
+    return math.max(0, limit - used);
+  }
+}
+
+class _HeroAttack {
+  const _HeroAttack({
+    required this.damage,
+    required this.range,
+    required this.attackSpeed,
+    required this.damageType,
+  });
+
+  final int damage;
+  final double range;
+  final double attackSpeed;
+  final String damageType;
 }
 
 class _HostUnit {
@@ -201,11 +231,13 @@ class _UnitStats {
     required this.hp,
     required this.damage,
     required this.moveSpeed,
+    this.attackSpeedMultiplier = 1,
   });
 
   final int hp;
   final int damage;
   final double moveSpeed;
+  final double attackSpeedMultiplier;
 }
 
 class _TargetSelection {

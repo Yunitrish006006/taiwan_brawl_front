@@ -314,6 +314,8 @@ class HostBattleEngine {
     }
     final cards = playableCards.cards;
     final hasJobCard = cards.any((card) => card.isJob);
+    final hasEventCard = cards.any((card) => card.isEvent);
+    final selfEquipmentOnly = _isSelfEquipmentOnlyCast(cards);
 
     final physicalCost = cards
         .where((card) => card.usesPhysicalEnergy)
@@ -334,14 +336,17 @@ class HostBattleEngine {
       return 'Not enough Money';
     }
 
-    if (_isEquipmentOnlyCast(cards)) {
+    if (hasEventCard && cards.length != 1) {
+      return 'Event cards must be played alone';
+    }
+    if (_isEquipmentOnlyCast(cards) && !selfEquipmentOnly) {
       return 'Equipment cards need at least one unit in the same cast';
     }
     if (hasJobCard && cards.length != 1) {
       return 'Job cards must be played alone';
     }
 
-    final dropPoint = hasJobCard
+    final dropPoint = hasJobCard || hasEventCard || selfEquipmentOnly
         ? null
         : _normalizeDropPoint(side, dropX, dropY);
     final equipmentEffects = _equipmentEffects(cards);
@@ -357,16 +362,22 @@ class HostBattleEngine {
         );
       }
     }
+    _recordCardUses(player, cards);
     _drawReplacementCards(player, cardIds);
 
     for (final card in cards) {
       if (card.type == 'spell') {
         _resolveSpell(side, card, dropPoint!);
+      } else if (card.isEvent) {
+        _resolveEventCard(player, card);
       } else if (card.isJob) {
         _resolveJobCard(player, card);
       } else if (card.type != 'equipment') {
         _spawnUnits(side, card, dropPoint!, equipmentEffects);
       }
+    }
+    if (selfEquipmentOnly) {
+      _applySelfEquipmentEffects(player, cards);
     }
 
     _emitSnapshot();
@@ -393,6 +404,11 @@ class HostBattleEngine {
       if (card == null) {
         return const _PlayableCardsResult(error: 'Unknown card');
       }
+      if (player.remainingUsesFor(card) <= 0) {
+        return const _PlayableCardsResult(
+          error: 'Card deployment limit reached',
+        );
+      }
       cards.add(card);
     }
 
@@ -402,15 +418,32 @@ class HostBattleEngine {
   bool _isEquipmentOnlyCast(List<RoyaleCard> cards) {
     final hasEquipment = cards.any((card) => card.type == 'equipment');
     final hasUnit = cards.any(
-      (card) => card.type != 'equipment' && card.type != 'spell' && !card.isJob,
+      (card) =>
+          card.type != 'equipment' &&
+          card.type != 'spell' &&
+          !card.isEvent &&
+          !card.isJob,
     );
     return hasEquipment && !hasUnit;
+  }
+
+  bool _canCastEquipmentOnHero(RoyaleCard card) {
+    return card.type == 'equipment' &&
+        (card.targetRule == 'self' || card.targetRule == 'hero');
+  }
+
+  bool _isSelfEquipmentOnlyCast(List<RoyaleCard> cards) {
+    return cards.isNotEmpty &&
+        cards.every((card) => card.type == 'equipment') &&
+        cards.every(_canCastEquipmentOnHero);
   }
 
   Map<String, dynamic> _exportPlayerState(_HostPlayer player) {
     return {
       'hand': player.hand,
       'queue': player.queue,
+      'cardUses': player.cardUses,
+      'cardUseLimits': player.cardUseLimits,
       'botThinkMs': player.botThinkMs,
       'physicalHealth': player.physicalHealth,
       'maxPhysicalHealth': player.maxPhysicalHealth,
@@ -427,6 +460,9 @@ class HostBattleEngine {
       'money': player.money,
       'maxMoney': player.maxMoney,
       'moneyPerSecond': player.moneyPerSecond,
+      'heroAttackCooldown': player.heroAttackCooldown,
+      'heroAttackEventId': player.heroAttackEventId,
+      'heroAttackEvent': player.heroAttackEvent,
       'towerHp': player.towerHp,
       'maxTowerHp': player.maxTowerHp,
     };
@@ -443,6 +479,8 @@ class HostBattleEngine {
       'deckCards': player.deckCards.map(_serializeCard).toList(),
       'handCardIds': player.hand,
       'queueCardIds': player.queue,
+      'cardUses': player.cardUses,
+      'cardUseLimits': player.cardUseLimits,
       'physicalHealth': player.physicalHealth,
       'maxPhysicalHealth': player.maxPhysicalHealth,
       'physicalHealthRegen': player.physicalHealthRegen,
@@ -458,6 +496,9 @@ class HostBattleEngine {
       'money': player.money,
       'maxMoney': player.maxMoney,
       'moneyPerSecond': player.moneyPerSecond,
+      'heroAttackCooldown': player.heroAttackCooldown,
+      'heroAttackEventId': player.heroAttackEventId,
+      'heroAttackEvent': player.heroAttackEvent,
       'towerHp': player.towerHp,
       'maxTowerHp': player.maxTowerHp,
     };
@@ -536,6 +577,10 @@ class HostBattleEngine {
       queue: view.queueCardIds.isNotEmpty
           ? List<String>.from(view.queueCardIds)
           : queue,
+      cardUses: Map<String, int>.from(view.cardUses),
+      cardUseLimits: view.cardUseLimits.isNotEmpty
+          ? Map<String, int>.from(view.cardUseLimits)
+          : {for (final card in deckCards) card.id: 8},
       physicalHealth: view.physicalHealth.current,
       maxPhysicalHealth: view.physicalHealth.max,
       physicalHealthRegen: view.physicalHealth.regenPerSecond,
@@ -553,6 +598,9 @@ class HostBattleEngine {
       moneyPerSecond: view.money.regenPerSecond,
       towerHp: view.maxTowerHp == 0 ? _towerHp : view.towerHp,
       maxTowerHp: view.maxTowerHp == 0 ? _towerHp : view.maxTowerHp,
+      heroAttackCooldown: 0,
+      heroAttackEventId: 0,
+      heroAttackEvent: null,
       botThinkMs: view.userId == 0 ? _randomBotThinkMs() : 0,
     );
   }
@@ -581,6 +629,8 @@ class HostBattleEngine {
         deckCards: _leftPlayer.deckCards,
         handCardIds: _leftPlayer.hand,
         queueCardIds: _leftPlayer.queue,
+        cardUses: _leftPlayer.cardUses,
+        cardUseLimits: _leftPlayer.cardUseLimits,
         hero: _leftPlayer.hero,
         botController: _leftPlayer.botController,
         ready: _leftPlayer.ready,
@@ -622,6 +672,8 @@ class HostBattleEngine {
         deckCards: _rightPlayer.deckCards,
         handCardIds: _rightPlayer.hand,
         queueCardIds: _rightPlayer.queue,
+        cardUses: _rightPlayer.cardUses,
+        cardUseLimits: _rightPlayer.cardUseLimits,
         hero: _rightPlayer.hero,
         botController: _rightPlayer.botController,
         ready: _rightPlayer.ready,
@@ -673,6 +725,8 @@ class HostBattleEngine {
         nextCardId: viewerPlayer.queue.isEmpty
             ? null
             : viewerPlayer.queue.first,
+        yourCardUses: viewerPlayer.cardUses,
+        yourCardUseLimits: viewerPlayer.cardUseLimits,
         units: _units
             .map(
               (unit) => RoyaleUnitView(
