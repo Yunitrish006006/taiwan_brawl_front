@@ -14,11 +14,13 @@ class RoyaleLobbyPage extends StatefulWidget {
     this.initialRoomCode,
     this.initialHeroId,
     this.initialHeroName,
+    this.service,
   });
 
   final String? initialRoomCode;
   final String? initialHeroId;
   final String? initialHeroName;
+  final RoyaleService? service;
 
   @override
   State<RoyaleLobbyPage> createState() => _RoyaleLobbyPageState();
@@ -37,7 +39,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
   @override
   void initState() {
     super.initState();
-    _service = RoyaleService(ApiClient());
+    _service = widget.service ?? RoyaleService(ApiClient());
     _roomCodeController.text =
         widget.initialRoomCode?.trim().toUpperCase() ?? '';
     _loadLobbyData();
@@ -277,6 +279,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
                 () => _service.createRoom(
                   deckId: _selectedDeck!.id,
                   heroId: _heroId,
+                  vsBot: vsBot,
                   botController: vsBot ? _botController : 'heuristic',
                   simulationMode: vsBot ? 'host' : _simulationMode,
                 ),
