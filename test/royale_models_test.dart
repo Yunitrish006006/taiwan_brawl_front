@@ -85,4 +85,90 @@ void main() {
     expect(card.usesPhysicalEnergy, isFalse);
     expect(card.usesSpiritEnergy, isFalse);
   });
+
+  test('unit animation event frames play separately from base state', () {
+    const unit = RoyaleUnitView(
+      id: 'u1',
+      cardId: 'punk',
+      name: 'Legacy Name',
+      nameZhHant: '',
+      nameEn: 'Delinquent',
+      nameJa: '',
+      imageUrl: null,
+      characterImageUrl: null,
+      bgImageUrl: null,
+      characterAssets: [
+        RoyaleCharacterAsset(
+          assetId: 'attack_back_1',
+          animation: 'attack',
+          direction: 'back',
+          frameIndex: 1,
+          durationMs: 120,
+          loop: true,
+          imageUrl: '/card-character-assets/punk/attack_back_1',
+        ),
+        RoyaleCharacterAsset(
+          assetId: 'attack_back_0',
+          animation: 'attack',
+          direction: 'back',
+          frameIndex: 0,
+          durationMs: 120,
+          loop: true,
+          imageUrl: '/card-character-assets/punk/attack_back_0',
+        ),
+        RoyaleCharacterAsset(
+          assetId: 'idle_front_0',
+          animation: 'idle',
+          direction: 'front',
+          frameIndex: 0,
+          durationMs: 120,
+          loop: true,
+          imageUrl: '/card-character-assets/punk/idle_front_0',
+        ),
+        RoyaleCharacterAsset(
+          assetId: 'idle_back_0',
+          animation: 'idle',
+          direction: 'back',
+          frameIndex: 0,
+          durationMs: 120,
+          loop: true,
+          imageUrl: '/card-character-assets/punk/idle_back_0',
+        ),
+      ],
+      facingDirection: 'forward',
+      animationState: 'idle',
+      animationEvent: RoyaleAnimationEvent(animation: 'attack', id: 2),
+      side: 'left',
+      type: 'melee',
+      progress: 500,
+      lateralPosition: 500,
+      hp: 300,
+      maxHp: 300,
+      attackRange: 118,
+      bodyRadius: 18,
+      effects: [],
+      statusEffects: [],
+    );
+
+    expect(
+      unit.animationEventFramesForViewer('left').map((asset) => asset.assetId),
+      ['attack_back_0', 'attack_back_1'],
+    );
+    expect(
+      unit
+          .characterAnimationFramesForViewer('left')
+          .map((asset) => asset.assetId),
+      ['idle_back_0'],
+    );
+    expect(
+      unit.animationEventFramesForViewer('right').map((asset) => asset.assetId),
+      isEmpty,
+    );
+    expect(
+      unit
+          .characterAnimationFramesForViewer('right')
+          .map((asset) => asset.assetId),
+      ['idle_front_0'],
+    );
+  });
 }

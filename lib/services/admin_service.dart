@@ -74,6 +74,42 @@ class AdminService {
     return jsonNullableModel(res, 'card', RoyaleCard.fromJson);
   }
 
+  Future<RoyaleCard> uploadCardCharacterAsset({
+    required String cardId,
+    required String assetId,
+    required String animation,
+    required String direction,
+    required int frameIndex,
+    required int durationMs,
+    required bool loop,
+    required String bytesBase64,
+    required String contentType,
+    String? fileName,
+  }) async {
+    final res = await _apiClient
+        .postJson('/api/admin/cards/$cardId/character-assets/$assetId', {
+          'animation': animation,
+          'direction': direction,
+          'frameIndex': frameIndex,
+          'durationMs': durationMs,
+          'loop': loop,
+          'bytesBase64': bytesBase64,
+          'contentType': contentType,
+          'fileName': fileName,
+        });
+    return jsonModel(res, 'card', RoyaleCard.fromJson);
+  }
+
+  Future<RoyaleCard?> deleteCardCharacterAsset({
+    required String cardId,
+    required String assetId,
+  }) async {
+    final res = await _apiClient.deleteJson(
+      '/api/admin/cards/$cardId/character-assets/$assetId',
+    );
+    return jsonNullableModel(res, 'card', RoyaleCard.fromJson);
+  }
+
   Future<RoyaleCard> uploadCardBgImage({
     required String cardId,
     required String bytesBase64,

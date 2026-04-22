@@ -588,8 +588,19 @@ class _UnitToken extends StatelessWidget {
     final barWidth = size - 2;
     final labelFontSize = size * 0.32;
     final locale = context.watch<LocaleProvider>().locale;
+    final eventFrames = unit.animationEventFramesForViewer(viewerSide);
+    final eventKey = eventFrames.isEmpty ? null : unit.animationEvent?.key;
+    final animationFrames = unit.characterAnimationFramesForViewer(viewerSide);
     final charUrl = unit.characterImageUrlForViewer(viewerSide);
-    final hasCharImage = charUrl != null && charUrl.isNotEmpty;
+    final hasCharImage =
+        eventFrames.isNotEmpty ||
+        animationFrames.isNotEmpty ||
+        (charUrl != null && charUrl.isNotEmpty);
+    final fallback = _buildFallbackToken(
+      color: color,
+      labelFontSize: labelFontSize,
+      locale: locale,
+    );
 
     return Stack(
       clipBehavior: Clip.none,
@@ -600,21 +611,14 @@ class _UnitToken extends StatelessWidget {
               width: size,
               height: size,
               child: hasCharImage
-                  ? Image.network(
-                      charUrl,
-                      fit: BoxFit.contain,
-                      gaplessPlayback: true,
-                      errorBuilder: (_, _, _) => _buildFallbackToken(
-                        color: color,
-                        labelFontSize: labelFontSize,
-                        locale: locale,
-                      ),
+                  ? _AnimatedUnitImage(
+                      frames: animationFrames,
+                      eventFrames: eventFrames,
+                      eventKey: eventKey,
+                      fallbackUrl: charUrl,
+                      fallback: fallback,
                     )
-                  : _buildFallbackToken(
-                      color: color,
-                      labelFontSize: labelFontSize,
-                      locale: locale,
-                    ),
+                  : fallback,
             ),
             const SizedBox(height: 2),
             Container(
@@ -685,6 +689,171 @@ class _UnitToken extends StatelessWidget {
           fontSize: labelFontSize,
         ),
       ),
+    );
+  }
+}
+
+class _AnimatedUnitImage extends StatefulWidget {
+  const _AnimatedUnitImage({
+    required this.frames,
+    required this.eventFrames,
+    required this.eventKey,
+    required this.fallbackUrl,
+    required this.fallback,
+  });
+
+  final List<RoyaleCharacterAsset> frames;
+  final List<RoyaleCharacterAsset> eventFrames;
+  final String? eventKey;
+  final String? fallbackUrl;
+  final Widget fallback;
+
+  @override
+  State<_AnimatedUnitImage> createState() => _AnimatedUnitImageState();
+}
+
+class _AnimatedUnitImageState extends State<_AnimatedUnitImage> {
+  Timer? _timer;
+  int _baseFrameIndex = 0;
+  int _eventFrameIndex = 0;
+  bool _playingEvent = false;
+  String? _lastEventKey;
+
+  @override
+  void initState() {
+    super.initState();
+    _startEventIfNeeded();
+    _scheduleNextFrame();
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedUnitImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final baseChanged =
+        _signature(oldWidget.frames) != _signature(widget.frames);
+    final eventFramesChanged =
+        _signature(oldWidget.eventFrames) != _signature(widget.eventFrames);
+    if (baseChanged) {
+      _baseFrameIndex = 0;
+    }
+    if (_playingEvent &&
+        (widget.eventKey == null || widget.eventFrames.isEmpty)) {
+      _playingEvent = false;
+      _eventFrameIndex = 0;
+    }
+    if (_startEventIfNeeded() || baseChanged || eventFramesChanged) {
+      _scheduleNextFrame();
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _signature(List<RoyaleCharacterAsset> frames) {
+    return frames
+        .map(
+          (frame) =>
+              '${frame.assetId}:${frame.animation}:${frame.direction}:'
+              '${frame.frameIndex}:${frame.imageUrl}:${frame.durationMs}:'
+              '${frame.loop}',
+        )
+        .join('|');
+  }
+
+  bool _startEventIfNeeded() {
+    final eventKey = widget.eventKey;
+    if (eventKey == null ||
+        widget.eventFrames.isEmpty ||
+        eventKey == _lastEventKey) {
+      return false;
+    }
+    _lastEventKey = eventKey;
+    _playingEvent = true;
+    _eventFrameIndex = 0;
+    return true;
+  }
+
+  void _scheduleNextFrame() {
+    _timer?.cancel();
+    final activeFrames = _playingEvent ? widget.eventFrames : widget.frames;
+    if (activeFrames.isEmpty) {
+      return;
+    }
+
+    final activeIndex = _playingEvent ? _eventFrameIndex : _baseFrameIndex;
+    final frame = activeFrames[activeIndex % activeFrames.length];
+    if (!_playingEvent && activeFrames.length <= 1) {
+      return;
+    }
+    if (!_playingEvent &&
+        !frame.loop &&
+        _baseFrameIndex >= activeFrames.length - 1) {
+      return;
+    }
+
+    _timer = Timer(Duration(milliseconds: frame.durationMs), () {
+      if (!mounted) {
+        return;
+      }
+      if (_playingEvent) {
+        setState(() {
+          final nextIndex = _eventFrameIndex + 1;
+          if (nextIndex >= widget.eventFrames.length) {
+            _playingEvent = false;
+            _eventFrameIndex = 0;
+          } else {
+            _eventFrameIndex = nextIndex;
+          }
+        });
+        _scheduleNextFrame();
+        return;
+      }
+
+      setState(() {
+        final nextIndex = _baseFrameIndex + 1;
+        final shouldLoop = frame.loop || nextIndex < widget.frames.length;
+        _baseFrameIndex = shouldLoop
+            ? nextIndex % widget.frames.length
+            : widget.frames.length - 1;
+      });
+      _scheduleNextFrame();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final activeFrames = _playingEvent && widget.eventFrames.isNotEmpty
+        ? widget.eventFrames
+        : widget.frames;
+    final activeIndex = _playingEvent ? _eventFrameIndex : _baseFrameIndex;
+    final activeAsset = activeFrames.isEmpty
+        ? null
+        : activeFrames[activeIndex % activeFrames.length];
+    final cachedBytes = context
+        .watch<BattleAnimationCacheService>()
+        .bytesForAsset(activeAsset);
+    if (cachedBytes != null) {
+      return Image.memory(
+        cachedBytes,
+        fit: BoxFit.contain,
+        gaplessPlayback: true,
+        errorBuilder: (_, _, _) => widget.fallback,
+      );
+    }
+
+    final frameUrl = activeAsset?.imageUrl;
+    final imageUrl = frameUrl ?? widget.fallbackUrl;
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return widget.fallback;
+    }
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.contain,
+      gaplessPlayback: true,
+      errorBuilder: (_, _, _) => widget.fallback,
     );
   }
 }

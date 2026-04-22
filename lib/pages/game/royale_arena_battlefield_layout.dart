@@ -160,6 +160,7 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
           board.maxHeight * (unit.attackRange / _worldScale) * 2;
 
       return Positioned(
+        key: ValueKey(unit.id),
         left: left,
         top: top,
         child: Stack(

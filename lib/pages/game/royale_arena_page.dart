@@ -10,6 +10,7 @@ import '../../models/friends_models.dart';
 import '../../models/royale_models.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
+import '../../services/battle_animation_cache_service.dart';
 import '../../services/friends_service.dart';
 import '../../services/friends_overview_sync_service.dart';
 import '../../services/host_battle_engine.dart';
@@ -108,6 +109,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         _syncSelectionWithRoom(room);
         _isLoading = false;
       });
+      _prefetchBattleAnimations(room);
       _primeLatestBattleEvent(room);
       if (_shouldUseLiveSocket(room)) {
         _connectSocket();
@@ -185,8 +187,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     }
 
     final room = _room;
-    final interval =
-        room?.status == 'battle' ? _battlePollingInterval : _lobbyPollingInterval;
+    final interval = room?.status == 'battle'
+        ? _battlePollingInterval
+        : _lobbyPollingInterval;
     _roomStatePollTimer = Timer.periodic(interval, (_) {
       unawaited(_pollRoomState());
     });
@@ -336,6 +339,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       _room = room;
       _syncSelectionWithRoom(room);
     });
+    _prefetchBattleAnimations(room);
     _showLatestBattleEventIfNeeded(room);
     if (_isLocalOnlyHostBotBattle(room) && _hostBattleEngine != null) {
       _stopRoomStatePolling();
@@ -373,6 +377,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
             _room = snapshot;
             _syncSelectionWithRoom(snapshot);
           });
+          _prefetchBattleAnimations(snapshot);
           _showLatestBattleEventIfNeeded(snapshot);
           _scheduleHostStateSync(engine.exportBattleState());
           if (snapshot.battle?.result != null) {
@@ -386,6 +391,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         _room = engine.snapshot;
         _syncSelectionWithRoom(engine.snapshot);
       });
+      _prefetchBattleAnimations(engine.snapshot);
       if (_isLocalOnlyHostBotBattle(engine.snapshot)) {
         _stopRoomStatePolling();
       }
@@ -393,6 +399,17 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     } catch (e) {
       _showSnackBar('${_t.text('Action failed')}: $e');
     }
+  }
+
+  void _prefetchBattleAnimations(RoyaleRoomSnapshot room) {
+    if (!mounted || room.status != 'battle') {
+      return;
+    }
+    final cacheService = context.read<BattleAnimationCacheService>();
+    if (!cacheService.enabled) {
+      return;
+    }
+    unawaited(cacheService.prefetchForRoom(room));
   }
 
   void _scheduleHostStateSync(
@@ -713,7 +730,8 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       }
       return;
     }
-    final handIds = room.battle?.yourHand.map((card) => card.id).toSet() ?? <String>{};
+    final handIds =
+        room.battle?.yourHand.map((card) => card.id).toSet() ?? <String>{};
     final hasCompleteHandSnapshot = handIds.length >= 4;
     if (!hasCompleteHandSnapshot) {
       return;
@@ -882,8 +900,11 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         .toList();
   }
 
-  String _cardEnergyType(RoyaleCard card) =>
-      card.usesMoney ? 'money' : card.usesSpiritEnergy ? 'spirit' : 'physical';
+  String _cardEnergyType(RoyaleCard card) => card.usesMoney
+      ? 'money'
+      : card.usesSpiritEnergy
+      ? 'spirit'
+      : 'physical';
 
   int _cardEnergyCost(RoyaleCard card) => card.energyCost;
 
@@ -904,7 +925,9 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         _cardEnergyCost(card);
   }
 
-  ({int physical, int spirit, int money}) _selectedCardCosts(List<RoyaleCard> cards) {
+  ({int physical, int spirit, int money}) _selectedCardCosts(
+    List<RoyaleCard> cards,
+  ) {
     var physical = 0;
     var spirit = 0;
     var money = 0;
@@ -922,7 +945,8 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
 
   bool _canAffordCards(RoyalePlayerView? player, List<RoyaleCard> cards) {
     final costs = _selectedCardCosts(cards);
-    return _playerResourceForType(player, 'physical') + 1e-6 >= costs.physical &&
+    return _playerResourceForType(player, 'physical') + 1e-6 >=
+            costs.physical &&
         _playerResourceForType(player, 'spirit') + 1e-6 >= costs.spirit &&
         _playerResourceForType(player, 'money') + 1e-6 >= costs.money;
   }
@@ -1082,8 +1106,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     final hasJobCard = cards.any((card) => card.isJob);
     final hasEquipment = cards.any((card) => card.isEquipment);
     final hasUnit = cards.any(
-      (card) =>
-          card.type != 'equipment' && card.type != 'spell' && !card.isJob,
+      (card) => card.type != 'equipment' && card.type != 'spell' && !card.isJob,
     );
 
     if (hasEquipment && !hasUnit) {
@@ -1266,6 +1289,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         _room = room;
         _syncSelectionWithRoom(room);
       });
+      _prefetchBattleAnimations(room);
     } on ApiException catch (e) {
       if (!mounted) {
         return;
@@ -1359,11 +1383,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         max: 0,
         regenPerSecond: 0,
       ),
-      money: RoyaleResourceDefinition(
-        initial: 0,
-        max: 0,
-        regenPerSecond: 0,
-      ),
+      money: RoyaleResourceDefinition(initial: 0, max: 0, regenPerSecond: 0),
       unitDamageMultiplier: 1,
       jobMoneyMultiplier: 1,
       jobPositiveWeightMultiplier: 1,
@@ -1405,11 +1425,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
         max: 0,
         regenPerSecond: 0,
       ),
-      money: const RoyaleResourceState(
-        current: 0,
-        max: 0,
-        regenPerSecond: 0,
-      ),
+      money: const RoyaleResourceState(current: 0, max: 0, regenPerSecond: 0),
       towerHp: 0,
       maxTowerHp: 1,
     );

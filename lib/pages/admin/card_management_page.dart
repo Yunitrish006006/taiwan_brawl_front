@@ -67,6 +67,11 @@ class _CardManagementPageState extends State<CardManagementPage> {
     'spirit',
     'money',
   ];
+  static const List<String> _characterAssetAnimationOptions = [
+    'idle',
+    'move',
+    'attack',
+  ];
 
   late final AdminService _adminService;
 
@@ -85,6 +90,11 @@ class _CardManagementPageState extends State<CardManagementPage> {
   final TextEditingController _spellRadiusController = TextEditingController();
   final TextEditingController _spellDamageController = TextEditingController();
   final TextEditingController _effectValueController = TextEditingController();
+  final TextEditingController _assetIdController = TextEditingController();
+  final TextEditingController _assetFrameIndexController =
+      TextEditingController(text: '0');
+  final TextEditingController _assetDurationMsController =
+      TextEditingController(text: '120');
 
   List<RoyaleCard> _cards = const [];
   Uint8List? _pendingImageBytes;
@@ -96,6 +106,9 @@ class _CardManagementPageState extends State<CardManagementPage> {
   Uint8List? _pendingBgImageBytes;
   String? _pendingBgImageMimeType;
   String? _pendingBgImageFileName;
+  Uint8List? _pendingCharacterAssetBytes;
+  String? _pendingCharacterAssetMimeType;
+  String? _pendingCharacterAssetFileName;
   bool _isLoading = true;
   bool _isSaving = false;
   bool _isDeleting = false;
@@ -105,6 +118,8 @@ class _CardManagementPageState extends State<CardManagementPage> {
   final Set<_CharacterImageDirection> _removingCharImageDirections = {};
   bool _isUploadingBgImage = false;
   bool _isRemovingBgImage = false;
+  bool _isUploadingCharacterAsset = false;
+  String? _removingCharacterAssetId;
   bool _isCreatingNew = true;
   bool _showMobileEditor = false;
   String? _selectedCardId;
@@ -114,6 +129,10 @@ class _CardManagementPageState extends State<CardManagementPage> {
   String _selectedEnergyCostType = _energyCostTypeOptions.first;
   String _selectedTargetRule = _targetRuleOptions.first;
   String _selectedEffectKind = _effectKindOptions.first;
+  String _selectedCharacterAssetAnimation = 'move';
+  _CharacterImageDirection _selectedCharacterAssetDirection =
+      _CharacterImageDirection.back;
+  bool _characterAssetLoop = true;
 
   List<TextEditingController> get _allControllers => [
     _idController,
@@ -131,6 +150,9 @@ class _CardManagementPageState extends State<CardManagementPage> {
     _spellRadiusController,
     _spellDamageController,
     _effectValueController,
+    _assetIdController,
+    _assetFrameIndexController,
+    _assetDurationMsController,
   ];
 
   Map<String, String> get _t => context.read<LocaleProvider>().translation;
@@ -165,6 +187,9 @@ class _CardManagementPageState extends State<CardManagementPage> {
     _pendingBgImageBytes = null;
     _pendingBgImageMimeType = null;
     _pendingBgImageFileName = null;
+    _pendingCharacterAssetBytes = null;
+    _pendingCharacterAssetMimeType = null;
+    _pendingCharacterAssetFileName = null;
   }
 
   Future<void> _loadCards({String? preferCardId}) async {
@@ -260,8 +285,35 @@ class _CardManagementPageState extends State<CardManagementPage> {
       _spellRadiusController.text = '0';
       _spellDamageController.text = '0';
       _effectValueController.text = '0';
+      _assetIdController.clear();
+      _assetFrameIndexController.text = '0';
+      _assetDurationMsController.text = '120';
+      _selectedCharacterAssetAnimation = 'move';
+      _selectedCharacterAssetDirection = _CharacterImageDirection.back;
+      _characterAssetLoop = true;
       _clearPendingImageSelection();
     });
+  }
+
+  void _setSelectedCharacterAssetAnimation(String? value) {
+    if (value == null || value == _selectedCharacterAssetAnimation) {
+      return;
+    }
+    setState(() => _selectedCharacterAssetAnimation = value);
+  }
+
+  void _setSelectedCharacterAssetDirection(_CharacterImageDirection? value) {
+    if (value == null || value == _selectedCharacterAssetDirection) {
+      return;
+    }
+    setState(() => _selectedCharacterAssetDirection = value);
+  }
+
+  void _setCharacterAssetLoop(bool value) {
+    if (value == _characterAssetLoop) {
+      return;
+    }
+    setState(() => _characterAssetLoop = value);
   }
 
   void _openMobileEditorForCard(RoyaleCard card) {
@@ -705,6 +757,145 @@ class _CardManagementPageState extends State<CardManagementPage> {
       if (mounted) {
         setState(() {
           _removingCharImageDirections.remove(direction);
+        });
+      }
+    }
+  }
+
+  Future<void> _pickCharacterAssetImage() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+      withData: true,
+    );
+    if (!mounted || result == null || result.files.isEmpty) {
+      return;
+    }
+
+    final file = result.files.single;
+    final bytes = file.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      _showSnackBar(_t.text('Selected file has no readable bytes'));
+      return;
+    }
+
+    final mimeType = _detectImageMimeType(file);
+    if (mimeType == null) {
+      _showSnackBar(_t.text('Selected image is unsupported'));
+      return;
+    }
+
+    if (bytes.length > 1024 * 1024) {
+      _showSnackBar(_t.text('Image must be 1 MB or smaller'));
+      return;
+    }
+
+    setState(() {
+      _pendingCharacterAssetBytes = bytes;
+      _pendingCharacterAssetMimeType = mimeType;
+      _pendingCharacterAssetFileName = file.name;
+    });
+  }
+
+  Future<void> _uploadCharacterAsset() async {
+    final card = _selectedCard();
+    if (card == null || _isCreatingNew) {
+      _showSnackBar(_t.text('Save the card first before uploading an image'));
+      return;
+    }
+
+    final bytes = _pendingCharacterAssetBytes;
+    final mimeType = _pendingCharacterAssetMimeType;
+    final assetId = _assetIdController.text.trim();
+    final frameIndex = int.tryParse(_assetFrameIndexController.text.trim());
+    final durationMs = int.tryParse(_assetDurationMsController.text.trim());
+    if (assetId.isEmpty) {
+      _showSnackBar(_t.text('Asset ID is required'));
+      return;
+    }
+    if (bytes == null || mimeType == null) {
+      _showSnackBar(_t.text('Choose Image'));
+      return;
+    }
+    if (frameIndex == null || frameIndex < 0) {
+      _showSnackBar(_t.text('Frame index must be 0 or greater'));
+      return;
+    }
+    if (durationMs == null || durationMs < 33) {
+      _showSnackBar(_t.text('Frame duration must be at least 33 ms'));
+      return;
+    }
+
+    setState(() {
+      _isUploadingCharacterAsset = true;
+    });
+
+    try {
+      final updated = await _adminService.uploadCardCharacterAsset(
+        cardId: card.id,
+        assetId: assetId,
+        animation: _selectedCharacterAssetAnimation,
+        direction: _selectedCharacterAssetDirection.apiValue,
+        frameIndex: frameIndex,
+        durationMs: durationMs,
+        loop: _characterAssetLoop,
+        bytesBase64: base64Encode(bytes),
+        contentType: mimeType,
+        fileName: _pendingCharacterAssetFileName,
+      );
+      if (!mounted) {
+        return;
+      }
+      await _loadCards(preferCardId: updated.id);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _pendingCharacterAssetBytes = null;
+        _pendingCharacterAssetMimeType = null;
+        _pendingCharacterAssetFileName = null;
+      });
+      _showSnackBar(_t.text('Character asset uploaded successfully'));
+    } on ApiException catch (error) {
+      _showSnackBar(error.message);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingCharacterAsset = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _removeCharacterAsset(String assetId) async {
+    final card = _selectedCard();
+    if (card == null || _isCreatingNew) {
+      return;
+    }
+
+    setState(() {
+      _removingCharacterAssetId = assetId;
+    });
+
+    try {
+      await _adminService.deleteCardCharacterAsset(
+        cardId: card.id,
+        assetId: assetId,
+      );
+      if (!mounted) {
+        return;
+      }
+      await _loadCards(preferCardId: card.id);
+      if (!mounted) {
+        return;
+      }
+      _showSnackBar(_t.text('Character asset removed successfully'));
+    } on ApiException catch (error) {
+      _showSnackBar(error.message);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _removingCharacterAssetId = null;
         });
       }
     }
@@ -1276,6 +1467,304 @@ class _CharacterDirectionImageSection extends StatelessWidget {
                   ),
                 ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CharacterAnimationAssetEditor extends StatelessWidget {
+  const _CharacterAnimationAssetEditor({
+    required this.selectedCard,
+    required this.assetIdController,
+    required this.frameIndexController,
+    required this.durationMsController,
+    required this.animationOptions,
+    required this.selectedAnimation,
+    required this.onAnimationChanged,
+    required this.selectedDirection,
+    required this.onDirectionChanged,
+    required this.loop,
+    required this.onLoopChanged,
+    required this.pendingImageBytes,
+    required this.onPickImage,
+    required this.onUploadAsset,
+    required this.onRemoveAsset,
+    required this.isCreatingNew,
+    required this.isUploading,
+    required this.removingAssetId,
+    required this.translation,
+  });
+
+  final RoyaleCard? selectedCard;
+  final TextEditingController assetIdController;
+  final TextEditingController frameIndexController;
+  final TextEditingController durationMsController;
+  final List<String> animationOptions;
+  final String selectedAnimation;
+  final ValueChanged<String?> onAnimationChanged;
+  final _CharacterImageDirection selectedDirection;
+  final ValueChanged<_CharacterImageDirection?> onDirectionChanged;
+  final bool loop;
+  final ValueChanged<bool> onLoopChanged;
+  final Uint8List? pendingImageBytes;
+  final VoidCallback onPickImage;
+  final VoidCallback onUploadAsset;
+  final ValueChanged<String> onRemoveAsset;
+  final bool isCreatingNew;
+  final bool isUploading;
+  final String? removingAssetId;
+  final Map<String, String> translation;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final assets =
+        selectedCard?.characterAssets ?? const <RoyaleCharacterAsset>[];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.35,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            translation.text('Character Animation Assets'),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            translation.text(
+              'Each image has an asset ID and can be assigned to idle, move, or attack animations.',
+            ),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (assets.isEmpty)
+            Text(
+              translation.text('No animation assets uploaded'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            )
+          else
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final asset in assets)
+                  _CharacterAssetChip(
+                    asset: asset,
+                    removing: removingAssetId == asset.assetId,
+                    onRemove: () => onRemoveAsset(asset.assetId),
+                    translation: translation,
+                  ),
+              ],
+            ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(
+                width: 180,
+                child: TextField(
+                  controller: assetIdController,
+                  decoration: InputDecoration(
+                    labelText: translation.text('Asset ID'),
+                    helperText: translation.text('Example: move_back_0'),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 150,
+                child: DropdownButtonFormField<String>(
+                  initialValue: selectedAnimation,
+                  decoration: InputDecoration(
+                    labelText: translation.text('Animation'),
+                  ),
+                  items: [
+                    for (final option in animationOptions)
+                      DropdownMenuItem(value: option, child: Text(option)),
+                  ],
+                  onChanged: onAnimationChanged,
+                ),
+              ),
+              SizedBox(
+                width: 150,
+                child: DropdownButtonFormField<_CharacterImageDirection>(
+                  initialValue: selectedDirection,
+                  decoration: InputDecoration(
+                    labelText: translation.text('Direction'),
+                  ),
+                  items: [
+                    for (final direction in _CharacterImageDirection.values)
+                      DropdownMenuItem(
+                        value: direction,
+                        child: Text(translation.text(direction.labelKey)),
+                      ),
+                  ],
+                  onChanged: onDirectionChanged,
+                ),
+              ),
+              SizedBox(
+                width: 120,
+                child: TextField(
+                  controller: frameIndexController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: translation.text('Frame'),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 140,
+                child: TextField(
+                  controller: durationMsController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: translation.text('Duration ms'),
+                  ),
+                ),
+              ),
+              FilterChip(
+                selected: loop,
+                label: Text(translation.text('Loop')),
+                onSelected: onLoopChanged,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (pendingImageBytes != null && pendingImageBytes!.isNotEmpty)
+            Container(
+              width: double.infinity,
+              height: 140,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              alignment: Alignment.center,
+              clipBehavior: Clip.antiAlias,
+              child: Image.memory(pendingImageBytes!, fit: BoxFit.contain),
+            ),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              FilledButton.icon(
+                onPressed: isUploading ? null : onPickImage,
+                icon: const Icon(Icons.image_search_outlined),
+                label: Text(translation.text('Choose Image')),
+              ),
+              OutlinedButton.icon(
+                onPressed: isCreatingNew || isUploading ? null : onUploadAsset,
+                icon: isUploading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.cloud_upload_outlined),
+                label: Text(translation.text('Upload Asset')),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CharacterAssetChip extends StatelessWidget {
+  const _CharacterAssetChip({
+    required this.asset,
+    required this.removing,
+    required this.onRemove,
+    required this.translation,
+  });
+
+  final RoyaleCharacterAsset asset;
+  final bool removing;
+  final VoidCallback onRemove;
+  final Map<String, String> translation;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: 260,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: SizedBox(
+              width: 54,
+              height: 54,
+              child: asset.imageUrl == null || asset.imageUrl!.isEmpty
+                  ? const Icon(Icons.image_outlined)
+                  : Image.network(
+                      asset.imageUrl!,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, _, _) =>
+                          const Icon(Icons.broken_image_outlined),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  asset.assetId,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '${asset.animation} / ${asset.direction} / #${asset.frameIndex} / ${asset.durationMs}ms',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: translation.text('Remove'),
+            onPressed: removing ? null : onRemove,
+            icon: removing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.delete_outline_rounded),
           ),
         ],
       ),

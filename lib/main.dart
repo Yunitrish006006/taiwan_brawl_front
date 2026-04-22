@@ -17,6 +17,7 @@ import 'pages/game/royale_lobby_page.dart' deferred as royale_lobby_page;
 import 'services/ad_service.dart';
 import 'services/api_client.dart';
 import 'services/auth_service.dart';
+import 'services/battle_animation_cache_service.dart';
 import 'services/chat_service.dart';
 import 'services/friends_overview_sync_service.dart';
 import 'services/locale_provider.dart';
@@ -76,12 +77,17 @@ Future<void> main() async {
   await AdService.initialize();
   await ChatService.initHive();
   final apiClient = ApiClient();
+  final battleAnimationCacheService = BattleAnimationCacheService();
+  await battleAnimationCacheService.initialize();
   final notificationService = NotificationService(apiClient);
   await notificationService.initialize();
   runApp(
     MultiProvider(
       providers: [
         Provider<ApiClient>.value(value: apiClient),
+        ChangeNotifierProvider<BattleAnimationCacheService>.value(
+          value: battleAnimationCacheService,
+        ),
         ChangeNotifierProvider(create: (_) => AuthService(apiClient)),
         ChangeNotifierProxyProvider<AuthService, NotificationService>(
           create: (_) => notificationService,

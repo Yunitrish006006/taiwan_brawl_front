@@ -1,5 +1,102 @@
 import '../utils/remote_image_url.dart';
 
+class RoyaleCharacterAsset {
+  const RoyaleCharacterAsset({
+    this.cardId = '',
+    required this.assetId,
+    required this.animation,
+    required this.direction,
+    required this.frameIndex,
+    required this.durationMs,
+    required this.loop,
+    required this.imageUrl,
+    this.assetVersion = '',
+    this.fileName,
+    this.contentType,
+  });
+
+  final String cardId;
+  final String assetId;
+  final String animation;
+  final String direction;
+  final int frameIndex;
+  final int durationMs;
+  final bool loop;
+  final String? imageUrl;
+  final String assetVersion;
+  final String? fileName;
+  final String? contentType;
+
+  String get cacheIdentity {
+    final normalizedCardId = cardId.trim();
+    if (normalizedCardId.isNotEmpty) {
+      return '$normalizedCardId:$assetId';
+    }
+    final url = imageUrl ?? '';
+    final uri = Uri.tryParse(url);
+    return uri == null ? '$url:$assetId' : '${uri.path}:$assetId';
+  }
+
+  String get cacheVersion {
+    final normalized = assetVersion.trim();
+    if (normalized.isNotEmpty) {
+      return normalized;
+    }
+    final url = imageUrl ?? '';
+    final uri = Uri.tryParse(url);
+    final urlVersion = uri?.queryParameters['v']?.trim() ?? '';
+    if (urlVersion.isNotEmpty) {
+      return urlVersion;
+    }
+    return url;
+  }
+
+  factory RoyaleCharacterAsset.fromJson(Map<String, dynamic> json) {
+    return RoyaleCharacterAsset(
+      cardId: json['cardId'] as String? ?? '',
+      assetId: json['assetId'] as String? ?? '',
+      animation: json['animation'] as String? ?? 'idle',
+      direction: json['direction'] as String? ?? 'front',
+      frameIndex: (json['frameIndex'] as num?)?.toInt() ?? 0,
+      durationMs: (json['durationMs'] as num?)?.toInt() ?? 120,
+      loop: json['loop'] as bool? ?? true,
+      imageUrl: resolveRemoteImageUrl(json['imageUrl'] as String?),
+      assetVersion:
+          (json['assetVersion'] as String?) ??
+          ((json['imageVersion'] as num?)?.toInt().toString() ?? ''),
+      fileName: json['fileName'] as String?,
+      contentType: json['contentType'] as String?,
+    );
+  }
+}
+
+class RoyaleAnimationEvent {
+  const RoyaleAnimationEvent({required this.animation, required this.id});
+
+  final String animation;
+  final int id;
+
+  String get key => '$animation:$id';
+
+  static RoyaleAnimationEvent? fromJsonValue(Object? value) {
+    if (value is! Map) {
+      return null;
+    }
+    final animation = (value['animation'] ?? value['type'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    final id =
+        (value['id'] as num?)?.toInt() ??
+        (value['sequence'] as num?)?.toInt() ??
+        0;
+    if (animation.isEmpty || id <= 0) {
+      return null;
+    }
+    return RoyaleAnimationEvent(animation: animation, id: id);
+  }
+}
+
 class RoyaleCard {
   const RoyaleCard({
     required this.id,
@@ -14,6 +111,7 @@ class RoyaleCard {
     this.characterBackImageUrl,
     this.characterLeftImageUrl,
     this.characterRightImageUrl,
+    this.characterAssets = const [],
     required this.imageVersion,
     required this.energyCost,
     required this.energyCostType,
@@ -44,6 +142,7 @@ class RoyaleCard {
   final String? characterBackImageUrl;
   final String? characterLeftImageUrl;
   final String? characterRightImageUrl;
+  final List<RoyaleCharacterAsset> characterAssets;
   final int imageVersion;
   final int energyCost;
   final String energyCostType;
@@ -130,6 +229,18 @@ class RoyaleCard {
         (json['characterRightImageUrl'] as String?) ??
             (characterImageUrls['right'] as String?),
       ),
+      characterAssets: (json['characterAssets'] as List<dynamic>? ?? const [])
+          .map(
+            (asset) =>
+                RoyaleCharacterAsset.fromJson(asset as Map<String, dynamic>),
+          )
+          .where(
+            (asset) =>
+                asset.assetId.isNotEmpty &&
+                asset.imageUrl != null &&
+                asset.imageUrl!.isNotEmpty,
+          )
+          .toList(),
       imageVersion: (json['imageVersion'] as num?)?.toInt() ?? 0,
       energyCost:
           (json['energyCost'] as num?)?.toInt() ??
@@ -665,7 +776,10 @@ class RoyaleUnitView {
     this.characterBackImageUrl,
     this.characterLeftImageUrl,
     this.characterRightImageUrl,
+    this.characterAssets = const [],
     this.facingDirection = 'forward',
+    this.animationState = 'move',
+    this.animationEvent,
     required this.side,
     required this.type,
     required this.progress,
@@ -691,7 +805,10 @@ class RoyaleUnitView {
   final String? characterBackImageUrl;
   final String? characterLeftImageUrl;
   final String? characterRightImageUrl;
+  final List<RoyaleCharacterAsset> characterAssets;
   final String facingDirection;
+  final String animationState;
+  final RoyaleAnimationEvent? animationEvent;
   final String side;
   final String type;
   final int progress;
@@ -758,6 +875,66 @@ class RoyaleUnitView {
     return characterImageUrl ?? imageUrl;
   }
 
+  List<RoyaleCharacterAsset> characterAnimationFramesForViewer(
+    String viewerSide, {
+    String? animationOverride,
+    bool allowFallbackAnimations = true,
+  }) {
+    final direction = characterImageDirectionForViewer(viewerSide);
+    final fallbackDirection = side == viewerSide ? 'back' : 'front';
+    final requestedAnimation = animationOverride ?? animationState;
+    final animation = requestedAnimation.isEmpty ? 'move' : requestedAnimation;
+
+    List<RoyaleCharacterAsset> pick(String anim, String dir) {
+      final frames =
+          characterAssets
+              .where(
+                (asset) => asset.animation == anim && asset.direction == dir,
+              )
+              .toList()
+            ..sort((a, b) {
+              final frameCompare = a.frameIndex.compareTo(b.frameIndex);
+              return frameCompare != 0
+                  ? frameCompare
+                  : a.assetId.compareTo(b.assetId);
+            });
+      return frames;
+    }
+
+    final candidates = <List<String>>[
+      [animation, direction],
+      [animation, fallbackDirection],
+    ];
+    if (allowFallbackAnimations) {
+      candidates.addAll([
+        ['idle', direction],
+        ['idle', fallbackDirection],
+        ['move', direction],
+        ['move', fallbackDirection],
+      ]);
+    }
+
+    for (final candidate in candidates) {
+      final frames = pick(candidate[0], candidate[1]);
+      if (frames.isNotEmpty) {
+        return frames;
+      }
+    }
+    return const [];
+  }
+
+  List<RoyaleCharacterAsset> animationEventFramesForViewer(String viewerSide) {
+    final event = animationEvent;
+    if (event == null) {
+      return const [];
+    }
+    return characterAnimationFramesForViewer(
+      viewerSide,
+      animationOverride: event.animation,
+      allowFallbackAnimations: false,
+    );
+  }
+
   factory RoyaleUnitView.fromJson(Map<String, dynamic> json) {
     final characterImageUrls =
         json['characterImageUrls'] as Map<String, dynamic>? ?? const {};
@@ -791,7 +968,23 @@ class RoyaleUnitView {
         (json['characterRightImageUrl'] as String?) ??
             (characterImageUrls['right'] as String?),
       ),
+      characterAssets: (json['characterAssets'] as List<dynamic>? ?? const [])
+          .map(
+            (asset) =>
+                RoyaleCharacterAsset.fromJson(asset as Map<String, dynamic>),
+          )
+          .where(
+            (asset) =>
+                asset.assetId.isNotEmpty &&
+                asset.imageUrl != null &&
+                asset.imageUrl!.isNotEmpty,
+          )
+          .toList(),
       facingDirection: (json['facingDirection'] as String?) ?? 'forward',
+      animationState: (json['animationState'] as String?) ?? 'move',
+      animationEvent: RoyaleAnimationEvent.fromJsonValue(
+        json['animationEvent'],
+      ),
       side: json['side'] as String,
       type: json['type'] as String,
       progress: ((json['progress'] ?? json['x']) as num).toInt(),

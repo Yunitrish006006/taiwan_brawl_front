@@ -95,10 +95,14 @@ class _HostUnit {
     required this.characterBackImageUrl,
     required this.characterLeftImageUrl,
     required this.characterRightImageUrl,
+    required this.characterAssets,
     required this.bgImageUrl,
     required this.type,
     required this.side,
     required this.facingDirection,
+    required this.animationState,
+    required this.animationEvent,
+    required this.animationEventId,
     required this.progress,
     required this.lateralPosition,
     required this.hp,
@@ -125,10 +129,14 @@ class _HostUnit {
   final String? characterBackImageUrl;
   final String? characterLeftImageUrl;
   final String? characterRightImageUrl;
+  final List<RoyaleCharacterAsset> characterAssets;
   final String? bgImageUrl;
   final String type;
   final String side;
   String facingDirection;
+  String animationState;
+  String? animationEvent;
+  int animationEventId;
   double progress;
   double lateralPosition;
   int hp;

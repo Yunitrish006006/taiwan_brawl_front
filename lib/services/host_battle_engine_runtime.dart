@@ -686,10 +686,14 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
           characterBackImageUrl: card.characterBackImageUrl,
           characterLeftImageUrl: card.characterLeftImageUrl,
           characterRightImageUrl: card.characterRightImageUrl,
+          characterAssets: card.characterAssets,
           bgImageUrl: card.bgImageUrl,
           type: card.type,
           side: side,
           facingDirection: 'forward',
+          animationState: 'move',
+          animationEvent: null,
+          animationEventId: 0,
           progress: dropPoint.progress,
           lateralPosition: _sanitizeLateralPosition(
             dropPoint.lateralPosition + offset,
@@ -1443,11 +1447,15 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
           : _effectiveAttackReachToTower(unit);
       if (target != null && target.distance <= attackReach) {
         _updateUnitFacing(unit, target);
+        unit.animationState = 'idle';
         if (unit.cooldown <= 0) {
           _performAttack(unit, target);
+          unit.animationEventId += 1;
+          unit.animationEvent = 'attack';
           unit.cooldown = unit.attackSpeed;
         }
       } else {
+        unit.animationState = 'move';
         final progressDelta = _sideDirection(unit.side) * unit.moveSpeed * dt;
         final desiredLateral = target?.kind == 'unit'
             ? target!.unitTarget!.lateralPosition

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../models/app_user.dart';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
+import '../services/battle_animation_cache_service.dart';
 import '../services/theme_provider.dart';
 import '../services/ui_settings_provider.dart';
 import '../services/locale_provider.dart';
@@ -119,10 +120,35 @@ class SettingsPanel extends StatelessWidget {
               },
             ),
             const SizedBox(height: 16),
+            const _BattleAnimationCacheSettingsSection(),
+            const SizedBox(height: 16),
             _LlmBotSettingsSection(user: user),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _BattleAnimationCacheSettingsSection extends StatelessWidget {
+  const _BattleAnimationCacheSettingsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final cacheService = context.watch<BattleAnimationCacheService>();
+    final t = context.watch<LocaleProvider>().translation;
+    return SwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(t.text('Preload and keep battle animations')),
+      subtitle: Text(
+        t.text(
+          'Stores battle character animations locally and reuses them until the server version changes.',
+        ),
+      ),
+      value: cacheService.enabled,
+      onChanged: (value) {
+        context.read<BattleAnimationCacheService>().setEnabled(value);
+      },
     );
   }
 }

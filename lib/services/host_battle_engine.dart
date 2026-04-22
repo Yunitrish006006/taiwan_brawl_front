@@ -145,7 +145,17 @@ class HostBattleEngine {
               'characterBackImageUrl': unit.characterBackImageUrl,
               'characterLeftImageUrl': unit.characterLeftImageUrl,
               'characterRightImageUrl': unit.characterRightImageUrl,
+              'characterAssets': _serializeCharacterAssets(
+                unit.characterAssets,
+              ),
               'facingDirection': unit.facingDirection,
+              'animationState': unit.animationState,
+              'animationEvent': unit.animationEvent == null
+                  ? null
+                  : {
+                      'animation': unit.animationEvent,
+                      'id': unit.animationEventId,
+                    },
               'type': unit.type,
               'side': unit.side,
               'progress': unit.progress.round(),
@@ -475,6 +485,28 @@ class HostBattleEngine {
     };
   }
 
+  List<Map<String, dynamic>> _serializeCharacterAssets(
+    List<RoyaleCharacterAsset> assets,
+  ) {
+    return assets
+        .map(
+          (asset) => {
+            'cardId': asset.cardId,
+            'assetId': asset.assetId,
+            'animation': asset.animation,
+            'direction': asset.direction,
+            'frameIndex': asset.frameIndex,
+            'durationMs': asset.durationMs,
+            'loop': asset.loop,
+            'assetVersion': asset.assetVersion,
+            'imageUrl': asset.imageUrl,
+            'fileName': asset.fileName,
+            'contentType': asset.contentType,
+          },
+        )
+        .toList();
+  }
+
   _HostPlayer _buildPlayer(RoyaleRoomSnapshot room, String side) {
     final view = room.players.firstWhere((player) => player.side == side);
     final deckCards = view.deckCards;
@@ -656,8 +688,16 @@ class HostBattleEngine {
                 characterBackImageUrl: unit.characterBackImageUrl,
                 characterLeftImageUrl: unit.characterLeftImageUrl,
                 characterRightImageUrl: unit.characterRightImageUrl,
+                characterAssets: unit.characterAssets,
                 bgImageUrl: unit.bgImageUrl,
                 facingDirection: unit.facingDirection,
+                animationState: unit.animationState,
+                animationEvent: unit.animationEvent == null
+                    ? null
+                    : RoyaleAnimationEvent(
+                        animation: unit.animationEvent!,
+                        id: unit.animationEventId,
+                      ),
                 side: unit.side,
                 type: unit.type,
                 progress: unit.progress.round(),
