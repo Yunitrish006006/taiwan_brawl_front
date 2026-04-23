@@ -109,9 +109,6 @@ class _CardManagementPageState extends State<CardManagementPage> {
   Uint8List? _pendingImageBytes;
   String? _pendingImageMimeType;
   String? _pendingImageFileName;
-  final Map<_CharacterImageDirection, Uint8List> _pendingCharImageBytes = {};
-  final Map<_CharacterImageDirection, String> _pendingCharImageMimeTypes = {};
-  final Map<_CharacterImageDirection, String?> _pendingCharImageFileNames = {};
   Uint8List? _pendingBgImageBytes;
   String? _pendingBgImageMimeType;
   String? _pendingBgImageFileName;
@@ -123,8 +120,6 @@ class _CardManagementPageState extends State<CardManagementPage> {
   bool _isDeleting = false;
   bool _isUploadingImage = false;
   bool _isRemovingImage = false;
-  final Set<_CharacterImageDirection> _uploadingCharImageDirections = {};
-  final Set<_CharacterImageDirection> _removingCharImageDirections = {};
   bool _isUploadingBgImage = false;
   bool _isRemovingBgImage = false;
   bool _isUploadingCharacterAsset = false;
@@ -138,10 +133,10 @@ class _CardManagementPageState extends State<CardManagementPage> {
   String _selectedEnergyCostType = _energyCostTypeOptions.first;
   String _selectedTargetRule = _targetRuleOptions.first;
   String _selectedEffectKind = _effectKindOptions.first;
-  String _selectedCharacterAssetAnimation = 'move';
+  String _selectedCharacterAssetAnimation = 'idle';
   bool _useCustomCharacterAssetAnimation = false;
   _CharacterImageDirection _selectedCharacterAssetDirection =
-      _CharacterImageDirection.back;
+      _CharacterImageDirection.front;
   bool _characterAssetLoop = true;
 
   List<TextEditingController> get _allControllers => [
@@ -192,9 +187,6 @@ class _CardManagementPageState extends State<CardManagementPage> {
     _pendingImageBytes = null;
     _pendingImageMimeType = null;
     _pendingImageFileName = null;
-    _pendingCharImageBytes.clear();
-    _pendingCharImageMimeTypes.clear();
-    _pendingCharImageFileNames.clear();
     _pendingBgImageBytes = null;
     _pendingBgImageMimeType = null;
     _pendingBgImageFileName = null;
@@ -300,9 +292,9 @@ class _CardManagementPageState extends State<CardManagementPage> {
       _assetAnimationTokenController.clear();
       _assetFrameIndexController.text = '0';
       _assetDurationMsController.text = '120';
-      _selectedCharacterAssetAnimation = 'move';
+      _selectedCharacterAssetAnimation = 'idle';
       _useCustomCharacterAssetAnimation = false;
-      _selectedCharacterAssetDirection = _CharacterImageDirection.back;
+      _selectedCharacterAssetDirection = _CharacterImageDirection.front;
       _characterAssetLoop = true;
       _clearPendingImageSelection();
     });
@@ -639,149 +631,6 @@ class _CardManagementPageState extends State<CardManagementPage> {
       if (mounted) {
         setState(() {
           _isRemovingImage = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _pickCharImage(_CharacterImageDirection direction) async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-      withData: true,
-    );
-    if (!mounted || result == null || result.files.isEmpty) {
-      return;
-    }
-
-    final file = result.files.single;
-    final bytes = file.bytes;
-    if (bytes == null || bytes.isEmpty) {
-      _showSnackBar(_t.text('Selected file has no readable bytes'));
-      return;
-    }
-
-    final mimeType = _detectImageMimeType(file);
-    if (mimeType == null) {
-      _showSnackBar(_t.text('Selected image is unsupported'));
-      return;
-    }
-
-    if (bytes.length > 1024 * 1024) {
-      _showSnackBar(_t.text('Image must be 1 MB or smaller'));
-      return;
-    }
-
-    setState(() {
-      _pendingCharImageBytes[direction] = bytes;
-      _pendingCharImageMimeTypes[direction] = mimeType;
-      _pendingCharImageFileNames[direction] = file.name;
-    });
-  }
-
-  Future<void> _uploadCharImage(_CharacterImageDirection direction) async {
-    final card = _selectedCard();
-    if (card == null || _isCreatingNew) {
-      _showSnackBar(_t.text('Save the card first before uploading an image'));
-      return;
-    }
-    final pendingBytes = _pendingCharImageBytes[direction];
-    final pendingMimeType = _pendingCharImageMimeTypes[direction];
-    if (pendingBytes == null || pendingMimeType == null) {
-      return;
-    }
-    final pendingBytesByDirection = Map.of(_pendingCharImageBytes)
-      ..remove(direction);
-    final pendingMimeTypesByDirection = Map.of(_pendingCharImageMimeTypes)
-      ..remove(direction);
-    final pendingFileNamesByDirection = Map.of(_pendingCharImageFileNames)
-      ..remove(direction);
-
-    setState(() {
-      _uploadingCharImageDirections.add(direction);
-    });
-
-    try {
-      final updated = await _adminService.uploadCardCharacterImage(
-        cardId: card.id,
-        direction: direction.apiValue,
-        bytesBase64: base64Encode(pendingBytes),
-        contentType: pendingMimeType,
-        fileName: _pendingCharImageFileNames[direction],
-      );
-      if (!mounted) {
-        return;
-      }
-      await _loadCards(preferCardId: updated.id);
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _pendingCharImageBytes
-          ..clear()
-          ..addAll(pendingBytesByDirection);
-        _pendingCharImageMimeTypes
-          ..clear()
-          ..addAll(pendingMimeTypesByDirection);
-        _pendingCharImageFileNames
-          ..clear()
-          ..addAll(pendingFileNamesByDirection);
-      });
-      _showSnackBar(_t.text('Character image uploaded successfully'));
-    } on ApiException catch (error) {
-      _showSnackBar(error.message);
-    } finally {
-      if (mounted) {
-        setState(() {
-          _uploadingCharImageDirections.remove(direction);
-        });
-      }
-    }
-  }
-
-  Future<void> _removeCharImage(_CharacterImageDirection direction) async {
-    final card = _selectedCard();
-    if (card == null || _isCreatingNew) {
-      return;
-    }
-    final pendingBytesByDirection = Map.of(_pendingCharImageBytes);
-    final pendingMimeTypesByDirection = Map.of(_pendingCharImageMimeTypes);
-    final pendingFileNamesByDirection = Map.of(_pendingCharImageFileNames);
-
-    setState(() {
-      _removingCharImageDirections.add(direction);
-    });
-
-    try {
-      await _adminService.deleteCardCharacterImage(
-        card.id,
-        direction: direction.apiValue,
-      );
-      if (!mounted) {
-        return;
-      }
-      await _loadCards(preferCardId: card.id);
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _pendingCharImageBytes
-          ..clear()
-          ..addAll(pendingBytesByDirection);
-        _pendingCharImageMimeTypes
-          ..clear()
-          ..addAll(pendingMimeTypesByDirection);
-        _pendingCharImageFileNames
-          ..clear()
-          ..addAll(pendingFileNamesByDirection);
-      });
-      _showSnackBar(_t.text('Character image removed successfully'));
-    } on ApiException catch (error) {
-      _showSnackBar(error.message);
-    } finally {
-      if (mounted) {
-        setState(() {
-          _removingCharImageDirections.remove(direction);
         });
       }
     }
@@ -1427,94 +1276,6 @@ class _CardImageEditor extends StatelessWidget {
   }
 }
 
-class _CharacterDirectionImageSection extends StatelessWidget {
-  const _CharacterDirectionImageSection({
-    required this.selectedCard,
-    required this.pendingImageBytes,
-    required this.onPickImage,
-    required this.onUploadImage,
-    required this.onRemoveImage,
-    required this.isCreatingNew,
-    required this.uploadingDirections,
-    required this.removingDirections,
-    required this.translation,
-  });
-
-  final RoyaleCard? selectedCard;
-  final Map<_CharacterImageDirection, Uint8List> pendingImageBytes;
-  final Future<void> Function(_CharacterImageDirection direction) onPickImage;
-  final Future<void> Function(_CharacterImageDirection direction) onUploadImage;
-  final Future<void> Function(_CharacterImageDirection direction) onRemoveImage;
-  final bool isCreatingNew;
-  final Set<_CharacterImageDirection> uploadingDirections;
-  final Set<_CharacterImageDirection> removingDirections;
-  final Map<String, String> translation;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(
-          alpha: 0.35,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            translation.text('Character Direction Images'),
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            translation.text(
-              'Upload front, back, left, and right character art separately.',
-            ),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              for (final direction in _CharacterImageDirection.values)
-                SizedBox(
-                  width: 280,
-                  child: _CardLayerImageEditor(
-                    title:
-                        '${translation.text(direction.labelKey)} ${translation.text('Character Image')}',
-                    imageUrl: selectedCard?.characterImageUrlFor(
-                      direction.apiValue,
-                    ),
-                    pendingImageBytes: pendingImageBytes[direction],
-                    onPickImage: () => onPickImage(direction),
-                    onUploadImage: () => onUploadImage(direction),
-                    onRemoveImage: () => onRemoveImage(direction),
-                    isCreatingNew: isCreatingNew,
-                    isUploadingImage: uploadingDirections.contains(direction),
-                    isRemovingImage: removingDirections.contains(direction),
-                    hasPendingImage: pendingImageBytes.containsKey(direction),
-                    translation: translation,
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _CharacterAnimationAssetEditor extends StatelessWidget {
   const _CharacterAnimationAssetEditor({
     required this.selectedCard,
@@ -1596,7 +1357,7 @@ class _CharacterAnimationAssetEditor extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             translation.text(
-              'Add unit animation nodes here (attack, hit, move, stun, spawn). You can also define your own token.',
+              'Add unit animation assets here. idle, move, attack, hit, stun, and spawn all use the same animation-token model. You can also define your own token.',
             ),
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -1643,7 +1404,7 @@ class _CharacterAnimationAssetEditor extends StatelessWidget {
                   controller: assetIdController,
                   decoration: InputDecoration(
                     labelText: translation.text('Asset ID'),
-                    helperText: translation.text('Example: move_back_0'),
+                    helperText: translation.text('Example: idle_front_00'),
                   ),
                 ),
               ),
