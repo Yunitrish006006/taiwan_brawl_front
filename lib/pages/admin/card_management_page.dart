@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -71,6 +72,12 @@ class _CardManagementPageState extends State<CardManagementPage> {
     'idle',
     'move',
     'attack',
+    'hit',
+    'stun',
+    'spawn',
+    'cast',
+    'skill',
+    'death',
   ];
 
   late final AdminService _adminService;
@@ -91,6 +98,8 @@ class _CardManagementPageState extends State<CardManagementPage> {
   final TextEditingController _spellDamageController = TextEditingController();
   final TextEditingController _effectValueController = TextEditingController();
   final TextEditingController _assetIdController = TextEditingController();
+  final TextEditingController _assetAnimationTokenController =
+      TextEditingController();
   final TextEditingController _assetFrameIndexController =
       TextEditingController(text: '0');
   final TextEditingController _assetDurationMsController =
@@ -130,6 +139,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
   String _selectedTargetRule = _targetRuleOptions.first;
   String _selectedEffectKind = _effectKindOptions.first;
   String _selectedCharacterAssetAnimation = 'move';
+  bool _useCustomCharacterAssetAnimation = false;
   _CharacterImageDirection _selectedCharacterAssetDirection =
       _CharacterImageDirection.back;
   bool _characterAssetLoop = true;
@@ -151,6 +161,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
     _spellDamageController,
     _effectValueController,
     _assetIdController,
+    _assetAnimationTokenController,
     _assetFrameIndexController,
     _assetDurationMsController,
   ];
@@ -286,9 +297,11 @@ class _CardManagementPageState extends State<CardManagementPage> {
       _spellDamageController.text = '0';
       _effectValueController.text = '0';
       _assetIdController.clear();
+      _assetAnimationTokenController.clear();
       _assetFrameIndexController.text = '0';
       _assetDurationMsController.text = '120';
       _selectedCharacterAssetAnimation = 'move';
+      _useCustomCharacterAssetAnimation = false;
       _selectedCharacterAssetDirection = _CharacterImageDirection.back;
       _characterAssetLoop = true;
       _clearPendingImageSelection();
@@ -300,6 +313,18 @@ class _CardManagementPageState extends State<CardManagementPage> {
       return;
     }
     setState(() => _selectedCharacterAssetAnimation = value);
+  }
+
+  void _setUseCustomCharacterAssetAnimation(bool value) {
+    if (value == _useCustomCharacterAssetAnimation) {
+      return;
+    }
+    setState(() {
+      _useCustomCharacterAssetAnimation = value;
+      if (!value) {
+        _assetAnimationTokenController.clear();
+      }
+    });
   }
 
   void _setSelectedCharacterAssetDirection(_CharacterImageDirection? value) {
@@ -826,6 +851,18 @@ class _CardManagementPageState extends State<CardManagementPage> {
       return;
     }
 
+    final selectedAnimation = _useCustomCharacterAssetAnimation
+        ? _assetAnimationTokenController.text.trim().toLowerCase()
+        : _selectedCharacterAssetAnimation;
+    if (!_isValidCharacterAssetToken(selectedAnimation)) {
+      _showSnackBar(
+        _t.text(
+          'Animation token must be 1-32 letters, numbers, underscores, or dashes',
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isUploadingCharacterAsset = true;
     });
@@ -834,7 +871,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
       final updated = await _adminService.uploadCardCharacterAsset(
         cardId: card.id,
         assetId: assetId,
-        animation: _selectedCharacterAssetAnimation,
+        animation: selectedAnimation,
         direction: _selectedCharacterAssetDirection.apiValue,
         frameIndex: frameIndex,
         durationMs: durationMs,
@@ -899,6 +936,10 @@ class _CardManagementPageState extends State<CardManagementPage> {
         });
       }
     }
+  }
+
+  bool _isValidCharacterAssetToken(String value) {
+    return RegExp(r'^[a-z0-9_-]{1,32}$').hasMatch(value);
   }
 
   Future<void> _pickBgImage() async {
@@ -1483,6 +1524,9 @@ class _CharacterAnimationAssetEditor extends StatelessWidget {
     required this.animationOptions,
     required this.selectedAnimation,
     required this.onAnimationChanged,
+    required this.useCustomAnimation,
+    required this.onUseCustomAnimationChanged,
+    required this.customAnimationController,
     required this.selectedDirection,
     required this.onDirectionChanged,
     required this.loop,
@@ -1504,6 +1548,9 @@ class _CharacterAnimationAssetEditor extends StatelessWidget {
   final List<String> animationOptions;
   final String selectedAnimation;
   final ValueChanged<String?> onAnimationChanged;
+  final bool useCustomAnimation;
+  final ValueChanged<bool> onUseCustomAnimationChanged;
+  final TextEditingController customAnimationController;
   final _CharacterImageDirection selectedDirection;
   final ValueChanged<_CharacterImageDirection?> onDirectionChanged;
   final bool loop;
@@ -1522,6 +1569,10 @@ class _CharacterAnimationAssetEditor extends StatelessWidget {
     final theme = Theme.of(context);
     final assets =
         selectedCard?.characterAssets ?? const <RoyaleCharacterAsset>[];
+    final previewAnimationToken = useCustomAnimation
+        ? customAnimationController.text.trim().toLowerCase()
+        : selectedAnimation;
+    final previewDirection = selectedDirection.apiValue;
 
     return Container(
       width: double.infinity,
@@ -1537,7 +1588,7 @@ class _CharacterAnimationAssetEditor extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            translation.text('Character Animation Assets'),
+            translation.text('Character Animation Nodes & Assets'),
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -1545,7 +1596,7 @@ class _CharacterAnimationAssetEditor extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             translation.text(
-              'Each image has an asset ID and can be assigned to idle, move, or attack animations.',
+              'Add unit animation nodes here (attack, hit, move, stun, spawn). You can also define your own token.',
             ),
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -1573,6 +1624,13 @@ class _CharacterAnimationAssetEditor extends StatelessWidget {
                   ),
               ],
             ),
+          const SizedBox(height: 12),
+          _CharacterAnimationPreviewPanel(
+            assets: assets,
+            animation: previewAnimationToken,
+            direction: previewDirection,
+            translation: translation,
+          ),
           const SizedBox(height: 16),
           Wrap(
             spacing: 12,
@@ -1590,17 +1648,45 @@ class _CharacterAnimationAssetEditor extends StatelessWidget {
                 ),
               ),
               SizedBox(
-                width: 150,
-                child: DropdownButtonFormField<String>(
-                  initialValue: selectedAnimation,
-                  decoration: InputDecoration(
-                    labelText: translation.text('Animation'),
-                  ),
-                  items: [
-                    for (final option in animationOptions)
-                      DropdownMenuItem(value: option, child: Text(option)),
+                width: 280,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FilterChip(
+                      selected: useCustomAnimation,
+                      label: Text(
+                        translation.text('Use custom animation token'),
+                      ),
+                      onSelected: onUseCustomAnimationChanged,
+                    ),
+                    const SizedBox(height: 8),
+                    if (useCustomAnimation)
+                      TextField(
+                        controller: customAnimationController,
+                        textInputAction: TextInputAction.done,
+                        decoration: InputDecoration(
+                          labelText: translation.text('Animation Token'),
+                          helperText: translation.text(
+                            'Example: hit, stun, spawn',
+                          ),
+                        ),
+                      )
+                    else
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedAnimation,
+                        decoration: InputDecoration(
+                          labelText: translation.text('Animation'),
+                        ),
+                        items: [
+                          for (final option in animationOptions)
+                            DropdownMenuItem(
+                              value: option,
+                              child: Text(option),
+                            ),
+                        ],
+                        onChanged: onAnimationChanged,
+                      ),
                   ],
-                  onChanged: onAnimationChanged,
                 ),
               ),
               SizedBox(
@@ -1765,6 +1851,177 @@ class _CharacterAssetChip extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.delete_outline_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CharacterAnimationPreviewPanel extends StatefulWidget {
+  const _CharacterAnimationPreviewPanel({
+    required this.assets,
+    required this.animation,
+    required this.direction,
+    required this.translation,
+  });
+
+  final List<RoyaleCharacterAsset> assets;
+  final String animation;
+  final String direction;
+  final Map<String, String> translation;
+
+  @override
+  State<_CharacterAnimationPreviewPanel> createState() =>
+      _CharacterAnimationPreviewPanelState();
+}
+
+class _CharacterAnimationPreviewPanelState
+    extends State<_CharacterAnimationPreviewPanel> {
+  Timer? _timer;
+  int _frameCursor = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CharacterAnimationPreviewPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final previousKey = _previewKey(oldWidget.animation, oldWidget.direction);
+    final nextKey = _previewKey(widget.animation, widget.direction);
+    if (previousKey != nextKey) {
+      _frameCursor = 0;
+    }
+    _syncTimer();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _previewKey(String animation, String direction) {
+    return '${animation.trim().toLowerCase()}|${direction.trim().toLowerCase()}';
+  }
+
+  List<RoyaleCharacterAsset> _filteredFrames() {
+    final animation = widget.animation.trim().toLowerCase();
+    final direction = widget.direction.trim().toLowerCase();
+    if (animation.isEmpty) {
+      return const [];
+    }
+    final matches =
+        widget.assets
+            .where(
+              (asset) =>
+                  asset.animation.toLowerCase() == animation &&
+                  asset.direction.toLowerCase() == direction &&
+                  asset.imageUrl != null &&
+                  asset.imageUrl!.isNotEmpty,
+            )
+            .toList()
+          ..sort((a, b) => a.frameIndex.compareTo(b.frameIndex));
+    return matches;
+  }
+
+  void _syncTimer() {
+    _timer?.cancel();
+    final frames = _filteredFrames();
+    if (frames.length <= 1) {
+      return;
+    }
+    _timer = Timer.periodic(const Duration(milliseconds: 120), (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _frameCursor = (_frameCursor + 1) % frames.length;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final frames = _filteredFrames();
+
+    final hasFrames = frames.isNotEmpty;
+    final activeIndex = hasFrames
+        ? _frameCursor.clamp(0, frames.length - 1)
+        : 0;
+    final activeFrame = hasFrames ? frames[activeIndex] : null;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.translation.text('Animation Preview'),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            widget.translation.text(
+              'Previewing ${widget.animation.isEmpty ? 'none' : widget.animation} / ${widget.direction}',
+            ),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            height: 160,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.35,
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            alignment: Alignment.center,
+            child: activeFrame == null
+                ? Text(
+                    widget.translation.text(
+                      'No frames for this animation and direction yet',
+                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  )
+                : Image.network(
+                    activeFrame.imageUrl!,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) =>
+                        const Icon(Icons.broken_image_outlined),
+                  ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final frame in frames)
+                Chip(
+                  label: Text('#${frame.frameIndex}'),
+                  visualDensity: VisualDensity.compact,
+                  backgroundColor: activeFrame?.assetId == frame.assetId
+                      ? theme.colorScheme.primaryContainer
+                      : theme.colorScheme.surfaceContainerHigh,
+                ),
+            ],
           ),
         ],
       ),

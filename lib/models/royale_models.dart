@@ -282,7 +282,7 @@ class RoyaleDeckProgression {
   const RoyaleDeckProgression({
     required this.deckId,
     required this.userId,
-    required this.characterId,
+    required this.heroId,
     required this.age,
     required this.health,
     required this.rebirthCount,
@@ -296,7 +296,7 @@ class RoyaleDeckProgression {
 
   final int deckId;
   final int userId;
-  final String characterId;
+  final String heroId;
   final int age;
   final int health;
   final int rebirthCount;
@@ -311,7 +311,7 @@ class RoyaleDeckProgression {
     return RoyaleDeckProgression(
       deckId: (json['deckId'] as num?)?.toInt() ?? 0,
       userId: (json['userId'] as num?)?.toInt() ?? 0,
-      characterId: json['characterId'] as String? ?? 'ordinary_child',
+      heroId: json['heroId'] as String? ?? 'ordinary_person',
       age: (json['age'] as num?)?.toInt() ?? 0,
       health: (json['health'] as num?)?.toInt() ?? 100,
       rebirthCount: (json['rebirthCount'] as num?)?.toInt() ?? 0,
@@ -335,8 +335,8 @@ class RoyaleDeckProgression {
   }
 }
 
-class RoyaleCharacterArchetype {
-  const RoyaleCharacterArchetype({
+class RoyaleHeroOption {
+  const RoyaleHeroOption({
     required this.id,
     required this.name,
     required this.nameZhHant,
@@ -392,8 +392,8 @@ class RoyaleCharacterArchetype {
     }
   }
 
-  factory RoyaleCharacterArchetype.fromJson(Map<String, dynamic> json) {
-    return RoyaleCharacterArchetype(
+  factory RoyaleHeroOption.fromJson(Map<String, dynamic> json) {
+    return RoyaleHeroOption(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '',
       nameZhHant:
@@ -413,23 +413,20 @@ class RoyaleCharacterArchetype {
 
 class RoyaleProgressionOverview {
   const RoyaleProgressionOverview({
-    required this.characterArchetypes,
+    required this.heroOptions,
     required this.progression,
   });
 
-  final List<RoyaleCharacterArchetype> characterArchetypes;
+  final List<RoyaleHeroOption> heroOptions;
   final List<RoyaleDeckProgression> progression;
 
   factory RoyaleProgressionOverview.fromJson(Map<String, dynamic> json) {
     return RoyaleProgressionOverview(
-      characterArchetypes:
-          (json['characterArchetypes'] as List<dynamic>? ?? const [])
-              .map(
-                (entry) => RoyaleCharacterArchetype.fromJson(
-                  entry as Map<String, dynamic>,
-                ),
-              )
-              .toList(growable: false),
+      heroOptions: (json['heroOptions'] as List<dynamic>? ?? const [])
+          .map(
+            (entry) => RoyaleHeroOption.fromJson(entry as Map<String, dynamic>),
+          )
+          .toList(growable: false),
       progression: (json['progression'] as List<dynamic>? ?? const [])
           .map(
             (entry) =>

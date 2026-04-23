@@ -48,24 +48,24 @@ class RoyaleService {
     required String name,
     required int slot,
     required List<String> cardIds,
-    String? characterId,
+    String? heroId,
   }) async {
     final res = await _apiClient.postJson('/api/decks', {
       'name': name,
       'slot': slot,
       'cardIds': cardIds,
-      'characterId': ?characterId,
+      'heroId': ?heroId,
     });
     return jsonModel(res, 'deck', RoyaleDeck.fromJson);
   }
 
-  Future<RoyaleDeckProgression> selectDeckCharacter({
+  Future<RoyaleDeckProgression> selectDeckHero({
     required int deckId,
-    required String characterId,
+    required String heroId,
   }) async {
-    final res = await _apiClient.postJson('/api/decks/character', {
+    final res = await _apiClient.postJson('/api/decks/hero', {
       'deckId': deckId,
-      'characterId': characterId,
+      'heroId': heroId,
     });
     return jsonModel(res, 'progression', RoyaleDeckProgression.fromJson);
   }

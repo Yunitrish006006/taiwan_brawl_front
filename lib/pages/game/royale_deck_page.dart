@@ -33,7 +33,6 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   List<RoyaleCard> _cards = const [];
   List<RoyaleDeck> _decks = const [];
   List<RoyaleHero> _heroes = const [];
-  List<RoyaleCharacterArchetype> _characterArchetypes = const [];
   String _selectedHeroId = 'ordinary_person';
   final TextEditingController _nameController = TextEditingController(
     text: 'Battle Deck',
@@ -68,7 +67,6 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
       final cards = await _service.fetchCards();
       final decks = await _service.fetchDecks();
       final heroes = await _service.fetchHeroes();
-      final progression = await _service.fetchProgression();
       final sortedDecks = [...decks]..sort((a, b) => a.slot.compareTo(b.slot));
       final targetSlot = _resolveSlotForLoad(sortedDecks);
       final deck = _deckForSlot(targetSlot, decks: sortedDecks);
@@ -76,15 +74,17 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
           deck?.cards.map((card) => card.id).toList() ??
           _defaultSelectedCardIds(cards);
       final deckName = deck?.name ?? _defaultDeckName(targetSlot);
+      final progressionHeroId = deck?.progression?.heroId;
 
       setState(() {
         _cards = cards;
         _decks = sortedDecks;
         _heroes = heroes;
-        _characterArchetypes = progression.characterArchetypes;
-        _selectedHeroId = heroes.any((h) => h.id == _selectedHeroId)
-            ? _selectedHeroId
-            : (heroes.isNotEmpty ? heroes.first.id : 'ordinary_person');
+        _selectedHeroId = heroes.any((h) => h.id == progressionHeroId)
+            ? progressionHeroId!
+            : (heroes.any((h) => h.id == _selectedHeroId)
+                  ? _selectedHeroId
+                  : (heroes.isNotEmpty ? heroes.first.id : 'ordinary_person'));
         _activeSlot = targetSlot;
         _selectedCardIds
           ..clear()
@@ -180,6 +180,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     final selectedCardIds =
         deck?.cards.map((card) => card.id).toList() ??
         _defaultSelectedCardIds(_cards);
+    final progressionHeroId = deck?.progression?.heroId;
 
     setState(() {
       _activeSlot = slot;
@@ -187,6 +188,9 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
         ..clear()
         ..addAll(selectedCardIds);
       _nameController.text = deck?.name ?? _defaultDeckName(slot);
+      if (_heroes.any((h) => h.id == progressionHeroId)) {
+        _selectedHeroId = progressionHeroId!;
+      }
       _previewCardId = _defaultPreviewCardId(
         selectedCardIds: selectedCardIds,
         cards: _cards,
@@ -220,46 +224,6 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     });
   }
 
-  Future<void> _selectCharacter(String characterId) async {
-    final deck = _activeDeck;
-    if (deck == null) {
-      return;
-    }
-    final t = context.read<LocaleProvider>().translation;
-    try {
-      final progression = await _service.selectDeckCharacter(
-        deckId: deck.id,
-        characterId: characterId,
-      );
-      if (!mounted) return;
-      setState(() {
-        _decks = _decks
-            .map(
-              (entry) => entry.id == deck.id
-                  ? RoyaleDeck(
-                      id: entry.id,
-                      name: entry.name,
-                      slot: entry.slot,
-                      updatedAt: entry.updatedAt,
-                      cards: entry.cards,
-                      progression: progression,
-                    )
-                  : entry,
-            )
-            .toList(growable: false);
-      });
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            e.message.isEmpty ? t.text('Action failed') : e.message,
-          ),
-        ),
-      );
-    }
-  }
-
   Future<void> _save() async {
     final t = context.read<LocaleProvider>().translation;
     if (_selectedCardIds.length != 8) {
@@ -280,6 +244,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
             : _nameController.text.trim(),
         slot: _activeSlot,
         cardIds: _selectedCardIds,
+        heroId: _selectedHeroId,
       );
 
       if (!mounted) {
@@ -425,104 +390,75 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   }
 
   Widget _buildHeroCard(RoyaleHero hero, ThemeData theme, String locale) {
-    final isSelected = _selectedHeroId == hero.id;
     return SizedBox(
       width: 220,
       child: Material(
         color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () => setState(() => _selectedHeroId = hero.id),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? theme.colorScheme.primaryContainer
-                  : theme.colorScheme.surfaceContainerHighest.withValues(
-                      alpha: 0.6,
-                    ),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.outlineVariant,
-                width: isSelected ? 2 : 1,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: theme.colorScheme.primary, width: 2),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                hero.localizedName(locale),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.primary,
+                ),
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        hero.localizedName(locale),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: isSelected
-                              ? theme.colorScheme.primary
-                              : theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                    if (isSelected)
-                      Icon(
-                        Icons.check_circle_rounded,
-                        size: 18,
-                        color: theme.colorScheme.primary,
-                      ),
-                  ],
+              const SizedBox(height: 4),
+              Text(
+                hero.localizedBonusSummary(locale),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w700,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  hero.localizedBonusSummary(locale),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _buildHeroStatRow(
-                  theme,
-                  icon: Icons.favorite_border_rounded,
-                  label: 'PH',
-                  value: _heroMeterSummary(hero.physicalHealth),
-                ),
-                const SizedBox(height: 2),
-                _buildHeroStatRow(
-                  theme,
-                  icon: Icons.psychology_outlined,
-                  label: 'SH',
-                  value: _heroMeterSummary(hero.spiritHealth),
-                ),
-                const SizedBox(height: 2),
-                _buildHeroStatRow(
-                  theme,
-                  icon: Icons.bolt_rounded,
-                  label: 'PE',
-                  value: _heroMeterSummary(hero.physicalEnergy),
-                ),
-                const SizedBox(height: 2),
-                _buildHeroStatRow(
-                  theme,
-                  icon: Icons.auto_awesome_rounded,
-                  label: 'SP',
-                  value: _heroMeterSummary(hero.spiritEnergy),
-                ),
-                const SizedBox(height: 2),
-                _buildHeroStatRow(
-                  theme,
-                  icon: Icons.attach_money_rounded,
-                  label: r'$',
-                  value: _heroMeterSummary(hero.money),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 8),
+              _buildHeroStatRow(
+                theme,
+                icon: Icons.favorite_border_rounded,
+                label: 'PH',
+                value: _heroMeterSummary(hero.physicalHealth),
+              ),
+              const SizedBox(height: 2),
+              _buildHeroStatRow(
+                theme,
+                icon: Icons.psychology_outlined,
+                label: 'SH',
+                value: _heroMeterSummary(hero.spiritHealth),
+              ),
+              const SizedBox(height: 2),
+              _buildHeroStatRow(
+                theme,
+                icon: Icons.bolt_rounded,
+                label: 'PE',
+                value: _heroMeterSummary(hero.physicalEnergy),
+              ),
+              const SizedBox(height: 2),
+              _buildHeroStatRow(
+                theme,
+                icon: Icons.auto_awesome_rounded,
+                label: 'SP',
+                value: _heroMeterSummary(hero.spiritEnergy),
+              ),
+              const SizedBox(height: 2),
+              _buildHeroStatRow(
+                theme,
+                icon: Icons.attach_money_rounded,
+                label: r'$',
+                value: _heroMeterSummary(hero.money),
+              ),
+            ],
           ),
         ),
       ),
@@ -567,6 +503,12 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     String locale,
   ) {
     if (_heroes.isEmpty) return const SizedBox.shrink();
+    final activeDeckHeroId = _activeDeck?.progression?.heroId;
+    final currentHero =
+        _heroes.where((hero) => hero.id == activeDeckHeroId).firstOrNull ??
+        _heroes.where((hero) => hero.id == _selectedHeroId).firstOrNull ??
+        _heroes.first;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -577,22 +519,13 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            t.text('Select Hero'),
+            t.text('Current Hero Stats'),
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 232,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _heroes.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 10),
-              itemBuilder: (context, index) =>
-                  _buildHeroCard(_heroes[index], theme, locale),
-            ),
-          ),
+          _buildHeroCard(currentHero, theme, locale),
         ],
       ),
     );
@@ -735,19 +668,12 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     String locale,
   ) {
     final progression = _activeProgression;
-    final activeDeck = _activeDeck;
     if (progression == null) {
       return const SizedBox.shrink();
     }
-    final canSelectInitialCharacter =
-        activeDeck != null &&
-        progression.age == 0 &&
-        progression.rebirthCount == 0 &&
-        _characterArchetypes.isNotEmpty;
-    final selectedCharacter = _characterArchetypes
-        .where((entry) => entry.id == progression.characterId)
+    final selectedHero = _heroes
+        .where((hero) => hero.id == progression.heroId)
         .firstOrNull;
-    final selectedCharacterId = selectedCharacter?.id;
     final unlockedText = progression.unlockedTiers.entries
         .where((entry) => entry.value)
         .map((entry) => t.text(entry.key))
@@ -810,52 +736,9 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
             ),
           ),
           const SizedBox(height: 12),
-          if (canSelectInitialCharacter)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DropdownButtonFormField<String>(
-                  initialValue: selectedCharacterId,
-                  decoration: InputDecoration(
-                    labelText: t.text('Initial Character'),
-                    border: const OutlineInputBorder(),
-                  ),
-                  items: _characterArchetypes
-                      .map(
-                        (entry) => DropdownMenuItem<String>(
-                          value: entry.id,
-                          child: Text(
-                            entry.kind == 'unit_card'
-                                ? '${entry.localizedName(locale)} · ${t.text('Unit')}'
-                                : entry.localizedName(locale),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      )
-                      .toList(growable: false),
-                  onChanged: (value) {
-                    if (value != null) {
-                      _selectCharacter(value);
-                    }
-                  },
-                ),
-                if (selectedCharacter != null &&
-                    selectedCharacter
-                        .localizedDescription(locale)
-                        .isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    selectedCharacter.localizedDescription(locale),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ],
-            )
-          else if (selectedCharacter != null)
+          if (selectedHero != null)
             Text(
-              '${t.text('Initial Character')}: ${selectedCharacter.localizedName(locale)}',
+              '${t.text('Current Hero')}: ${selectedHero.localizedName(locale)}',
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -1769,6 +1652,11 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     final theme = Theme.of(context);
     final t = context.watch<LocaleProvider>().translation;
     final locale = context.watch<LocaleProvider>().locale;
+    final activeDeck = _activeDeck;
+    final progressionHeroId = activeDeck?.progression?.heroId;
+    final activeHero = _heroes
+        .where((hero) => hero.id == progressionHeroId)
+        .firstOrNull;
     final filteredCards = _filteredCards;
 
     return Scaffold(
@@ -1823,16 +1711,14 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                       const SizedBox(width: 12),
                       OutlinedButton.icon(
                         onPressed: () {
-                          final hero = _heroes
-                              .where((h) => h.id == _selectedHeroId)
-                              .firstOrNull;
+                          final hero = activeHero;
                           Navigator.of(context).pushNamed(
                             '/royale-lobby',
                             arguments: {
-                              'heroId': _selectedHeroId,
+                              'heroId': hero?.id ?? _selectedHeroId,
                               'heroName':
                                   hero?.localizedName(locale) ??
-                                  _selectedHeroId,
+                                  (progressionHeroId ?? _selectedHeroId),
                             },
                           );
                         },
