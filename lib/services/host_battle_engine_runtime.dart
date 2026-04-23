@@ -852,25 +852,34 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       if (unit.side == side) {
         continue;
       }
+      final spellReach = battle_rules.effectiveSpellReachToUnit(
+        spellRadius: card.spellRadius.toDouble(),
+        targetBodyRadius: unit.bodyRadius > 0
+            ? unit.bodyRadius
+            : _bodyRadiusForUnitType(unit.type),
+      );
       if (_distanceBetweenPoints(
             unit.progress,
             unit.lateralPosition,
             dropPoint.progress,
             dropPoint.lateralPosition,
           ) <=
-          card.spellRadius) {
+          spellReach) {
         unit.hp -= spellDamage;
       }
     }
 
     final towerProgress = enemySide == 'left' ? _leftTowerX : _rightTowerX;
+    final towerSpellReach = battle_rules.effectiveSpellReachToTower(
+      card.spellRadius.toDouble(),
+    );
     if (_distanceBetweenPoints(
           towerProgress.toDouble(),
           (_worldScale / 2).toDouble(),
           dropPoint.progress,
           dropPoint.lateralPosition,
         ) <=
-        card.spellRadius + 50) {
+        towerSpellReach) {
       _applyTowerDamage(enemyPlayer, spellDamage, preferSpirit: true);
     }
   }
@@ -882,9 +891,20 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     List<_EquipmentEffect> equipmentEffects,
   ) {
     final count = math.max(1, card.spawnCount);
-    final spacing = count == 1 ? 0.0 : 30 / _fieldAspectRatio;
     final stats = _applyEquipmentEffects(card, equipmentEffects);
     final caster = _playerForSide(side);
+    final bodyRadius = card.bodyRadius > 0
+        ? card.bodyRadius.toDouble()
+        : _bodyRadiusForUnitType(card.type);
+    final spacing = count == 1
+        ? 0.0
+        : battle_rules.lateralOffsetForWorldDistance(
+            battle_rules.minimumBodyContactDistance(
+              bodyRadius: bodyRadius,
+              otherBodyRadius: bodyRadius,
+              gap: battle_rules.unitCollisionGap.toDouble(),
+            ),
+          );
     final boostedHp = math.max(
       1,
       (stats.hp * _heroBonusMultiplier(caster, 'unit_hp_multiplier')).round(),
@@ -925,9 +945,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
           maxHp: boostedHp,
           damage: boostedDamage,
           attackRange: card.attackRange.toDouble(),
-          bodyRadius: card.bodyRadius > 0
-              ? card.bodyRadius.toDouble()
-              : _bodyRadiusForUnitType(card.type),
+          bodyRadius: bodyRadius,
           moveSpeed: stats.moveSpeed,
           attackSpeed:
               card.attackSpeed *

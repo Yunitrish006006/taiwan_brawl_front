@@ -73,6 +73,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
   String? _friendDrawerBusyKey;
   String? _lastSeenBattleEventId;
   bool _battleEventDialogOpen = false;
+  bool _showCollisionRadiusOverlay = false;
 
   Map<String, String> get _t => context.read<LocaleProvider>().translation;
 

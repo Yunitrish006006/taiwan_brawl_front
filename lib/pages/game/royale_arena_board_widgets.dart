@@ -886,6 +886,34 @@ class _AttackRangeIndicator extends StatelessWidget {
   }
 }
 
+class _CollisionRadiusIndicator extends StatelessWidget {
+  const _CollisionRadiusIndicator({
+    required this.width,
+    required this.height,
+    required this.friendly,
+  });
+
+  final double width;
+  final double height;
+  final bool friendly;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = friendly ? const Color(0xFFFFD166) : const Color(0xFFFF8A80);
+    return IgnorePointer(
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(9999),
+          border: Border.all(color: color.withValues(alpha: 0.5), width: 1.2),
+        ),
+      ),
+    );
+  }
+}
+
 class _AimMarker extends StatelessWidget {
   const _AimMarker({
     required this.point,

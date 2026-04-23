@@ -280,10 +280,14 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
   Widget _buildFloatingArenaActionButton({
     required IconData icon,
     required VoidCallback onTap,
+    Color iconColor = Colors.white,
+    Color? backgroundColor,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF07111F).withValues(alpha: 0.74),
+        color: (backgroundColor ?? const Color(0xFF07111F)).withValues(
+          alpha: 0.74,
+        ),
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
         boxShadow: [
@@ -302,7 +306,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
           customBorder: const CircleBorder(),
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: Icon(icon, color: Colors.white, size: 22),
+            child: Icon(icon, color: iconColor, size: 22),
           ),
         ),
       ),
@@ -378,6 +382,19 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                       ],
                     ),
                   ),
+                ),
+                const SizedBox(width: 10),
+                _buildFloatingArenaActionButton(
+                  icon: _showCollisionRadiusOverlay
+                      ? Icons.blur_circular_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  iconColor: _showCollisionRadiusOverlay
+                      ? const Color(0xFFFFD166)
+                      : Colors.white,
+                  backgroundColor: _showCollisionRadiusOverlay
+                      ? const Color(0xFF3A2F12)
+                      : null,
+                  onTap: _toggleCollisionRadiusOverlay,
                 ),
                 const SizedBox(width: 10),
                 _buildFloatingArenaActionButton(

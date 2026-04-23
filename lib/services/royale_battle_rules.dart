@@ -20,6 +20,7 @@ const double globalMoveSpeedMultiplier = 0.58;
 const double globalAttackSpeedMultiplier = 1.18;
 const double fieldAspectRatio = 0.62;
 const int towerBodyRadius = 30;
+const int unitCollisionGap = 6;
 
 const double deployZoneMinX = lateralMin / worldScale;
 const double deployZoneMaxX = lateralMax / worldScale;
@@ -143,6 +144,29 @@ double displayAttackReach({
   required double bodyRadius,
 }) {
   return attackRange + bodyRadius;
+}
+
+double effectiveSpellReachToUnit({
+  required double spellRadius,
+  required double targetBodyRadius,
+}) {
+  return spellRadius + targetBodyRadius;
+}
+
+double effectiveSpellReachToTower(double spellRadius) {
+  return spellRadius + towerBodyRadius;
+}
+
+double minimumBodyContactDistance({
+  required double bodyRadius,
+  required double otherBodyRadius,
+  double gap = 0,
+}) {
+  return bodyRadius + otherBodyRadius + gap;
+}
+
+double lateralOffsetForWorldDistance(double worldDistance) {
+  return worldDistance / fieldAspectRatio;
 }
 
 double effectiveAttackReachToUnit({

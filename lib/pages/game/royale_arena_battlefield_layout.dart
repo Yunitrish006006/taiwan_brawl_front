@@ -1,6 +1,12 @@
 part of 'royale_arena_page.dart';
 
 extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
+  void _toggleCollisionRadiusOverlay() {
+    setState(() {
+      _showCollisionRadiusOverlay = !_showCollisionRadiusOverlay;
+    });
+  }
+
   Offset _towerCenter({
     required BoxConstraints board,
     required String mySide,
@@ -26,7 +32,7 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
       }
 
       final reach = card.type == 'spell'
-          ? (card.spellRadius + 50).toDouble()
+          ? battle_rules.effectiveSpellReachToTower(card.spellRadius.toDouble())
           : battle_rules.effectiveAttackReachToTower(
               attackRange: card.attackRange.toDouble(),
               bodyRadius: card.bodyRadius > 0
@@ -103,6 +109,29 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
             ),
           ),
         ),
+        SizedBox(width: compact ? 8 : 10),
+        Material(
+          color: _showCollisionRadiusOverlay
+              ? const Color(0xFFFFD166).withValues(alpha: 0.18)
+              : Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(compact ? 12 : 14),
+          child: InkWell(
+            onTap: _toggleCollisionRadiusOverlay,
+            borderRadius: BorderRadius.circular(compact ? 12 : 14),
+            child: Padding(
+              padding: EdgeInsets.all(compact ? 8 : 10),
+              child: Icon(
+                _showCollisionRadiusOverlay
+                    ? Icons.blur_circular_rounded
+                    : Icons.radio_button_unchecked_rounded,
+                color: _showCollisionRadiusOverlay
+                    ? const Color(0xFFFFD166)
+                    : Colors.white.withValues(alpha: 0.72),
+                size: compact ? 16 : 18,
+              ),
+            ),
+          ),
+        ),
         if (!compact)
           _ArenaLegendChip(
             label: mySide == 'left'
@@ -158,6 +187,8 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
       final top = board.maxHeight * longitudinal - tokenSize * 0.62;
       final attackIndicatorDiameter =
           board.maxHeight * (unit.attackRange / _worldScale) * 2;
+      final collisionIndicatorDiameter =
+          board.maxHeight * (unit.bodyRadius / _worldScale) * 2;
 
       return Positioned(
         key: ValueKey(unit.id),
@@ -173,6 +204,16 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
                 child: _AttackRangeIndicator(
                   width: attackIndicatorDiameter,
                   height: attackIndicatorDiameter,
+                  friendly: unit.side == mySide,
+                ),
+              ),
+            if (_showCollisionRadiusOverlay && unit.bodyRadius > 0)
+              Positioned(
+                left: tokenSize / 2 - collisionIndicatorDiameter / 2,
+                top: tokenSize * 0.5 - collisionIndicatorDiameter / 2,
+                child: _CollisionRadiusIndicator(
+                  width: collisionIndicatorDiameter,
+                  height: collisionIndicatorDiameter,
                   friendly: unit.side == mySide,
                 ),
               ),
