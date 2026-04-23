@@ -47,6 +47,23 @@ double _distanceBetweenPoints(
 double _bodyRadiusForUnitType(String type) =>
     battle_rules.bodyRadiusForUnitType(type);
 
+String _inferCardCollisionBehavior(String type) =>
+    type.trim().toLowerCase() == 'swarm' ? 'reroute' : 'hold';
+
+String _normalizeCollisionBehavior(
+  String? value, {
+  String fallback = 'hold',
+}) {
+  final normalized = value?.trim().toLowerCase() ?? '';
+  if (normalized == 'reroute') {
+    return 'reroute';
+  }
+  if (normalized == 'hold') {
+    return 'hold';
+  }
+  return fallback == 'reroute' ? 'reroute' : 'hold';
+}
+
 double _displayAttackReach(_HostUnit unit) => battle_rules.displayAttackReach(
   attackRange: unit.attackRange,
   bodyRadius: unit.bodyRadius,
@@ -165,6 +182,7 @@ class HostBattleEngine {
               'damage': unit.damage,
               'attackRange': unit.attackRange.round(),
               'bodyRadius': unit.bodyRadius.round(),
+              'collisionBehavior': unit.collisionBehavior,
               'moveSpeed': unit.moveSpeed.round(),
               'attackSpeed': unit.attackSpeed,
               'targetRule': unit.targetRule,
@@ -243,6 +261,7 @@ class HostBattleEngine {
               'damage': unit.damage,
               'attackRange': unit.attackRange,
               'bodyRadius': unit.bodyRadius,
+              'collisionBehavior': unit.collisionBehavior,
               'moveSpeed': unit.moveSpeed,
               'attackSpeed': unit.attackSpeed,
               'targetRule': unit.targetRule,
@@ -523,6 +542,7 @@ class HostBattleEngine {
       'targetRule': card.targetRule,
       'effectKind': card.effectKind,
       'effectValue': card.effectValue,
+      'collisionBehavior': card.collisionBehavior,
     };
   }
 
@@ -760,6 +780,7 @@ class HostBattleEngine {
                 maxHp: unit.maxHp,
                 attackRange: _displayAttackReach(unit).round(),
                 bodyRadius: unit.bodyRadius.round(),
+                collisionBehavior: unit.collisionBehavior,
                 effects: unit.effects,
                 statusEffects: unit.statusEffects,
               ),

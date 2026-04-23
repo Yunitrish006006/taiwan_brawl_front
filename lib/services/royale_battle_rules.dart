@@ -21,6 +21,7 @@ const double globalAttackSpeedMultiplier = 1.18;
 const double fieldAspectRatio = 0.62;
 const int towerBodyRadius = 30;
 const int unitCollisionGap = 6;
+const int unitFormationBiasLimit = 90;
 
 const double deployZoneMinX = lateralMin / worldScale;
 const double deployZoneMaxX = lateralMax / worldScale;

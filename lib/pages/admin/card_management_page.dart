@@ -63,6 +63,10 @@ class _CardManagementPageState extends State<CardManagementPage> {
     'job_delivery',
     'job_day_labor',
   ];
+  static const List<String> _collisionBehaviorOptions = [
+    'hold',
+    'reroute',
+  ];
   static const List<String> _energyCostTypeOptions = [
     'physical',
     'spirit',
@@ -133,6 +137,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
   String _selectedEnergyCostType = _energyCostTypeOptions.first;
   String _selectedTargetRule = _targetRuleOptions.first;
   String _selectedEffectKind = _effectKindOptions.first;
+  String _selectedCollisionBehavior = _collisionBehaviorOptions.first;
   String _selectedCharacterAssetAnimation = 'idle';
   bool _useCustomCharacterAssetAnimation = false;
   _CharacterImageDirection _selectedCharacterAssetDirection =
@@ -246,6 +251,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
       _selectedEnergyCostType = card.energyCostType;
       _selectedTargetRule = card.targetRule;
       _selectedEffectKind = card.effectKind;
+      _selectedCollisionBehavior = card.collisionBehavior;
       _idController.text = card.id;
       _nameZhHantController.text = card.nameZhHant;
       _nameEnController.text = card.nameEn;
@@ -273,6 +279,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
       _selectedEnergyCostType = _energyCostTypeOptions.first;
       _selectedTargetRule = _targetRuleOptions.first;
       _selectedEffectKind = _effectKindOptions.first;
+      _selectedCollisionBehavior = _collisionBehaviorOptions.first;
       _idController.clear();
       _nameZhHantController.clear();
       _nameEnController.clear();
@@ -395,6 +402,13 @@ class _CardManagementPageState extends State<CardManagementPage> {
     return '${_t.text('Please enter a valid number for')} $label';
   }
 
+  void _setSelectedCollisionBehavior(String? value) {
+    if (value == null || value == _selectedCollisionBehavior) {
+      return;
+    }
+    setState(() => _selectedCollisionBehavior = value);
+  }
+
   Map<String, dynamic> _buildPayload() {
     final nameZhHant = _nameZhHantController.text.trim();
     final nameEn = _nameEnController.text.trim();
@@ -449,6 +463,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
         _effectValueController,
         _t.text('Effect Value'),
       ),
+      'collisionBehavior': _selectedCollisionBehavior,
     };
   }
 
@@ -974,6 +989,16 @@ class _CardManagementPageState extends State<CardManagementPage> {
       case 'physical':
       default:
         return t.text('Physical Energy');
+    }
+  }
+
+  String _collisionBehaviorLabel(Map<String, String> t, String value) {
+    switch (value) {
+      case 'reroute':
+        return t.text('Reroute');
+      case 'hold':
+      default:
+        return t.text('Hold Position');
     }
   }
 

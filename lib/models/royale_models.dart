@@ -128,6 +128,7 @@ class RoyaleCard {
     required this.targetRule,
     required this.effectKind,
     required this.effectValue,
+    this.collisionBehavior = 'hold',
     this.unlockAge = 0,
     this.unlockTier = 'item',
     this.locked = false,
@@ -162,6 +163,7 @@ class RoyaleCard {
   final String targetRule;
   final String effectKind;
   final double effectValue;
+  final String collisionBehavior;
   final int unlockAge;
   final String unlockTier;
   final bool locked;
@@ -271,6 +273,11 @@ class RoyaleCard {
       targetRule: json['targetRule'] as String,
       effectKind: (json['effectKind'] as String?) ?? 'none',
       effectValue: (json['effectValue'] as num?)?.toDouble() ?? 0,
+      collisionBehavior:
+          (json['collisionBehavior'] as String?)?.trim().toLowerCase() ==
+              'reroute'
+          ? 'reroute'
+          : 'hold',
       unlockAge: (json['unlockAge'] as num?)?.toInt() ?? 0,
       unlockTier: json['unlockTier'] as String? ?? 'item',
       locked: json['locked'] as bool? ?? false,
@@ -976,6 +983,7 @@ class RoyaleUnitView {
     required this.maxHp,
     required this.attackRange,
     required this.bodyRadius,
+    this.collisionBehavior = 'hold',
     required this.effects,
     required this.statusEffects,
   });
@@ -1005,6 +1013,7 @@ class RoyaleUnitView {
   final int maxHp;
   final int attackRange;
   final int bodyRadius;
+  final String collisionBehavior;
   final List<String> effects;
   final List<String> statusEffects;
 
@@ -1182,6 +1191,11 @@ class RoyaleUnitView {
       maxHp: (json['maxHp'] as num?)?.toInt() ?? 0,
       attackRange: (json['attackRange'] as num?)?.toInt() ?? 0,
       bodyRadius: (json['bodyRadius'] as num?)?.toInt() ?? 0,
+      collisionBehavior:
+          (json['collisionBehavior'] as String?)?.trim().toLowerCase() ==
+              'reroute'
+          ? 'reroute'
+          : 'hold',
       effects: (json['effects'] as List<dynamic>? ?? const [])
           .map((effect) => effect.toString())
           .toList(),

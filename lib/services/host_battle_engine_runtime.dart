@@ -79,6 +79,324 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
 
   double _cardEnergyCost(RoyaleCard card) => card.energyCost.toDouble();
 
+  double _unitCollisionGap(_HostUnit unit, _HostUnit blocker) {
+    return unit.side == blocker.side
+        ? battle_rules.unitCollisionGap.toDouble()
+        : 0.0;
+  }
+
+  double _unitBodyContactDistance(_HostUnit unit, _HostUnit blocker) {
+    return battle_rules.minimumBodyContactDistance(
+      bodyRadius: unit.bodyRadius,
+      otherBodyRadius: blocker.bodyRadius,
+      gap: _unitCollisionGap(unit, blocker),
+    );
+  }
+
+  double _unitDesiredLateral(_HostUnit unit, _TargetSelection? target) {
+    final baseLateral = target?.kind == 'unit'
+        ? target!.unitTarget!.lateralPosition
+        : (_worldScale / 2).toDouble();
+    return _sanitizeLateralPosition(baseLateral + unit.laneBias);
+  }
+
+  String _unitCollisionBehavior(_HostUnit unit) {
+    return _normalizeCollisionBehavior(
+      unit.collisionBehavior,
+      fallback: _inferCardCollisionBehavior(unit.type),
+    );
+  }
+
+  _HostUnit? _findClosestAlliedMovementBlocker(_HostUnit unit) {
+    _HostUnit? closest;
+    var bestScore = double.infinity;
+    final forwardDirection = _sideDirection(unit.side);
+
+    for (final blocker in _units) {
+      if (identical(blocker, unit) || blocker.hp <= 0 || blocker.side != unit.side) {
+        continue;
+      }
+
+      final forwardGap = forwardDirection * (blocker.progress - unit.progress);
+      if (forwardGap < -math.max(8, blocker.bodyRadius)) {
+        continue;
+      }
+
+      final distance = _distanceBetweenPoints(
+        unit.progress,
+        unit.lateralPosition,
+        blocker.progress,
+        blocker.lateralPosition,
+      );
+      final contactDistance = _unitBodyContactDistance(unit, blocker);
+      if (distance > contactDistance + 48) {
+        continue;
+      }
+
+      final score = math.max(0, forwardGap) * 2 + distance;
+      if (score < bestScore) {
+        bestScore = score;
+        closest = blocker;
+      }
+    }
+
+    return closest;
+  }
+
+  double _chooseUnitRerouteSide(_HostUnit unit, _HostUnit? blocker) {
+    if (unit.laneBias > 1) {
+      return 1;
+    }
+    if (unit.laneBias < -1) {
+      return -1;
+    }
+
+    if (blocker != null) {
+      final lateralDelta = blocker.lateralPosition - unit.lateralPosition;
+      if (lateralDelta.abs() > 1e-3) {
+        return lateralDelta < 0 ? 1 : -1;
+      }
+    }
+
+    var leftPenalty = 0.0;
+    var rightPenalty = 0.0;
+    for (final other in _units) {
+      if (identical(other, unit) || other.hp <= 0 || other.side != unit.side) {
+        continue;
+      }
+
+      final progressGap = (other.progress - unit.progress).abs();
+      if (progressGap > 140) {
+        continue;
+      }
+
+      final penalty = 160 - progressGap;
+      if (other.lateralPosition <= unit.lateralPosition) {
+        leftPenalty += penalty;
+      }
+      if (other.lateralPosition >= unit.lateralPosition) {
+        rightPenalty += penalty;
+      }
+    }
+
+    if (leftPenalty != rightPenalty) {
+      return leftPenalty < rightPenalty ? -1 : 1;
+    }
+    if (unit.lateralPosition < (_worldScale / 2).toDouble() - 4) {
+      return -1;
+    }
+    if (unit.lateralPosition > (_worldScale / 2).toDouble() + 4) {
+      return 1;
+    }
+
+    final hash = unit.id.codeUnits.fold<int>(0, (sum, code) => sum + code);
+    return hash.isEven ? -1 : 1;
+  }
+
+  _DropPoint? _attemptUnitReroute(
+    _HostUnit unit,
+    _HostUnit? blocker, {
+    required double effectiveMoveSpeed,
+    required double dt,
+    required double minProgress,
+    required double maxProgress,
+  }) {
+    if (_unitCollisionBehavior(unit) != 'reroute' || blocker == null) {
+      return null;
+    }
+
+    final rerouteSide = _chooseUnitRerouteSide(unit, blocker);
+    final moveBudget = math.max(8, effectiveMoveSpeed * dt);
+    const progressWeight = 0.8;
+    const scaledLateralWeight = 0.6;
+    final vectorLength = math.sqrt(
+      progressWeight * progressWeight +
+          scaledLateralWeight * scaledLateralWeight,
+    );
+    final detourProgress =
+        unit.progress +
+        (-_sideDirection(unit.side) * progressWeight / vectorLength) *
+            moveBudget;
+    final detourScaledLateral =
+        unit.lateralPosition * _fieldAspectRatio +
+        (rerouteSide * scaledLateralWeight / vectorLength) * moveBudget;
+    final rerouteMove = _resolveUnitMovementCollision(
+      unit,
+      nextProgress: detourProgress,
+      nextLateral: detourScaledLateral / _fieldAspectRatio,
+      minProgress: minProgress,
+      maxProgress: maxProgress,
+    );
+    final rerouteDistance = _distanceBetweenPoints(
+      unit.progress,
+      unit.lateralPosition,
+      rerouteMove.progress,
+      rerouteMove.lateralPosition,
+    );
+    return rerouteDistance > 1e-3 ? rerouteMove : null;
+  }
+
+  List<double> _comboUnitOffsets(List<RoyaleCard> cards) {
+    if (cards.length <= 1) {
+      return List<double>.filled(cards.length, 0);
+    }
+    var maxBodyRadius = 0.0;
+    for (final card in cards) {
+      final bodyRadius = card.bodyRadius > 0
+          ? card.bodyRadius.toDouble()
+          : _bodyRadiusForUnitType(card.type);
+      if (bodyRadius > maxBodyRadius) {
+        maxBodyRadius = bodyRadius;
+      }
+    }
+    final spacing = battle_rules.lateralOffsetForWorldDistance(
+      battle_rules.minimumBodyContactDistance(
+        bodyRadius: maxBodyRadius,
+        otherBodyRadius: maxBodyRadius,
+        gap: battle_rules.unitCollisionGap.toDouble(),
+      ),
+    );
+    return List<double>.generate(
+      cards.length,
+      (index) => (index - (cards.length - 1) / 2) * spacing,
+    );
+  }
+
+  _DropPoint _resolveUnitMovementCollision(
+    _HostUnit unit, {
+    required double nextProgress,
+    required double nextLateral,
+    required double minProgress,
+    required double maxProgress,
+  }) {
+    // Use the same scaled lateral space as distanceBetweenPoints so body contact stays consistent.
+    final startProgress = unit.progress;
+    final startScaledLateral = unit.lateralPosition * _fieldAspectRatio;
+    final desiredProgress = _clamp(nextProgress, minProgress, maxProgress);
+    final desiredLateral = _sanitizeLateralPosition(nextLateral);
+    final desiredScaledLateral = desiredLateral * _fieldAspectRatio;
+    final deltaProgress = desiredProgress - startProgress;
+    final deltaScaledLateral = desiredScaledLateral - startScaledLateral;
+    final movementLengthSquared =
+        deltaProgress * deltaProgress +
+        deltaScaledLateral * deltaScaledLateral;
+
+    if (movementLengthSquared <= 1e-9) {
+      return _DropPoint(
+        progress: desiredProgress,
+        lateralPosition: desiredLateral,
+      );
+    }
+
+    var bestT = 1.0;
+    for (final blocker in _units) {
+      if (identical(blocker, unit) || blocker.hp <= 0) {
+        continue;
+      }
+
+      final minDistance = _unitBodyContactDistance(unit, blocker);
+      final blockerScaledLateral = blocker.lateralPosition * _fieldAspectRatio;
+      final relativeStartProgress = startProgress - blocker.progress;
+      final relativeStartScaledLateral =
+          startScaledLateral - blockerScaledLateral;
+      final a = movementLengthSquared;
+      final b =
+          2 *
+          (relativeStartProgress * deltaProgress +
+              relativeStartScaledLateral * deltaScaledLateral);
+      final c =
+          relativeStartProgress * relativeStartProgress +
+          relativeStartScaledLateral * relativeStartScaledLateral -
+          minDistance * minDistance;
+      final inwardDot =
+          relativeStartProgress * deltaProgress +
+          relativeStartScaledLateral * deltaScaledLateral;
+
+      // When units start exactly at body contact, allow tangent/outward movement.
+      if (c <= 1e-6) {
+        if (c < -1e-6 || inwardDot < -1e-6) {
+          bestT = 0.0;
+        }
+        continue;
+      }
+
+      final discriminant = b * b - 4 * a * c;
+      if (discriminant < 0) {
+        continue;
+      }
+
+      final collisionT = (-b - math.sqrt(discriminant)) / (2 * a);
+      if (collisionT >= 0 && collisionT <= 1 && collisionT < bestT) {
+        bestT = collisionT;
+      }
+    }
+
+    var resolvedProgress = startProgress + deltaProgress * bestT;
+    var resolvedScaledLateral = startScaledLateral + deltaScaledLateral * bestT;
+
+    for (var pass = 0; pass < 2; pass += 1) {
+      var adjusted = false;
+      for (final blocker in _units) {
+        if (identical(blocker, unit) || blocker.hp <= 0) {
+          continue;
+        }
+
+        final minDistance = _unitBodyContactDistance(unit, blocker);
+        final blockerScaledLateral = blocker.lateralPosition * _fieldAspectRatio;
+        var relativeProgress = resolvedProgress - blocker.progress;
+        var relativeScaledLateral =
+            resolvedScaledLateral - blockerScaledLateral;
+        var distance = math.sqrt(
+          relativeProgress * relativeProgress +
+              relativeScaledLateral * relativeScaledLateral,
+        );
+        if (distance + 1e-6 >= minDistance) {
+          continue;
+        }
+
+        if (distance <= 1e-6) {
+          relativeProgress = startProgress - blocker.progress;
+          relativeScaledLateral = startScaledLateral - blockerScaledLateral;
+          distance = math.sqrt(
+            relativeProgress * relativeProgress +
+                relativeScaledLateral * relativeScaledLateral,
+          );
+        }
+
+        if (distance <= 1e-6) {
+          relativeProgress = -_sideDirection(unit.side);
+          relativeScaledLateral = 0;
+          distance = 1;
+        }
+
+        final scale = minDistance / distance;
+        resolvedProgress = blocker.progress + relativeProgress * scale;
+        resolvedScaledLateral =
+            blockerScaledLateral + relativeScaledLateral * scale;
+        adjusted = true;
+      }
+
+      resolvedProgress = _clamp(resolvedProgress, minProgress, maxProgress);
+      final clampedLateral = _sanitizeLateralPosition(
+        resolvedScaledLateral / _fieldAspectRatio,
+      );
+      resolvedScaledLateral = clampedLateral * _fieldAspectRatio;
+      if (!adjusted) {
+        return _DropPoint(
+          progress: resolvedProgress,
+          lateralPosition: clampedLateral,
+        );
+      }
+    }
+
+    return _DropPoint(
+      progress: resolvedProgress,
+      lateralPosition: _sanitizeLateralPosition(
+        resolvedScaledLateral / _fieldAspectRatio,
+      ),
+    );
+  }
+
   String _cardEnergyType(RoyaleCard card) => card.usesMoney
       ? 'money'
       : card.usesSpiritEnergy
@@ -888,8 +1206,9 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     String side,
     RoyaleCard card,
     _DropPoint dropPoint,
-    List<_EquipmentEffect> equipmentEffects,
-  ) {
+    List<_EquipmentEffect> equipmentEffects, {
+    double groupLateralOffset = 0,
+  }) {
     final count = math.max(1, card.spawnCount);
     final stats = _applyEquipmentEffects(card, equipmentEffects);
     final caster = _playerForSide(side);
@@ -915,6 +1234,9 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     );
     for (var index = 0; index < count; index += 1) {
       final offset = (index - (count - 1) / 2) * spacing;
+      final spawnLateral = _sanitizeLateralPosition(
+        dropPoint.lateralPosition + groupLateralOffset + offset,
+      );
       _units.add(
         _HostUnit(
           id: 'unit-${_nextUnitId++}',
@@ -938,14 +1260,21 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
           animationEvent: null,
           animationEventId: 0,
           progress: dropPoint.progress,
-          lateralPosition: _sanitizeLateralPosition(
-            dropPoint.lateralPosition + offset,
-          ),
+          lateralPosition: spawnLateral,
           hp: boostedHp,
           maxHp: boostedHp,
           damage: boostedDamage,
           attackRange: card.attackRange.toDouble(),
           bodyRadius: bodyRadius,
+          collisionBehavior: _normalizeCollisionBehavior(
+            card.collisionBehavior,
+            fallback: _inferCardCollisionBehavior(card.type),
+          ),
+          laneBias: _clamp(
+            spawnLateral - (_worldScale / 2).toDouble(),
+            -battle_rules.unitFormationBiasLimit.toDouble(),
+            battle_rules.unitFormationBiasLimit.toDouble(),
+          ),
           moveSpeed: stats.moveSpeed,
           attackSpeed:
               card.attackSpeed *
@@ -1653,6 +1982,14 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         ? null
         : _normalizeDropPoint(side, dropX, dropY);
     final equipmentEffects = _equipmentEffects(cards);
+    final spawnedUnitCards = cards
+        .where(
+          (card) => !card.isEvent && !card.isJob && card.type != 'spell' &&
+              card.type != 'equipment',
+        )
+        .toList();
+    final comboUnitOffsets = _comboUnitOffsets(spawnedUnitCards);
+    var comboUnitCursor = 0;
     for (final card in cards) {
       if (card.usesMoney) {
         _spendPlayerMoney(player, _cardEnergyCost(card));
@@ -1675,7 +2012,13 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       } else if (card.isJob) {
         _resolveJobCard(player, card);
       } else if (card.type != 'equipment') {
-        _spawnUnits(side, card, dropPoint!, equipmentEffects);
+        _spawnUnits(
+          side,
+          card,
+          dropPoint!,
+          equipmentEffects,
+          groupLateralOffset: comboUnitOffsets[comboUnitCursor++],
+        );
       }
     }
     if (selfEquipmentOnly) {
@@ -1723,20 +2066,48 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       } else {
         unit.animationState = 'move';
         final progressDelta = _sideDirection(unit.side) * unit.moveSpeed * dt;
-        final desiredLateral = target?.kind == 'unit'
-            ? target!.unitTarget!.lateralPosition
-            : (_worldScale / 2).toDouble();
+        final desiredLateral = _unitDesiredLateral(unit, target);
         final lateralDelta = desiredLateral - unit.lateralPosition;
         unit.facingDirection = _facingDirectionForVector(
           progressDelta,
           lateralDelta,
         );
-        unit.progress = _clamp(unit.progress + progressDelta, 80, 920);
         final lateralStep = (unit.moveSpeed * 0.45 * dt) / _fieldAspectRatio;
-        unit.lateralPosition = _sanitizeLateralPosition(
-          unit.lateralPosition +
-              _clamp(lateralDelta, -lateralStep, lateralStep),
+        final intendedProgress = unit.progress + progressDelta;
+        final intendedLateral =
+            unit.lateralPosition +
+            _clamp(lateralDelta, -lateralStep, lateralStep);
+        var resolvedMove = _resolveUnitMovementCollision(
+          unit,
+          nextProgress: intendedProgress,
+          nextLateral: intendedLateral,
+          minProgress: 80,
+          maxProgress: 920,
         );
+        final forwardGain =
+            _sideDirection(unit.side) * (resolvedMove.progress - unit.progress);
+        final blockedForward =
+            forwardGain <= math.max(1, progressDelta.abs() * 0.15);
+        if (blockedForward) {
+          final blocker = _findClosestAlliedMovementBlocker(unit);
+          final rerouteMove = _attemptUnitReroute(
+            unit,
+            blocker,
+            effectiveMoveSpeed: unit.moveSpeed,
+            dt: dt,
+            minProgress: 80,
+            maxProgress: 920,
+          );
+          if (rerouteMove != null) {
+            resolvedMove = rerouteMove;
+          }
+        }
+        unit.facingDirection = _facingDirectionForVector(
+          resolvedMove.progress - unit.progress,
+          resolvedMove.lateralPosition - unit.lateralPosition,
+        );
+        unit.progress = resolvedMove.progress;
+        unit.lateralPosition = resolvedMove.lateralPosition;
       }
     }
 

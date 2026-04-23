@@ -140,6 +140,8 @@ class _HostUnit {
     required this.damage,
     required this.attackRange,
     required this.bodyRadius,
+    required this.collisionBehavior,
+    required this.laneBias,
     required this.moveSpeed,
     required this.attackSpeed,
     required this.targetRule,
@@ -174,6 +176,8 @@ class _HostUnit {
   final int damage;
   final double attackRange;
   final double bodyRadius;
+  final String collisionBehavior;
+  final double laneBias;
   final double moveSpeed;
   final double attackSpeed;
   final String targetRule;

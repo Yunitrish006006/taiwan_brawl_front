@@ -478,6 +478,15 @@ extension _CardManagementFormLayout on _CardManagementPageState {
           labelBuilder: (value) => _effectKindLabel(t, value),
           onChanged: _setSelectedEffectKind,
         ),
+        _buildDropdownField(
+          t: t,
+          value: _selectedCollisionBehavior,
+          label: 'Collision Behavior',
+          keyPrefix: 'collision',
+          options: _CardManagementPageState._collisionBehaviorOptions,
+          labelBuilder: (value) => _collisionBehaviorLabel(t, value),
+          onChanged: _setSelectedCollisionBehavior,
+        ),
       ],
     );
   }
