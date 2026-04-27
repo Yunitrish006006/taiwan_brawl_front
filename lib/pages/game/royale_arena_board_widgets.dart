@@ -122,21 +122,9 @@ class _ArenaPainter extends CustomPainter {
         break;
       }
     }
-    final bridgeRange = riverGate?.passableLateralRanges.isNotEmpty == true
-        ? riverGate!.passableLateralRanges.first
-        : null;
     final riverRect = riverGate == null
         ? Rect.zero
         : _bandRect(size, riverGate.progressMin, riverGate.progressMax);
-    final bridgeRect = riverGate == null || bridgeRange == null
-        ? Rect.zero
-        : _worldRect(
-            size,
-            leftLateral: bridgeRange.min,
-            rightLateral: bridgeRange.max,
-            startProgress: riverGate.bridgeMinProgress,
-            endProgress: riverGate.bridgeMaxProgress,
-          );
     final laneRect = _worldRect(
       size,
       leftLateral: arena.centerLateral - 70,
@@ -252,31 +240,40 @@ class _ArenaPainter extends CustomPainter {
         ).createShader(riverRect);
       canvas.drawRect(riverRect, riverPaint);
     }
-    if (bridgeRange != null) {
-      final bridgePaint = Paint()
-        ..shader = const LinearGradient(
-          colors: [Color(0xFFDCC7A0), Color(0xFFB58A60)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ).createShader(bridgeRect);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(bridgeRect, const Radius.circular(18)),
-        bridgePaint,
-      );
+    if (riverGate != null) {
+      for (final bridgeRange in riverGate.passableLateralRanges) {
+        final bridgeRect = _worldRect(
+          size,
+          leftLateral: bridgeRange.min,
+          rightLateral: bridgeRange.max,
+          startProgress: riverGate.bridgeMinProgress,
+          endProgress: riverGate.bridgeMaxProgress,
+        );
+        final bridgePaint = Paint()
+          ..shader = const LinearGradient(
+            colors: [Color(0xFFDCC7A0), Color(0xFFB58A60)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ).createShader(bridgeRect);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(bridgeRect, const Radius.circular(18)),
+          bridgePaint,
+        );
 
-      final bridgeRail = Paint()
-        ..color = Colors.white.withValues(alpha: 0.24)
-        ..strokeWidth = 2;
-      canvas.drawLine(
-        Offset(bridgeRect.left + 12, bridgeRect.top + 8),
-        Offset(bridgeRect.left + 12, bridgeRect.bottom - 8),
-        bridgeRail,
-      );
-      canvas.drawLine(
-        Offset(bridgeRect.right - 12, bridgeRect.top + 8),
-        Offset(bridgeRect.right - 12, bridgeRect.bottom - 8),
-        bridgeRail,
-      );
+        final bridgeRail = Paint()
+          ..color = Colors.white.withValues(alpha: 0.24)
+          ..strokeWidth = 2;
+        canvas.drawLine(
+          Offset(bridgeRect.left + 12, bridgeRect.top + 8),
+          Offset(bridgeRect.left + 12, bridgeRect.bottom - 8),
+          bridgeRail,
+        );
+        canvas.drawLine(
+          Offset(bridgeRect.right - 12, bridgeRect.top + 8),
+          Offset(bridgeRect.right - 12, bridgeRect.bottom - 8),
+          bridgeRail,
+        );
+      }
     }
 
     final obstaclePaint = Paint()

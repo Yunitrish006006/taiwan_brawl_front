@@ -28,6 +28,12 @@ const int bridgeMinProgress = 430;
 const int bridgeMaxProgress = 570;
 const int bridgeMinLateral = 380;
 const int bridgeMaxLateral = 620;
+const double doubleBridgeLeftMinLateral = 220.0;
+const double doubleBridgeLeftMaxLateral = 390.0;
+const double doubleBridgeRightMinLateral = 610.0;
+const double doubleBridgeRightMaxLateral = 780.0;
+const String defaultArenaId = 'classic_bridge';
+const String doubleBridgeArenaId = 'classic_double_bridge';
 
 const double deployZoneMinX = lateralMin / worldScale;
 const double deployZoneMaxX = lateralMax / worldScale;
@@ -338,7 +344,7 @@ class BattleArenaConfig {
 }
 
 const BattleArenaConfig defaultArenaConfig = BattleArenaConfig(
-  id: 'classic_bridge',
+  id: defaultArenaId,
   name: 'Classic Bridge',
   width: 1000.0,
   height: 1000.0,
@@ -368,6 +374,52 @@ const BattleArenaConfig defaultArenaConfig = BattleArenaConfig(
   ],
   obstacles: [],
 );
+
+const BattleArenaConfig doubleBridgeArenaConfig = BattleArenaConfig(
+  id: doubleBridgeArenaId,
+  name: 'Classic Double Bridge',
+  width: 1000.0,
+  height: 1000.0,
+  progressMin: 0.0,
+  progressMax: 1000.0,
+  lateralMin: 0.0,
+  lateralMax: 1000.0,
+  centerLateral: centerLateral,
+  fieldAspectRatio: fieldAspectRatio,
+  leftTower: BattlePointConfig(progress: 50.0, lateralPosition: centerLateral),
+  rightTower: BattlePointConfig(
+    progress: 950.0,
+    lateralPosition: centerLateral,
+  ),
+  leftDeploy: BattleProgressRange(min: 0.0, max: 420.0),
+  rightDeploy: BattleProgressRange(min: 580.0, max: 1000.0),
+  terrainGates: [
+    BattleTerrainGate(
+      id: 'central_river_double_bridge',
+      kind: 'river',
+      progressMin: 455.0,
+      progressMax: 545.0,
+      bridgeMinProgress: 430.0,
+      bridgeMaxProgress: 570.0,
+      passableLateralRanges: [
+        BattleLateralRange(
+          min: doubleBridgeLeftMinLateral,
+          max: doubleBridgeLeftMaxLateral,
+        ),
+        BattleLateralRange(
+          min: doubleBridgeRightMinLateral,
+          max: doubleBridgeRightMaxLateral,
+        ),
+      ],
+    ),
+  ],
+  obstacles: [],
+);
+
+const List<BattleArenaConfig> arenaCatalog = [
+  defaultArenaConfig,
+  doubleBridgeArenaConfig,
+];
 
 class BattleDropPoint {
   const BattleDropPoint({
@@ -445,6 +497,44 @@ bool isRiverProgress(
   );
 }
 
+bool _lateralWithinRanges(double lateral, List<BattleLateralRange> ranges) {
+  return ranges.any((range) => lateral >= range.min && lateral <= range.max);
+}
+
+double _closestLateralInRanges(
+  double lateral,
+  List<BattleLateralRange> ranges,
+) {
+  var closest = lateral;
+  var bestDistance = double.infinity;
+  for (final range in ranges) {
+    final candidate = clampBattleValue(lateral, range.min, range.max);
+    final distance = (candidate - lateral).abs();
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      closest = candidate;
+    }
+  }
+  return closest;
+}
+
+List<BattleLateralRange> _intersectLateralRanges(
+  List<BattleLateralRange> leftRanges,
+  List<BattleLateralRange> rightRanges,
+) {
+  final intersections = <BattleLateralRange>[];
+  for (final left in leftRanges) {
+    for (final right in rightRanges) {
+      final minValue = math.max(left.min, right.min);
+      final maxValue = math.min(left.max, right.max);
+      if (maxValue >= minValue) {
+        intersections.add(BattleLateralRange(min: minValue, max: maxValue));
+      }
+    }
+  }
+  return intersections;
+}
+
 bool isBridgeLateral(
   double lateral, [
   BattleArenaConfig arena = defaultArenaConfig,
@@ -453,11 +543,7 @@ bool isBridgeLateral(
   final ranges = arena.terrainGates
       .expand((gate) => gate.passableLateralRanges)
       .toList(growable: false);
-  return ranges.isEmpty ||
-      ranges.any(
-        (range) =>
-            normalizedLateral >= range.min && normalizedLateral <= range.max,
-      );
+  return ranges.isEmpty || _lateralWithinRanges(normalizedLateral, ranges);
 }
 
 bool pathIntersectsRiver(
@@ -475,20 +561,59 @@ bool pathIntersectsRiver(
   );
 }
 
+List<BattleLateralRange> terrainGateLateralRangesForProgress(
+  double progress, [
+  BattleArenaConfig arena = defaultArenaConfig,
+]) {
+  if (!progress.isFinite) {
+    return [BattleLateralRange(min: arena.lateralMin, max: arena.lateralMax)];
+  }
+
+  var ranges = [
+    BattleLateralRange(min: arena.lateralMin, max: arena.lateralMax),
+  ];
+  for (final gate in arena.terrainGates) {
+    if (progress > gate.progressMin && progress < gate.progressMax) {
+      ranges = _intersectLateralRanges(ranges, gate.passableLateralRanges);
+    }
+  }
+  return ranges;
+}
+
+List<BattleLateralRange> terrainGateLateralRangesForPath(
+  double startProgress,
+  double endProgress, [
+  BattleArenaConfig arena = defaultArenaConfig,
+]) {
+  if (!startProgress.isFinite || !endProgress.isFinite) {
+    return [BattleLateralRange(min: arena.lateralMin, max: arena.lateralMax)];
+  }
+
+  final minProgress = math.min(startProgress, endProgress);
+  final maxProgress = math.max(startProgress, endProgress);
+  var ranges = [
+    BattleLateralRange(min: arena.lateralMin, max: arena.lateralMax),
+  ];
+  for (final gate in arena.terrainGates) {
+    if (minProgress < gate.progressMax && maxProgress > gate.progressMin) {
+      ranges = _intersectLateralRanges(ranges, gate.passableLateralRanges);
+    }
+  }
+  return ranges;
+}
+
 List<double> terrainGateLateralForProgress(
   double progress, [
   BattleArenaConfig arena = defaultArenaConfig,
 ]) {
-  var minValue = arena.lateralMin;
-  var maxValue = arena.lateralMax;
-  for (final gate in arena.terrainGates) {
-    if (progress > gate.progressMin && progress < gate.progressMax) {
-      final ranges = gate.passableLateralRanges;
-      minValue = ranges.map((range) => range.min).reduce(math.min);
-      maxValue = ranges.map((range) => range.max).reduce(math.max);
-    }
+  final ranges = terrainGateLateralRangesForProgress(progress, arena);
+  if (ranges.isEmpty) {
+    return [arena.centerLateral, arena.centerLateral];
   }
-  return [minValue, maxValue];
+  return [
+    ranges.map((range) => range.min).reduce(math.min),
+    ranges.map((range) => range.max).reduce(math.max),
+  ];
 }
 
 double sanitizeTerrainLateralForProgress(
@@ -496,12 +621,12 @@ double sanitizeTerrainLateralForProgress(
   double lateral, [
   BattleArenaConfig arena = defaultArenaConfig,
 ]) {
-  final gate = terrainGateLateralForProgress(progress, arena);
-  return clampBattleValue(
-    sanitizeLateralPosition(lateral, arena),
-    gate[0],
-    gate[1],
-  );
+  final sanitizedLateral = sanitizeLateralPosition(lateral, arena);
+  final ranges = terrainGateLateralRangesForProgress(progress, arena);
+  if (ranges.isEmpty || _lateralWithinRanges(sanitizedLateral, ranges)) {
+    return sanitizedLateral;
+  }
+  return _closestLateralInRanges(sanitizedLateral, ranges);
 }
 
 double terrainNavigationLateralForMove(
@@ -511,16 +636,17 @@ double terrainNavigationLateralForMove(
   BattleArenaConfig arena = defaultArenaConfig,
 ]) {
   final sanitizedLateral = sanitizeLateralPosition(desiredLateral, arena);
+  final pathRanges = terrainGateLateralRangesForPath(
+    startProgress,
+    targetProgress,
+    arena,
+  );
   if (!pathIntersectsRiver(startProgress, targetProgress, arena) ||
-      isBridgeLateral(sanitizedLateral, arena)) {
+      _lateralWithinRanges(sanitizedLateral, pathRanges)) {
     return sanitizedLateral;
   }
 
-  final gate = terrainGateLateralForProgress(
-    (startProgress + targetProgress) / 2,
-    arena,
-  );
-  return clampBattleValue(sanitizedLateral, gate[0], gate[1]);
+  return _closestLateralInRanges(sanitizedLateral, pathRanges);
 }
 
 double terrainLimitedProgressForMove(
@@ -533,9 +659,10 @@ double terrainLimitedProgressForMove(
     return startProgress.isFinite ? startProgress : arena.progressMin;
   }
   var limitedProgress = desiredProgress;
+  final lateral = sanitizeLateralPosition(desiredLateral, arena);
   for (final gate in arena.terrainGates) {
     final lateralAllowed = gate.passableLateralRanges.any(
-      (range) => desiredLateral >= range.min && desiredLateral <= range.max,
+      (range) => lateral >= range.min && lateral <= range.max,
     );
     if (lateralAllowed) {
       continue;
@@ -546,6 +673,21 @@ double terrainLimitedProgressForMove(
     } else if (startProgress >= gate.progressMax &&
         desiredProgress < gate.progressMax) {
       limitedProgress = math.max(limitedProgress, gate.progressMax);
+    }
+  }
+
+  for (final obstacle in arena.obstacles) {
+    final lateralBlocked =
+        lateral >= obstacle.lateralMin && lateral <= obstacle.lateralMax;
+    if (!lateralBlocked) {
+      continue;
+    }
+    if (startProgress <= obstacle.progressMin &&
+        desiredProgress > obstacle.progressMin) {
+      limitedProgress = math.min(limitedProgress, obstacle.progressMin);
+    } else if (startProgress >= obstacle.progressMax &&
+        desiredProgress < obstacle.progressMax) {
+      limitedProgress = math.max(limitedProgress, obstacle.progressMax);
     }
   }
 
