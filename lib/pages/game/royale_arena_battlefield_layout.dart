@@ -1,12 +1,6 @@
 part of 'royale_arena_page.dart';
 
 extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
-  void _toggleCollisionRadiusOverlay() {
-    setState(() {
-      _showCollisionRadiusOverlay = !_showCollisionRadiusOverlay;
-    });
-  }
-
   Offset _towerCenter({
     required BoxConstraints board,
     required String mySide,

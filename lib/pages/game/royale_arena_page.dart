@@ -77,6 +77,12 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
 
   Map<String, String> get _t => context.read<LocaleProvider>().translation;
 
+  void _toggleCollisionRadiusOverlay() {
+    setState(() {
+      _showCollisionRadiusOverlay = !_showCollisionRadiusOverlay;
+    });
+  }
+
   @override
   void initState() {
     super.initState();

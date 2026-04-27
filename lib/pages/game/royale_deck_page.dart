@@ -76,6 +76,10 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
       final deckName = deck?.name ?? _defaultDeckName(targetSlot);
       final progressionHeroId = deck?.progression?.heroId;
 
+      if (!mounted) {
+        return;
+      }
+
       setState(() {
         _cards = cards;
         _decks = sortedDecks;
@@ -97,10 +101,16 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
         _hasLoadedDecksOnce = true;
       });
     } on ApiException catch (e) {
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = e.message;
       });
     } catch (e) {
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = '${t.text('Failed to load decks')}: $e';
       });
