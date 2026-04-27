@@ -10,38 +10,41 @@ part 'host_battle_engine_models.dart';
 
 const int _tickMs = battle_rules.tickMs;
 const int _matchDurationMs = battle_rules.matchDurationMs;
-const int _worldScale = battle_rules.worldScale;
-const int _leftTowerX = battle_rules.leftTowerX;
-const int _rightTowerX = battle_rules.rightTowerX;
 const int _towerHp = battle_rules.towerHp;
 const int _maxComboCards = battle_rules.maxComboCards;
 const double _globalMoveSpeedMultiplier =
     battle_rules.globalMoveSpeedMultiplier;
 const double _globalAttackSpeedMultiplier =
     battle_rules.globalAttackSpeedMultiplier;
-const double _fieldAspectRatio = battle_rules.fieldAspectRatio;
 
 double _clamp(double value, double min, double max) =>
     battle_rules.clampBattleValue(value, min, max);
 
 double _sideDirection(String side) => battle_rules.sideDirection(side);
 
-double _sanitizeLanePosition(String side, double value) =>
-    battle_rules.sanitizeLanePosition(side, value);
+double _sanitizeLanePosition(
+  String side,
+  double value, [
+  battle_rules.BattleArenaConfig arena = battle_rules.defaultArenaConfig,
+]) => battle_rules.sanitizeLanePosition(side, value, arena);
 
-double _sanitizeLateralPosition(double value) =>
-    battle_rules.sanitizeLateralPosition(value);
+double _sanitizeLateralPosition(
+  double value, [
+  battle_rules.BattleArenaConfig arena = battle_rules.defaultArenaConfig,
+]) => battle_rules.sanitizeLateralPosition(value, arena);
 
 double _distanceBetweenPoints(
   double aProgress,
   double aLateral,
   double bProgress,
-  double bLateral,
-) => battle_rules.distanceBetweenPoints(
+  double bLateral, [
+  battle_rules.BattleArenaConfig arena = battle_rules.defaultArenaConfig,
+]) => battle_rules.distanceBetweenPoints(
   aProgress,
   aLateral,
   bProgress,
   bLateral,
+  arena,
 );
 
 double _bodyRadiusForUnitType(String type) =>
@@ -50,10 +53,7 @@ double _bodyRadiusForUnitType(String type) =>
 String _inferCardCollisionBehavior(String type) =>
     type.trim().toLowerCase() == 'swarm' ? 'reroute' : 'hold';
 
-String _normalizeCollisionBehavior(
-  String? value, {
-  String fallback = 'hold',
-}) {
+String _normalizeCollisionBehavior(String? value, {String fallback = 'hold'}) {
   final normalized = value?.trim().toLowerCase() ?? '';
   if (normalized == 'reroute') {
     return 'reroute';
@@ -92,6 +92,7 @@ class HostBattleEngine {
        _viewerSide = room.viewerSide ?? 'left' {
     _leftPlayer = _buildPlayer(room, 'left');
     _rightPlayer = _buildPlayer(room, 'right');
+    _arena = room.battle?.arena ?? battle_rules.defaultArenaConfig;
     _battleEvents.addAll(room.battle?.events ?? const []);
   }
 
@@ -103,6 +104,7 @@ class HostBattleEngine {
 
   late _HostPlayer _leftPlayer;
   late _HostPlayer _rightPlayer;
+  late battle_rules.BattleArenaConfig _arena;
   final List<_HostUnit> _units = <_HostUnit>[];
   final List<RoyaleBattleEvent> _battleEvents = <RoyaleBattleEvent>[];
   int _nextUnitId = 1;
@@ -143,6 +145,7 @@ class HostBattleEngine {
       'result': _result == null
           ? null
           : {'winnerSide': _result!.winnerSide, 'reason': _result!.reason},
+      'arena': _arena.toJson(),
       'players': {
         'left': _exportPlayerState(_leftPlayer),
         'right': _exportPlayerState(_rightPlayer),
@@ -243,6 +246,7 @@ class HostBattleEngine {
       'roomCode': _code,
       'playerSide': side,
       'timeRemainingMs': _timeRemainingMs,
+      'arena': _arena.toJson(),
       'players': {
         'left': _serializeDecisionPlayer(_leftPlayer),
         'right': _serializeDecisionPlayer(_rightPlayer),
@@ -788,6 +792,7 @@ class HostBattleEngine {
             .toList(),
         events: List<RoyaleBattleEvent>.unmodifiable(_battleEvents),
         result: _result,
+        arena: _arena,
         fieldState: RoyaleFieldState(
           nextEventMs: _fieldNextEventMs.clamp(0, 30000),
           activeEffects: _fieldEffects

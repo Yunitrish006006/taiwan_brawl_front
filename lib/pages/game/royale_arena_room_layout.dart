@@ -22,7 +22,9 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                 : null,
             child: friend.avatarUrl != null && friend.avatarUrl!.isNotEmpty
                 ? null
-                : Text(friend.name.isEmpty ? '?' : friend.name.characters.first),
+                : Text(
+                    friend.name.isEmpty ? '?' : friend.name.characters.first,
+                  ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -42,7 +44,8 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                 Text(
                   friend.isOnline
                       ? _t.text('Online')
-                      : friend.lastActiveAt == null || friend.lastActiveAt!.isEmpty
+                      : friend.lastActiveAt == null ||
+                            friend.lastActiveAt!.isEmpty
                       ? _t.text('Offline')
                       : '${_t.text('Last online')} ${friend.lastActiveAt}',
                   maxLines: 1,
@@ -121,7 +124,9 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                 child: Text(
                   _canInviteFriendsFromDrawer
                       ? '${_t.text('Room')} ${widget.roomCode}'
-                      : _t.text('Battle starts as soon as both players are ready'),
+                      : _t.text(
+                          'Battle starts as soon as both players are ready',
+                        ),
                   style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ),
@@ -168,13 +173,11 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
       children: [
         Text(
           _t.text('Battle Hand'),
-          style: (compact
-                  ? Theme.of(context).textTheme.titleMedium
-                  : Theme.of(context).textTheme.titleLarge)
-              ?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-          ),
+          style:
+              (compact
+                      ? Theme.of(context).textTheme.titleMedium
+                      : Theme.of(context).textTheme.titleLarge)
+                  ?.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
         ),
         _InfoChip(
           icon: Icons.bolt_rounded,
@@ -244,7 +247,9 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
           );
 
           return Padding(
-            key: ValueKey('hand-entry-${compact ? 'compact' : 'full'}-${card.id}'),
+            key: ValueKey(
+              'hand-entry-${compact ? 'compact' : 'full'}-${card.id}',
+            ),
             padding: EdgeInsets.only(right: compact ? 10 : 14),
             child: GestureDetector(
               onTap: () => _toggleCardSelection(card),
@@ -526,9 +531,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Expanded(
-                      child: _buildHandCardList(battle, compact: true),
-                    ),
+                    Expanded(child: _buildHandCardList(battle, compact: true)),
                   ],
                 ),
               ),
@@ -633,8 +636,9 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     if (battlefieldLaneWidth < 300) {
       battlefieldLaneWidth = 300;
     }
+    final battlefieldAspectRatio = battle.arena.fieldAspectRatio;
     var boardWidth =
-        (contentHeight - panelVerticalChrome) * _battlefieldAspectRatio;
+        (contentHeight - panelVerticalChrome) * battlefieldAspectRatio;
     final boardWidthLimit = battlefieldLaneWidth - panelHorizontalChrome;
     if (boardWidth > _battlefieldDesktopMaxWidth) {
       boardWidth = _battlefieldDesktopMaxWidth;
@@ -645,7 +649,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     if (boardWidth < 280) {
       boardWidth = 280;
     }
-    final boardHeight = boardWidth / _battlefieldAspectRatio;
+    final boardHeight = boardWidth / battlefieldAspectRatio;
 
     return Center(
       child: ConstrainedBox(
@@ -922,7 +926,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
           );
         }
         final boardWidth = _boardWidthFor(constraints, compact);
-        final boardHeight = boardWidth / _battlefieldAspectRatio;
+        final boardHeight = boardWidth / battle.arena.fieldAspectRatio;
         final contentPadding = compact ? 14.0 : 20.0;
         final children = <Widget>[
           _buildHudSection(
@@ -1007,8 +1011,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                     me?.physicalEnergy ??
                     _placeholderPlayer(mySide).physicalEnergy,
                 spiritEnergy:
-                    me?.spiritEnergy ??
-                    _placeholderPlayer(mySide).spiritEnergy,
+                    me?.spiritEnergy ?? _placeholderPlayer(mySide).spiritEnergy,
                 compact: compact,
               ),
               _ArenaLegendChip(
@@ -1023,20 +1026,14 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
               if (opponent != null &&
                   _shouldShowAddFriendButton(opponent, me?.userId))
                 ActionChip(
-                  avatar: Icon(
-                    Icons.person_add_alt_1,
-                    size: compact ? 16 : 18,
-                  ),
+                  avatar: Icon(Icons.person_add_alt_1, size: compact ? 16 : 18),
                   label: Text(
                     '${_t.text('Add')} ${opponent.name} ${_t.text('as a friend')}',
                     style: TextStyle(fontSize: compact ? 11 : 13),
                   ),
                   onPressed: () => _sendFriendRequestToPlayer(opponent),
                   visualDensity: compact
-                      ? const VisualDensity(
-                          horizontal: -2,
-                          vertical: -2,
-                        )
+                      ? const VisualDensity(horizontal: -2, vertical: -2)
                       : VisualDensity.standard,
                   materialTapTargetSize: compact
                       ? MaterialTapTargetSize.shrinkWrap
@@ -1066,13 +1063,17 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                   title: me?.name ?? _t.text('You'),
                   subtitle: mySide == 'left' ? 'Blue Side' : 'Red Side',
                   hero: me?.hero ?? _placeholderPlayer(mySide).hero,
-                  physicalHealth: me?.physicalHealth ??
+                  physicalHealth:
+                      me?.physicalHealth ??
                       _placeholderPlayer(mySide).physicalHealth,
-                  spiritHealth: me?.spiritHealth ??
+                  spiritHealth:
+                      me?.spiritHealth ??
                       _placeholderPlayer(mySide).spiritHealth,
-                  physicalEnergy: me?.physicalEnergy ??
+                  physicalEnergy:
+                      me?.physicalEnergy ??
                       _placeholderPlayer(mySide).physicalEnergy,
-                  spiritEnergy: me?.spiritEnergy ??
+                  spiritEnergy:
+                      me?.spiritEnergy ??
                       _placeholderPlayer(mySide).spiritEnergy,
                   money: me?.money ?? _placeholderPlayer(mySide).money,
                   towerHp: me?.towerHp ?? 0,
@@ -1087,21 +1088,31 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                 child: _PlayerHudCard(
                   title: opponent?.name ?? _t.text('Opponent'),
                   subtitle: mySide == 'left' ? 'Red Side' : 'Blue Side',
-                  hero: opponent?.hero ??
+                  hero:
+                      opponent?.hero ??
                       _placeholderPlayer(opponent?.side ?? 'right').hero,
-                  physicalHealth: opponent?.physicalHealth ??
-                      _placeholderPlayer(opponent?.side ?? 'right')
-                          .physicalHealth,
-                  spiritHealth: opponent?.spiritHealth ??
-                      _placeholderPlayer(opponent?.side ?? 'right')
-                          .spiritHealth,
-                  physicalEnergy: opponent?.physicalEnergy ??
-                      _placeholderPlayer(opponent?.side ?? 'right')
-                          .physicalEnergy,
-                  spiritEnergy: opponent?.spiritEnergy ??
-                      _placeholderPlayer(opponent?.side ?? 'right')
-                          .spiritEnergy,
-                  money: opponent?.money ??
+                  physicalHealth:
+                      opponent?.physicalHealth ??
+                      _placeholderPlayer(
+                        opponent?.side ?? 'right',
+                      ).physicalHealth,
+                  spiritHealth:
+                      opponent?.spiritHealth ??
+                      _placeholderPlayer(
+                        opponent?.side ?? 'right',
+                      ).spiritHealth,
+                  physicalEnergy:
+                      opponent?.physicalEnergy ??
+                      _placeholderPlayer(
+                        opponent?.side ?? 'right',
+                      ).physicalEnergy,
+                  spiritEnergy:
+                      opponent?.spiritEnergy ??
+                      _placeholderPlayer(
+                        opponent?.side ?? 'right',
+                      ).spiritEnergy,
+                  money:
+                      opponent?.money ??
                       _placeholderPlayer(opponent?.side ?? 'right').money,
                   towerHp: opponent?.towerHp ?? 0,
                   maxTowerHp: opponent?.maxTowerHp ?? 1,

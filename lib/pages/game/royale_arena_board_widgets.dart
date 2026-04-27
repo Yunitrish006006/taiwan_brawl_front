@@ -1,12 +1,13 @@
 part of 'royale_arena_page.dart';
 
 class _ArenaPainter extends CustomPainter {
-  const _ArenaPainter({required this.playerSide});
+  const _ArenaPainter({required this.playerSide, required this.arena});
 
   final String playerSide;
+  final battle_rules.BattleArenaConfig arena;
 
   double _progressToY(Size size, double progress) {
-    final normalized = (progress / battle_rules.worldScale)
+    final normalized = (progress / arena.progressMax)
         .clamp(0.0, 1.0)
         .toDouble();
     final longitudinal = playerSide == 'left' ? 1 - normalized : normalized;
@@ -14,9 +15,7 @@ class _ArenaPainter extends CustomPainter {
   }
 
   double _lateralToX(Size size, double lateral) {
-    final normalized = (lateral / battle_rules.worldScale)
-        .clamp(0.0, 1.0)
-        .toDouble();
+    final normalized = (lateral / arena.lateralMax).clamp(0.0, 1.0).toDouble();
     return size.width * normalized;
   }
 
@@ -53,13 +52,13 @@ class _ArenaPainter extends CustomPainter {
     required Color color,
   }) {
     final center = Offset(
-      _lateralToX(size, battle_rules.centerLateral),
+      _lateralToX(size, arena.centerLateral),
       _progressToY(size, progress),
     );
     var outerRadius =
-        size.height * ((battle_rules.towerBodyRadius + 34) / _worldScale);
+        size.height * ((battle_rules.towerBodyRadius + 34) / arena.progressMax);
     var innerRadius =
-        size.height * ((battle_rules.towerBodyRadius + 14) / _worldScale);
+        size.height * ((battle_rules.towerBodyRadius + 14) / arena.progressMax);
     if (outerRadius < 18) {
       outerRadius = 18;
     }
@@ -99,8 +98,8 @@ class _ArenaPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final fullRect = Rect.fromLTWH(0, 0, size.width, size.height);
     final enemySide = playerSide == 'left' ? 'right' : 'left';
-    final ownDeployRange = battle_rules.deployRangeForSide(playerSide);
-    final enemyDeployRange = battle_rules.deployRangeForSide(enemySide);
+    final ownDeployRange = battle_rules.deployRangeForSide(playerSide, arena);
+    final enemyDeployRange = battle_rules.deployRangeForSide(enemySide, arena);
     final ownDeployRect = _bandRect(
       size,
       ownDeployRange.first,
@@ -113,37 +112,47 @@ class _ArenaPainter extends CustomPainter {
     );
     final neutralRect = _bandRect(
       size,
-      battle_rules.leftDeployMax.toDouble(),
-      battle_rules.rightDeployMin.toDouble(),
+      arena.leftDeploy.max,
+      arena.rightDeploy.min,
     );
-    final riverRect = _bandRect(
-      size,
-      battle_rules.riverMinProgress.toDouble(),
-      battle_rules.riverMaxProgress.toDouble(),
-    );
-    final bridgeRect = _worldRect(
-      size,
-      leftLateral: battle_rules.bridgeMinLateral.toDouble(),
-      rightLateral: battle_rules.bridgeMaxLateral.toDouble(),
-      startProgress: battle_rules.bridgeMinProgress.toDouble(),
-      endProgress: battle_rules.bridgeMaxProgress.toDouble(),
-    );
+    battle_rules.BattleTerrainGate? riverGate;
+    for (final gate in arena.terrainGates) {
+      if (gate.kind == 'river') {
+        riverGate = gate;
+        break;
+      }
+    }
+    final bridgeRange = riverGate?.passableLateralRanges.isNotEmpty == true
+        ? riverGate!.passableLateralRanges.first
+        : null;
+    final riverRect = riverGate == null
+        ? Rect.zero
+        : _bandRect(size, riverGate.progressMin, riverGate.progressMax);
+    final bridgeRect = riverGate == null || bridgeRange == null
+        ? Rect.zero
+        : _worldRect(
+            size,
+            leftLateral: bridgeRange.min,
+            rightLateral: bridgeRange.max,
+            startProgress: riverGate.bridgeMinProgress,
+            endProgress: riverGate.bridgeMaxProgress,
+          );
     final laneRect = _worldRect(
       size,
-      leftLateral: 430,
-      rightLateral: 570,
-      startProgress: 0,
-      endProgress: battle_rules.worldScale.toDouble(),
+      leftLateral: arena.centerLateral - 70,
+      rightLateral: arena.centerLateral + 70,
+      startProgress: arena.progressMin,
+      endProgress: arena.progressMax,
     );
     final ownBoundaryProgress = playerSide == 'left'
-        ? battle_rules.leftDeployMax.toDouble()
-        : battle_rules.rightDeployMin.toDouble();
+        ? arena.leftDeploy.max
+        : arena.rightDeploy.min;
     final enemyBoundaryProgress = playerSide == 'left'
-        ? battle_rules.rightDeployMin.toDouble()
-        : battle_rules.leftDeployMax.toDouble();
+        ? arena.rightDeploy.min
+        : arena.leftDeploy.max;
     final ownBoundaryY = _progressToY(size, ownBoundaryProgress);
     final enemyBoundaryY = _progressToY(size, enemyBoundaryProgress);
-    final centerX = _lateralToX(size, battle_rules.centerLateral);
+    final centerX = _lateralToX(size, arena.centerLateral);
 
     final fieldPaint = Paint()
       ..shader = const LinearGradient(
@@ -198,14 +207,20 @@ class _ArenaPainter extends CustomPainter {
     final gridPaint = Paint()
       ..color = Colors.white.withValues(alpha: 0.08)
       ..strokeWidth = 1;
-    for (var lateral = 100; lateral < battle_rules.worldScale; lateral += 100) {
+    final lateralGridStep = (arena.lateralMax / 10).clamp(50.0, 160.0);
+    for (
+      var lateral = lateralGridStep;
+      lateral < arena.lateralMax;
+      lateral += lateralGridStep
+    ) {
       final x = _lateralToX(size, lateral.toDouble());
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
     }
+    final progressGridStep = (arena.progressMax / 10).clamp(50.0, 180.0);
     for (
-      var progress = 100;
-      progress < battle_rules.worldScale;
-      progress += 100
+      var progress = progressGridStep;
+      progress < arena.progressMax;
+      progress += progressGridStep
     ) {
       final y = _progressToY(size, progress.toDouble());
       canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
@@ -223,42 +238,62 @@ class _ArenaPainter extends CustomPainter {
         ..strokeWidth = 2.2,
     );
 
-    final riverPaint = Paint()
-      ..shader = const LinearGradient(
-        colors: [
-          Color(0xFF9BE7FF),
-          Color(0xFF39A0C5),
-          Color(0xFF0E7490),
-          Color(0xFF39A0C5),
-        ],
-        begin: Alignment.centerLeft,
-        end: Alignment.centerRight,
-      ).createShader(riverRect);
-    canvas.drawRect(riverRect, riverPaint);
-    final bridgePaint = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0xFFDCC7A0), Color(0xFFB58A60)],
-        begin: Alignment.centerLeft,
-        end: Alignment.centerRight,
-      ).createShader(bridgeRect);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(bridgeRect, const Radius.circular(18)),
-      bridgePaint,
-    );
+    if (riverGate != null) {
+      final riverPaint = Paint()
+        ..shader = const LinearGradient(
+          colors: [
+            Color(0xFF9BE7FF),
+            Color(0xFF39A0C5),
+            Color(0xFF0E7490),
+            Color(0xFF39A0C5),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ).createShader(riverRect);
+      canvas.drawRect(riverRect, riverPaint);
+    }
+    if (bridgeRange != null) {
+      final bridgePaint = Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFFDCC7A0), Color(0xFFB58A60)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ).createShader(bridgeRect);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(bridgeRect, const Radius.circular(18)),
+        bridgePaint,
+      );
 
-    final bridgeRail = Paint()
-      ..color = Colors.white.withValues(alpha: 0.24)
-      ..strokeWidth = 2;
-    canvas.drawLine(
-      Offset(bridgeRect.left + 12, bridgeRect.top + 8),
-      Offset(bridgeRect.left + 12, bridgeRect.bottom - 8),
-      bridgeRail,
-    );
-    canvas.drawLine(
-      Offset(bridgeRect.right - 12, bridgeRect.top + 8),
-      Offset(bridgeRect.right - 12, bridgeRect.bottom - 8),
-      bridgeRail,
-    );
+      final bridgeRail = Paint()
+        ..color = Colors.white.withValues(alpha: 0.24)
+        ..strokeWidth = 2;
+      canvas.drawLine(
+        Offset(bridgeRect.left + 12, bridgeRect.top + 8),
+        Offset(bridgeRect.left + 12, bridgeRect.bottom - 8),
+        bridgeRail,
+      );
+      canvas.drawLine(
+        Offset(bridgeRect.right - 12, bridgeRect.top + 8),
+        Offset(bridgeRect.right - 12, bridgeRect.bottom - 8),
+        bridgeRail,
+      );
+    }
+
+    final obstaclePaint = Paint()
+      ..color = const Color(0xFF2B2B35).withValues(alpha: 0.48);
+    for (final obstacle in arena.obstacles) {
+      final obstacleRect = _worldRect(
+        size,
+        leftLateral: obstacle.lateralMin,
+        rightLateral: obstacle.lateralMax,
+        startProgress: obstacle.progressMin,
+        endProgress: obstacle.progressMax,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(obstacleRect, const Radius.circular(10)),
+        obstaclePaint,
+      );
+    }
 
     canvas.drawLine(
       Offset(0, ownBoundaryY),
@@ -314,20 +349,20 @@ class _ArenaPainter extends CustomPainter {
     _drawTowerPad(
       canvas,
       size,
-      progress: battle_rules.leftTowerX.toDouble(),
+      progress: arena.leftTower.progress,
       color: const Color(0xFF25B7D3),
     );
     _drawTowerPad(
       canvas,
       size,
-      progress: battle_rules.rightTowerX.toDouble(),
+      progress: arena.rightTower.progress,
       color: const Color(0xFFE25555),
     );
   }
 
   @override
   bool shouldRepaint(covariant _ArenaPainter oldDelegate) {
-    return oldDelegate.playerSide != playerSide;
+    return oldDelegate.playerSide != playerSide || oldDelegate.arena != arena;
   }
 }
 
@@ -918,11 +953,13 @@ class _AimMarker extends StatelessWidget {
   const _AimMarker({
     required this.point,
     required this.active,
+    this.arena = battle_rules.defaultArenaConfig,
     this.showLabel = true,
   });
 
   final Offset point;
   final bool active;
+  final battle_rules.BattleArenaConfig arena;
   final bool showLabel;
 
   @override
@@ -974,7 +1011,7 @@ class _AimMarker extends StatelessWidget {
                 border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
               ),
               child: Text(
-                'x ${(point.dx * _worldScale).round()} / y ${(point.dy * _worldScale).round()}',
+                'x ${(point.dx * arena.lateralMax).round()} / y ${(point.dy * arena.progressMax).round()}',
                 style: TextStyle(
                   color: markerColor,
                   fontSize: 11,

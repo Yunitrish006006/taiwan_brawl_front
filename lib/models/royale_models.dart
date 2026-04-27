@@ -1,4 +1,5 @@
 import '../utils/remote_image_url.dart';
+import '../services/royale_battle_rules.dart' as battle_rules;
 
 class RoyaleCharacterAsset {
   const RoyaleCharacterAsset({
@@ -1280,6 +1281,7 @@ class RoyaleBattleView {
     required this.units,
     required this.events,
     required this.result,
+    this.arena = battle_rules.defaultArenaConfig,
     this.fieldState,
   });
 
@@ -1292,6 +1294,7 @@ class RoyaleBattleView {
   final List<RoyaleUnitView> units;
   final List<RoyaleBattleEvent> events;
   final RoyaleBattleResult? result;
+  final battle_rules.BattleArenaConfig arena;
   final RoyaleFieldState? fieldState;
 
   factory RoyaleBattleView.fromJson(Map<String, dynamic> json) {
@@ -1321,6 +1324,9 @@ class RoyaleBattleView {
       result: resultJson == null
           ? null
           : RoyaleBattleResult.fromJson(resultJson),
+      arena: battle_rules.BattleArenaConfig.fromJson(
+        json['arena'] as Map<String, dynamic>?,
+      ),
       fieldState: json['fieldState'] == null
           ? null
           : RoyaleFieldState.fromJson(

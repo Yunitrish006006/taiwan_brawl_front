@@ -96,8 +96,16 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
   double _unitDesiredLateral(_HostUnit unit, _TargetSelection? target) {
     final baseLateral = target?.kind == 'unit'
         ? target!.unitTarget!.lateralPosition
-        : (_worldScale / 2).toDouble();
-    return _sanitizeLateralPosition(baseLateral + unit.laneBias);
+        : _arena.centerLateral;
+    final targetProgress = target?.kind == 'unit'
+        ? target!.unitTarget!.progress
+        : _enemyTowerProgressForSide(unit.side);
+    return battle_rules.terrainNavigationLateralForMove(
+      unit.progress,
+      targetProgress,
+      baseLateral + unit.laneBias,
+      _arena,
+    );
   }
 
   String _unitCollisionBehavior(_HostUnit unit) {
@@ -113,7 +121,9 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     final forwardDirection = _sideDirection(unit.side);
 
     for (final blocker in _units) {
-      if (identical(blocker, unit) || blocker.hp <= 0 || blocker.side != unit.side) {
+      if (identical(blocker, unit) ||
+          blocker.hp <= 0 ||
+          blocker.side != unit.side) {
         continue;
       }
 
@@ -127,6 +137,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         unit.lateralPosition,
         blocker.progress,
         blocker.lateralPosition,
+        _arena,
       );
       final contactDistance = _unitBodyContactDistance(unit, blocker);
       if (distance > contactDistance + 48) {
@@ -182,10 +193,10 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     if (leftPenalty != rightPenalty) {
       return leftPenalty < rightPenalty ? -1 : 1;
     }
-    if (unit.lateralPosition < (_worldScale / 2).toDouble() - 4) {
+    if (unit.lateralPosition < _arena.centerLateral - 4) {
       return -1;
     }
-    if (unit.lateralPosition > (_worldScale / 2).toDouble() + 4) {
+    if (unit.lateralPosition > _arena.centerLateral + 4) {
       return 1;
     }
 
@@ -217,13 +228,14 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         unit.progress +
         (-_sideDirection(unit.side) * progressWeight / vectorLength) *
             moveBudget;
+    final fieldAspectRatio = _arena.fieldAspectRatio;
     final detourScaledLateral =
-        unit.lateralPosition * _fieldAspectRatio +
+        unit.lateralPosition * fieldAspectRatio +
         (rerouteSide * scaledLateralWeight / vectorLength) * moveBudget;
     final rerouteMove = _resolveUnitMovementCollision(
       unit,
       nextProgress: detourProgress,
-      nextLateral: detourScaledLateral / _fieldAspectRatio,
+      nextLateral: detourScaledLateral / fieldAspectRatio,
       minProgress: minProgress,
       maxProgress: maxProgress,
     );
@@ -232,6 +244,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       unit.lateralPosition,
       rerouteMove.progress,
       rerouteMove.lateralPosition,
+      _arena,
     );
     return rerouteDistance > 1e-3 ? rerouteMove : null;
   }
@@ -255,6 +268,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         otherBodyRadius: maxBodyRadius,
         gap: battle_rules.unitCollisionGap.toDouble(),
       ),
+      _arena,
     );
     return List<double>.generate(
       cards.length,
@@ -271,15 +285,26 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
   }) {
     // Use the same scaled lateral space as distanceBetweenPoints so body contact stays consistent.
     final startProgress = unit.progress;
-    final startScaledLateral = unit.lateralPosition * _fieldAspectRatio;
-    final desiredProgress = _clamp(nextProgress, minProgress, maxProgress);
-    final desiredLateral = _sanitizeLateralPosition(nextLateral);
-    final desiredScaledLateral = desiredLateral * _fieldAspectRatio;
+    final fieldAspectRatio = _arena.fieldAspectRatio;
+    final startScaledLateral = unit.lateralPosition * fieldAspectRatio;
+    final boundedProgress = _clamp(nextProgress, minProgress, maxProgress);
+    final rawDesiredLateral = _sanitizeLateralPosition(nextLateral, _arena);
+    final desiredProgress = battle_rules.terrainLimitedProgressForMove(
+      startProgress,
+      boundedProgress,
+      rawDesiredLateral,
+      _arena,
+    );
+    final desiredLateral = battle_rules.sanitizeTerrainLateralForProgress(
+      desiredProgress,
+      rawDesiredLateral,
+      _arena,
+    );
+    final desiredScaledLateral = desiredLateral * fieldAspectRatio;
     final deltaProgress = desiredProgress - startProgress;
     final deltaScaledLateral = desiredScaledLateral - startScaledLateral;
     final movementLengthSquared =
-        deltaProgress * deltaProgress +
-        deltaScaledLateral * deltaScaledLateral;
+        deltaProgress * deltaProgress + deltaScaledLateral * deltaScaledLateral;
 
     if (movementLengthSquared <= 1e-9) {
       return _DropPoint(
@@ -295,7 +320,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       }
 
       final minDistance = _unitBodyContactDistance(unit, blocker);
-      final blockerScaledLateral = blocker.lateralPosition * _fieldAspectRatio;
+      final blockerScaledLateral = blocker.lateralPosition * fieldAspectRatio;
       final relativeStartProgress = startProgress - blocker.progress;
       final relativeStartScaledLateral =
           startScaledLateral - blockerScaledLateral;
@@ -342,7 +367,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         }
 
         final minDistance = _unitBodyContactDistance(unit, blocker);
-        final blockerScaledLateral = blocker.lateralPosition * _fieldAspectRatio;
+        final blockerScaledLateral = blocker.lateralPosition * fieldAspectRatio;
         var relativeProgress = resolvedProgress - blocker.progress;
         var relativeScaledLateral =
             resolvedScaledLateral - blockerScaledLateral;
@@ -377,10 +402,12 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       }
 
       resolvedProgress = _clamp(resolvedProgress, minProgress, maxProgress);
-      final clampedLateral = _sanitizeLateralPosition(
-        resolvedScaledLateral / _fieldAspectRatio,
+      final clampedLateral = battle_rules.sanitizeTerrainLateralForProgress(
+        resolvedProgress,
+        resolvedScaledLateral / fieldAspectRatio,
+        _arena,
       );
-      resolvedScaledLateral = clampedLateral * _fieldAspectRatio;
+      resolvedScaledLateral = clampedLateral * fieldAspectRatio;
       if (!adjusted) {
         return _DropPoint(
           progress: resolvedProgress,
@@ -391,8 +418,10 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
 
     return _DropPoint(
       progress: resolvedProgress,
-      lateralPosition: _sanitizeLateralPosition(
-        resolvedScaledLateral / _fieldAspectRatio,
+      lateralPosition: battle_rules.sanitizeTerrainLateralForProgress(
+        resolvedProgress,
+        resolvedScaledLateral / fieldAspectRatio,
+        _arena,
       ),
     );
   }
@@ -493,11 +522,11 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
   }
 
   double _towerProgressForSide(String side) =>
-      side == 'left' ? _leftTowerX.toDouble() : _rightTowerX.toDouble();
+      _arena.towerForSide(side).progress;
 
   _HostUnit? _selectHeroAttackTarget(_HostPlayer player, _HeroAttack attack) {
     final originProgress = _towerProgressForSide(player.side);
-    final originLateral = (_worldScale / 2).toDouble();
+    final originLateral = _arena.towerForSide(player.side).lateralPosition;
     final targets =
         _units
             .where((unit) => unit.side != player.side && unit.hp > 0)
@@ -509,6 +538,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
                   originLateral,
                   unit.progress,
                   unit.lateralPosition,
+                  _arena,
                 ),
               ),
             )
@@ -923,6 +953,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       dropX: dropX,
       dropY: dropY,
       lanePosition: null,
+      arena: _arena,
     );
     return _DropPoint(
       progress: point.progress,
@@ -1181,21 +1212,23 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
             unit.lateralPosition,
             dropPoint.progress,
             dropPoint.lateralPosition,
+            _arena,
           ) <=
           spellReach) {
         unit.hp -= spellDamage;
       }
     }
 
-    final towerProgress = enemySide == 'left' ? _leftTowerX : _rightTowerX;
+    final towerPoint = _arena.towerForSide(enemySide);
     final towerSpellReach = battle_rules.effectiveSpellReachToTower(
       card.spellRadius.toDouble(),
     );
     if (_distanceBetweenPoints(
-          towerProgress.toDouble(),
-          (_worldScale / 2).toDouble(),
+          towerPoint.progress,
+          towerPoint.lateralPosition,
           dropPoint.progress,
           dropPoint.lateralPosition,
+          _arena,
         ) <=
         towerSpellReach) {
       _applyTowerDamage(enemyPlayer, spellDamage, preferSpirit: true);
@@ -1223,6 +1256,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
               otherBodyRadius: bodyRadius,
               gap: battle_rules.unitCollisionGap.toDouble(),
             ),
+            _arena,
           );
     final boostedHp = math.max(
       1,
@@ -1236,6 +1270,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       final offset = (index - (count - 1) / 2) * spacing;
       final spawnLateral = _sanitizeLateralPosition(
         dropPoint.lateralPosition + groupLateralOffset + offset,
+        _arena,
       );
       _units.add(
         _HostUnit(
@@ -1271,7 +1306,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
             fallback: _inferCardCollisionBehavior(card.type),
           ),
           laneBias: _clamp(
-            spawnLateral - (_worldScale / 2).toDouble(),
+            spawnLateral - _arena.centerLateral,
             -battle_rules.unitFormationBiasLimit.toDouble(),
             battle_rules.unitFormationBiasLimit.toDouble(),
           ),
@@ -1291,13 +1326,15 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
   _TargetSelection? _selectTarget(_HostUnit unit) {
     final direction = _sideDirection(unit.side);
     final enemySide = _enemySide(unit.side);
-    final towerProgress = enemySide == 'left' ? _leftTowerX : _rightTowerX;
-    final towerForwardDistance = (towerProgress - unit.progress) * direction;
+    final towerPoint = _arena.towerForSide(enemySide);
+    final towerForwardDistance =
+        (towerPoint.progress - unit.progress) * direction;
     final towerDistance = _distanceBetweenPoints(
       unit.progress,
       unit.lateralPosition,
-      towerProgress.toDouble(),
-      (_worldScale / 2).toDouble(),
+      towerPoint.progress,
+      towerPoint.lateralPosition,
+      _arena,
     );
     final towerReach = _effectiveAttackReachToTower(unit);
 
@@ -1323,6 +1360,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
                   unit.lateralPosition,
                   entry.progress,
                   entry.lateralPosition,
+                  _arena,
                 ),
               ),
             )
@@ -1351,7 +1389,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
   }
 
   String _facingDirectionForVector(double progressDelta, double lateralDelta) {
-    final weightedLateralDelta = lateralDelta * _fieldAspectRatio;
+    final weightedLateralDelta = lateralDelta * _arena.fieldAspectRatio;
     if (weightedLateralDelta.abs() > math.max(16, progressDelta.abs() * 0.35)) {
       return lateralDelta < 0 ? 'left' : 'right';
     }
@@ -1369,7 +1407,9 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         : _enemyTowerProgressForSide(unit.side);
     final targetLateral = target.kind == 'unit'
         ? target.unitTarget!.lateralPosition
-        : (_worldScale / 2).toDouble();
+        : _arena
+              .towerForSide(target.targetSide ?? _enemySide(unit.side))
+              .lateralPosition;
     unit.facingDirection = _facingDirectionForVector(
       targetProgress - unit.progress,
       targetLateral - unit.lateralPosition,
@@ -1386,17 +1426,17 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
   }
 
   double _ownTowerProgressForSide(String side) {
-    return side == 'left' ? _leftTowerX.toDouble() : _rightTowerX.toDouble();
+    return _arena.towerForSide(side).progress;
   }
 
   double _enemyTowerProgressForSide(String side) {
-    return side == 'left' ? _rightTowerX.toDouble() : _leftTowerX.toDouble();
+    return _arena.towerForSide(_enemySide(side)).progress;
   }
 
   double _averageLateralPosition(Iterable<_HostUnit> units) {
     final unitList = units.toList();
     if (unitList.isEmpty) {
-      return (_worldScale / 2).toDouble();
+      return _arena.centerLateral;
     }
     return unitList
             .map((unit) => unit.lateralPosition)
@@ -1417,13 +1457,13 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
         final aTowerDistance = _distanceToOwnTower(side, a.progress);
         final bTowerDistance = _distanceToOwnTower(side, b.progress);
         final aScore =
-            (1000 - aTowerDistance) +
+            (_arena.progressMax - aTowerDistance) +
             a.damage * 0.7 +
             a.maxHp * 0.08 +
             (a.targetRule == 'tower' ? 180 : 0) +
             (a.type == 'swarm' ? 70 : 0);
         final bScore =
-            (1000 - bTowerDistance) +
+            (_arena.progressMax - bTowerDistance) +
             b.damage * 0.7 +
             b.maxHp * 0.08 +
             (b.targetRule == 'tower' ? 180 : 0) +
@@ -1478,6 +1518,7 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
                   unit.lateralPosition,
                   candidate.progress,
                   candidate.lateralPosition,
+                  _arena,
                 ) <=
                 spellCard.spellRadius,
           )
@@ -1631,17 +1672,23 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       final spellTarget = _evaluateSpellTarget(side, primaryCard);
       if (spellTarget != null) {
         return _DropPoint(
-          progress: _sanitizeLanePosition(side, spellTarget.point.progress),
+          progress: _sanitizeLanePosition(
+            side,
+            spellTarget.point.progress,
+            _arena,
+          ),
           lateralPosition: _sanitizeLateralPosition(
             spellTarget.point.lateralPosition,
+            _arena,
           ),
         );
       }
     }
 
+    final deployRange = _arena.deployForSide(side);
     var progress = primaryCard.targetRule == 'tower'
-        ? (side == 'left' ? 360.0 : 640.0)
-        : (side == 'left' ? 280.0 : 720.0);
+        ? (side == 'left' ? deployRange.max - 60 : deployRange.min + 60)
+        : (side == 'left' ? deployRange.max - 140 : deployRange.min + 140);
     var lateralPosition = defaultLateral;
 
     if (_isUrgentThreat(side, threat)) {
@@ -1662,8 +1709,8 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     }
 
     return _DropPoint(
-      progress: _sanitizeLanePosition(side, progress),
-      lateralPosition: _sanitizeLateralPosition(lateralPosition),
+      progress: _sanitizeLanePosition(side, progress, _arena),
+      lateralPosition: _sanitizeLateralPosition(lateralPosition, _arena),
     );
   }
 
@@ -1792,12 +1839,15 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
       }
     }
     final dropPoint = _buildBotDropPoint(botPlayer.side, primaryCard);
-    final jitter = primaryCard.type == 'spell' ? 0.0 : 28 / _fieldAspectRatio;
+    final jitter = primaryCard.type == 'spell'
+        ? 0.0
+        : 28 / _arena.fieldAspectRatio;
     final lateralPosition = _sanitizeLateralPosition(
       dropPoint.lateralPosition + (_random.nextDouble() - 0.5) * jitter,
+      _arena,
     );
     final dropY = botPlayer.side == 'left'
-        ? _worldScale - dropPoint.progress
+        ? _arena.progressMax - dropPoint.progress
         : dropPoint.progress;
 
     final error = _playSideCombo(
@@ -1984,7 +2034,10 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
     final equipmentEffects = _equipmentEffects(cards);
     final spawnedUnitCards = cards
         .where(
-          (card) => !card.isEvent && !card.isJob && card.type != 'spell' &&
+          (card) =>
+              !card.isEvent &&
+              !card.isJob &&
+              card.type != 'spell' &&
               card.type != 'equipment',
         )
         .toList();
@@ -2072,7 +2125,8 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
           progressDelta,
           lateralDelta,
         );
-        final lateralStep = (unit.moveSpeed * 0.45 * dt) / _fieldAspectRatio;
+        final lateralStep =
+            (unit.moveSpeed * 0.45 * dt) / _arena.fieldAspectRatio;
         final intendedProgress = unit.progress + progressDelta;
         final intendedLateral =
             unit.lateralPosition +
@@ -2081,8 +2135,8 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
           unit,
           nextProgress: intendedProgress,
           nextLateral: intendedLateral,
-          minProgress: 80,
-          maxProgress: 920,
+          minProgress: _arena.progressMin,
+          maxProgress: _arena.progressMax,
         );
         final forwardGain =
             _sideDirection(unit.side) * (resolvedMove.progress - unit.progress);
@@ -2095,8 +2149,8 @@ extension _HostBattleEngineRuntime on HostBattleEngine {
             blocker,
             effectiveMoveSpeed: unit.moveSpeed,
             dt: dt,
-            minProgress: 80,
-            maxProgress: 920,
+            minProgress: _arena.progressMin,
+            maxProgress: _arena.progressMax,
           );
           if (rerouteMove != null) {
             resolvedMove = rerouteMove;

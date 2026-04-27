@@ -25,10 +25,8 @@ part 'royale_arena_board_widgets.dart';
 part 'royale_arena_chrome.dart';
 part 'royale_arena_hand_widgets.dart';
 
-const double _battlefieldAspectRatio = battle_rules.fieldAspectRatio;
 const double _battlefieldPhoneMaxWidth = 430;
 const double _battlefieldDesktopMaxWidth = 520;
-const int _worldScale = battle_rules.worldScale;
 const Duration _hostStateSyncInterval = Duration(milliseconds: 100);
 const Duration _socketReconnectDelay = Duration(milliseconds: 250);
 const Duration _battlePollingInterval = Duration(milliseconds: 800);

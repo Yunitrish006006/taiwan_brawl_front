@@ -5,15 +5,15 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
     required BoxConstraints board,
     required String mySide,
     required String towerSide,
+    required battle_rules.BattleArenaConfig arena,
   }) {
-    final towerProgress = towerSide == 'left'
-        ? battle_rules.leftTowerX.toDouble()
-        : battle_rules.rightTowerX.toDouble();
+    final tower = arena.towerForSide(towerSide);
+    final towerProgress = tower.progress;
     final longitudinal = mySide == 'left'
-        ? 1 - (towerProgress / _worldScale)
-        : (towerProgress / _worldScale);
+        ? 1 - (towerProgress / arena.progressMax)
+        : (towerProgress / arena.progressMax);
     return Offset(
-      board.maxWidth * (battle_rules.centerLateral / _worldScale),
+      board.maxWidth * (tower.lateralPosition / arena.lateralMax),
       board.maxHeight * longitudinal.clamp(0.0, 1.0),
     );
   }
@@ -45,20 +45,24 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
     required String mySide,
     required RoyalePlayerView player,
     required List<RoyaleCard> selectedCards,
+    required battle_rules.BattleArenaConfig arena,
   }) {
     final center = _towerCenter(
       board: board,
       mySide: mySide,
       towerSide: player.side,
+      arena: arena,
     );
     final threatReach = player.side == mySide
         ? null
         : _selectedTowerThreatReach(selectedCards);
     final bodyDiameter =
-        board.maxHeight * (battle_rules.towerBodyRadius / _worldScale) * 2;
+        board.maxHeight *
+        (battle_rules.towerBodyRadius / arena.progressMax) *
+        2;
     final threatDiameter = threatReach == null
         ? null
-        : board.maxHeight * (threatReach / _worldScale) * 2;
+        : board.maxHeight * (threatReach / arena.progressMax) * 2;
     final overlayDiameter = (threatDiameter ?? bodyDiameter) + 28;
 
     return Positioned(
@@ -142,11 +146,13 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
     required String mySide,
     required RoyalePlayerView player,
     required bool compact,
+    required battle_rules.BattleArenaConfig arena,
   }) {
     final center = _towerCenter(
       board: board,
       mySide: mySide,
       towerSide: player.side,
+      arena: arena,
     );
     final shellWidth = compact ? 74.0 : 88.0;
     final tokenHeight = compact ? 46.0 : 54.0;
@@ -170,19 +176,21 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
     required String mySide,
     required BoxConstraints board,
   }) {
+    final arena = battle.arena;
     return battle.units.map((unit) {
       final longitudinal = mySide == 'left'
-          ? 1 - (unit.progress / _worldScale)
-          : (unit.progress / _worldScale);
+          ? 1 - (unit.progress / arena.progressMax)
+          : (unit.progress / arena.progressMax);
       final depthFactor = longitudinal.clamp(0.0, 1.0);
       final tokenSize = 40 + (depthFactor * 8);
       final left =
-          board.maxWidth * (unit.lateralPosition / _worldScale) - tokenSize / 2;
+          board.maxWidth * (unit.lateralPosition / arena.lateralMax) -
+          tokenSize / 2;
       final top = board.maxHeight * longitudinal - tokenSize * 0.62;
       final attackIndicatorDiameter =
-          board.maxHeight * (unit.attackRange / _worldScale) * 2;
+          board.maxHeight * (unit.attackRange / arena.progressMax) * 2;
       final collisionIndicatorDiameter =
-          board.maxHeight * (unit.bodyRadius / _worldScale) * 2;
+          board.maxHeight * (unit.bodyRadius / arena.progressMax) * 2;
 
       return Positioned(
         key: ValueKey(unit.id),
@@ -379,7 +387,10 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
                         ),
                         Positioned.fill(
                           child: CustomPaint(
-                            painter: _ArenaPainter(playerSide: mySide),
+                            painter: _ArenaPainter(
+                              playerSide: mySide,
+                              arena: battle.arena,
+                            ),
                           ),
                         ),
                         if (!compact && !fullscreen)
@@ -415,24 +426,28 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
                           mySide: mySide,
                           player: leftPlayer,
                           selectedCards: selectedCards,
+                          arena: battle.arena,
                         ),
                         _buildTowerTargetOverlay(
                           board: board,
                           mySide: mySide,
                           player: rightPlayer,
                           selectedCards: selectedCards,
+                          arena: battle.arena,
                         ),
                         _buildTowerToken(
                           board: board,
                           mySide: mySide,
                           player: leftPlayer,
                           compact: compact,
+                          arena: battle.arena,
                         ),
                         _buildTowerToken(
                           board: board,
                           mySide: mySide,
                           player: rightPlayer,
                           compact: compact,
+                          arena: battle.arena,
                         ),
                         if (_aimPoint != null &&
                             _hasDeploymentTarget &&
@@ -443,6 +458,7 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
                             child: _AimMarker(
                               point: _aimPoint!,
                               active: selectedCards.isNotEmpty,
+                              arena: battle.arena,
                             ),
                           ),
                         ..._buildBattlefieldUnits(
