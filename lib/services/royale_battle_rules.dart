@@ -22,6 +22,12 @@ const double fieldAspectRatio = 0.62;
 const int towerBodyRadius = 30;
 const int unitCollisionGap = 6;
 const int unitFormationBiasLimit = 90;
+const int riverMinProgress = leftDeployMax + 35;
+const int riverMaxProgress = rightDeployMin - 35;
+const int bridgeMinProgress = 430;
+const int bridgeMaxProgress = 570;
+const int bridgeMinLateral = 380;
+const int bridgeMaxLateral = 620;
 
 const double deployZoneMinX = lateralMin / worldScale;
 const double deployZoneMaxX = lateralMax / worldScale;
@@ -81,6 +87,76 @@ double sanitizeLateralPosition(double value) {
     return centerLateral;
   }
   return clampBattleValue(value, lateralMin.toDouble(), lateralMax.toDouble());
+}
+
+bool isRiverProgress(double progress) {
+  return progress > riverMinProgress && progress < riverMaxProgress;
+}
+
+bool isBridgeLateral(double lateral) {
+  final normalizedLateral = sanitizeLateralPosition(lateral);
+  return normalizedLateral >= bridgeMinLateral &&
+      normalizedLateral <= bridgeMaxLateral;
+}
+
+bool pathIntersectsRiver(double startProgress, double endProgress) {
+  if (!startProgress.isFinite || !endProgress.isFinite) {
+    return false;
+  }
+  final minProgress = math.min(startProgress, endProgress);
+  final maxProgress = math.max(startProgress, endProgress);
+  return minProgress < riverMaxProgress && maxProgress > riverMinProgress;
+}
+
+List<double> terrainGateLateralForProgress(double progress) {
+  if (!isRiverProgress(progress)) {
+    return [lateralMin.toDouble(), lateralMax.toDouble()];
+  }
+  return [bridgeMinLateral.toDouble(), bridgeMaxLateral.toDouble()];
+}
+
+double sanitizeTerrainLateralForProgress(double progress, double lateral) {
+  final gate = terrainGateLateralForProgress(progress);
+  return clampBattleValue(sanitizeLateralPosition(lateral), gate[0], gate[1]);
+}
+
+double terrainNavigationLateralForMove(
+  double startProgress,
+  double targetProgress,
+  double desiredLateral,
+) {
+  final sanitizedLateral = sanitizeLateralPosition(desiredLateral);
+  if (!pathIntersectsRiver(startProgress, targetProgress) ||
+      isBridgeLateral(sanitizedLateral)) {
+    return sanitizedLateral;
+  }
+
+  return sanitizedLateral < bridgeMinLateral
+      ? bridgeMinLateral.toDouble()
+      : bridgeMaxLateral.toDouble();
+}
+
+double terrainLimitedProgressForMove(
+  double startProgress,
+  double desiredProgress,
+  double desiredLateral,
+) {
+  if (!startProgress.isFinite || !desiredProgress.isFinite) {
+    return startProgress.isFinite ? startProgress : minFieldProgress.toDouble();
+  }
+  if (!pathIntersectsRiver(startProgress, desiredProgress) ||
+      isBridgeLateral(desiredLateral)) {
+    return desiredProgress;
+  }
+
+  if (startProgress <= riverMinProgress && desiredProgress > riverMinProgress) {
+    return riverMinProgress.toDouble();
+  }
+  if (startProgress >= riverMaxProgress && desiredProgress < riverMaxProgress) {
+    return riverMaxProgress.toDouble();
+  }
+
+  return desiredProgress;
 }
 
 double toWorldProgress(String side, double viewY) {

@@ -118,15 +118,15 @@ class _ArenaPainter extends CustomPainter {
     );
     final riverRect = _bandRect(
       size,
-      battle_rules.leftDeployMax + 35,
-      battle_rules.rightDeployMin - 35,
+      battle_rules.riverMinProgress.toDouble(),
+      battle_rules.riverMaxProgress.toDouble(),
     );
     final bridgeRect = _worldRect(
       size,
-      leftLateral: 380,
-      rightLateral: 620,
-      startProgress: 430,
-      endProgress: 570,
+      leftLateral: battle_rules.bridgeMinLateral.toDouble(),
+      rightLateral: battle_rules.bridgeMaxLateral.toDouble(),
+      startProgress: battle_rules.bridgeMinProgress.toDouble(),
+      endProgress: battle_rules.bridgeMaxProgress.toDouble(),
     );
     final laneRect = _worldRect(
       size,
