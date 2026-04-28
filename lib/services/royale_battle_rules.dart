@@ -34,6 +34,9 @@ const double doubleBridgeRightMinLateral = 610.0;
 const double doubleBridgeRightMaxLateral = 780.0;
 const String defaultArenaId = 'classic_bridge';
 const String doubleBridgeArenaId = 'classic_double_bridge';
+const String wideBridgeArenaId = 'classic_wide_bridge';
+const String sideBridgesArenaId = 'classic_side_bridges';
+const String tripleBridgeArenaId = 'classic_three_bridges';
 
 const double deployZoneMinX = lateralMin / worldScale;
 const double deployZoneMaxX = lateralMax / worldScale;
@@ -416,9 +419,115 @@ const BattleArenaConfig doubleBridgeArenaConfig = BattleArenaConfig(
   obstacles: [],
 );
 
+const BattleArenaConfig wideBridgeArenaConfig = BattleArenaConfig(
+  id: wideBridgeArenaId,
+  name: 'Wide Center Bridge',
+  width: 1000.0,
+  height: 1000.0,
+  progressMin: 0.0,
+  progressMax: 1000.0,
+  lateralMin: 0.0,
+  lateralMax: 1000.0,
+  centerLateral: centerLateral,
+  fieldAspectRatio: fieldAspectRatio,
+  leftTower: BattlePointConfig(progress: 50.0, lateralPosition: centerLateral),
+  rightTower: BattlePointConfig(
+    progress: 950.0,
+    lateralPosition: centerLateral,
+  ),
+  leftDeploy: BattleProgressRange(min: 0.0, max: 420.0),
+  rightDeploy: BattleProgressRange(min: 580.0, max: 1000.0),
+  terrainGates: [
+    BattleTerrainGate(
+      id: 'central_river_wide_bridge',
+      kind: 'river',
+      progressMin: 455.0,
+      progressMax: 545.0,
+      bridgeMinProgress: 430.0,
+      bridgeMaxProgress: 570.0,
+      passableLateralRanges: [BattleLateralRange(min: 300.0, max: 700.0)],
+    ),
+  ],
+  obstacles: [],
+);
+
+const BattleArenaConfig sideBridgesArenaConfig = BattleArenaConfig(
+  id: sideBridgesArenaId,
+  name: 'Side Bridges',
+  width: 1000.0,
+  height: 1000.0,
+  progressMin: 0.0,
+  progressMax: 1000.0,
+  lateralMin: 0.0,
+  lateralMax: 1000.0,
+  centerLateral: centerLateral,
+  fieldAspectRatio: fieldAspectRatio,
+  leftTower: BattlePointConfig(progress: 50.0, lateralPosition: centerLateral),
+  rightTower: BattlePointConfig(
+    progress: 950.0,
+    lateralPosition: centerLateral,
+  ),
+  leftDeploy: BattleProgressRange(min: 0.0, max: 420.0),
+  rightDeploy: BattleProgressRange(min: 580.0, max: 1000.0),
+  terrainGates: [
+    BattleTerrainGate(
+      id: 'central_river_side_bridges',
+      kind: 'river',
+      progressMin: 455.0,
+      progressMax: 545.0,
+      bridgeMinProgress: 430.0,
+      bridgeMaxProgress: 570.0,
+      passableLateralRanges: [
+        BattleLateralRange(min: 140.0, max: 320.0),
+        BattleLateralRange(min: 680.0, max: 860.0),
+      ],
+    ),
+  ],
+  obstacles: [],
+);
+
+const BattleArenaConfig tripleBridgeArenaConfig = BattleArenaConfig(
+  id: tripleBridgeArenaId,
+  name: 'Three Bridge Crossing',
+  width: 1000.0,
+  height: 1000.0,
+  progressMin: 0.0,
+  progressMax: 1000.0,
+  lateralMin: 0.0,
+  lateralMax: 1000.0,
+  centerLateral: centerLateral,
+  fieldAspectRatio: fieldAspectRatio,
+  leftTower: BattlePointConfig(progress: 50.0, lateralPosition: centerLateral),
+  rightTower: BattlePointConfig(
+    progress: 950.0,
+    lateralPosition: centerLateral,
+  ),
+  leftDeploy: BattleProgressRange(min: 0.0, max: 420.0),
+  rightDeploy: BattleProgressRange(min: 580.0, max: 1000.0),
+  terrainGates: [
+    BattleTerrainGate(
+      id: 'central_river_three_bridges',
+      kind: 'river',
+      progressMin: 455.0,
+      progressMax: 545.0,
+      bridgeMinProgress: 430.0,
+      bridgeMaxProgress: 570.0,
+      passableLateralRanges: [
+        BattleLateralRange(min: 150.0, max: 270.0),
+        BattleLateralRange(min: 440.0, max: 560.0),
+        BattleLateralRange(min: 730.0, max: 850.0),
+      ],
+    ),
+  ],
+  obstacles: [],
+);
+
 const List<BattleArenaConfig> arenaCatalog = [
   defaultArenaConfig,
   doubleBridgeArenaConfig,
+  wideBridgeArenaConfig,
+  sideBridgesArenaConfig,
+  tripleBridgeArenaConfig,
 ];
 
 class BattleDropPoint {

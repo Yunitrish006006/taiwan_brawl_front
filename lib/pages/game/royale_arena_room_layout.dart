@@ -708,6 +708,113 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     );
   }
 
+  String _arenaDisplayName(battle_rules.BattleArenaConfig arena) {
+    return switch (arena.id) {
+      battle_rules.defaultArenaId => _t.text('Central Bridge'),
+      battle_rules.doubleBridgeArenaId => _t.text('Double Bridge'),
+      battle_rules.wideBridgeArenaId => _t.text('Wide Center Bridge'),
+      battle_rules.sideBridgesArenaId => _t.text('Side Bridges'),
+      battle_rules.tripleBridgeArenaId => _t.text('Three Bridge Crossing'),
+      _ => arena.name,
+    };
+  }
+
+  Widget _buildLobbyArenaPreview(RoyaleRoomSnapshot room) {
+    final arena = room.arena;
+    final bridgeCount = arena.terrainGates.fold<int>(
+      0,
+      (total, gate) => total + gate.passableLateralRanges.length,
+    );
+    final playerSide = room.viewerSide ?? 'left';
+    final preview = ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+        ),
+        child: AspectRatio(
+          aspectRatio: arena.fieldAspectRatio,
+          child: CustomPaint(
+            painter: _ArenaPainter(playerSide: playerSide, arena: arena),
+            child: const SizedBox.expand(),
+          ),
+        ),
+      ),
+    );
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.map_rounded, color: const Color(0xFFFFD166), size: 18),
+            const SizedBox(width: 8),
+            Text(
+              _t.text('Random Map'),
+              style: const TextStyle(
+                color: Color(0xFFFFD166),
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _arenaDisplayName(arena),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _StatusPill(
+              label: '${_t.text('Bridge')} x$bridgeCount',
+              color: const Color(0xFF48C7F4),
+            ),
+            _StatusPill(
+              label:
+                  '${arena.width.round()} x ${arena.height.round()} ${_t.text('Arena')}',
+              color: const Color(0xFF3ECF8E),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= 620) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(width: 220, child: preview),
+                const SizedBox(width: 18),
+                Expanded(child: details),
+              ],
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [preview, const SizedBox(height: 14), details],
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildLobby(RoyaleRoomSnapshot room) {
     final myUserId = room.me?.userId;
     final isHostMode = room.simulationMode == 'host';
@@ -781,6 +888,8 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                     ),
                   ),
                   const SizedBox(height: 20),
+                  _buildLobbyArenaPreview(room),
+                  const SizedBox(height: 18),
                   ...room.players.map(
                     (player) => Container(
                       margin: const EdgeInsets.only(bottom: 12),

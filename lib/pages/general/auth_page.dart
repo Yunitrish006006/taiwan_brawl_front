@@ -98,6 +98,20 @@ class _AuthPageState extends State<AuthPage> {
     return error.toString().contains('Local Engine has not been initialized');
   }
 
+  bool _isGoogleSignInCanceled(Object error) {
+    return error is GoogleSignInException &&
+        error.code == GoogleSignInExceptionCode.canceled;
+  }
+
+  bool _isGoogleAccountReauthFailure(Object error) {
+    if (!_isGoogleSignInCanceled(error)) {
+      return false;
+    }
+    final message = error.toString().toLowerCase();
+    return message.contains('account reauth failed') ||
+        message.contains('[16]');
+  }
+
   Future<void> _startNativeGoogleSignIn({bool allowRetry = true}) async {
     final t = context.read<LocaleProvider>().translation;
     try {
@@ -105,18 +119,9 @@ class _AuthPageState extends State<AuthPage> {
         await _initializeGoogleSignIn();
       }
       await _googleSignIn.authenticate();
-    } on GoogleSignInException catch (e) {
-      if (!mounted) return;
-      if (e.code == GoogleSignInExceptionCode.canceled) {
-        return;
-      }
-      final description = e.description?.trim();
-      showAppSnackBar(
-        context,
-        description == null || description.isEmpty
-            ? t.text('Google sign-in is currently unavailable')
-            : '${t.text('Google sign-in error')}: $description',
-      );
+    } on GoogleSignInException {
+      // authenticate() also emits authenticationEvents errors; keep snackbar
+      // handling centralized there so the same failure is not shown twice.
     } catch (e) {
       if (allowRetry && _isLocalEngineInitializationError(e)) {
         await _initializeGoogleSignIn();
@@ -135,7 +140,14 @@ class _AuthPageState extends State<AuthPage> {
     setState(() {
       _isGoogleSigningIn = false;
     });
-    showAppSnackBar(context, '${t.text('Google sign-in error')}: $error');
+    if (_isGoogleSignInCanceled(error) &&
+        !_isGoogleAccountReauthFailure(error)) {
+      return;
+    }
+    final message = _isGoogleAccountReauthFailure(error)
+        ? t.text('Google sign-in is currently unavailable')
+        : '${t.text('Google sign-in error')}: $error';
+    showAppSnackBar(context, message);
   }
 
   Future<void> _handleGoogleAuthentication(GoogleSignInAccount user) async {

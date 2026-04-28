@@ -1345,6 +1345,7 @@ class RoyaleRoomSnapshot {
     required this.viewerSide,
     required this.players,
     required this.battle,
+    this.arena = battle_rules.defaultArenaConfig,
   });
 
   final String code;
@@ -1354,6 +1355,7 @@ class RoyaleRoomSnapshot {
   final String? viewerSide;
   final List<RoyalePlayerView> players;
   final RoyaleBattleView? battle;
+  final battle_rules.BattleArenaConfig arena;
 
   RoyalePlayerView? get me {
     if (viewerSide == null) {
@@ -1381,6 +1383,9 @@ class RoyaleRoomSnapshot {
 
   factory RoyaleRoomSnapshot.fromJson(Map<String, dynamic> json) {
     final battleJson = json['battle'] as Map<String, dynamic>?;
+    final battle = battleJson == null
+        ? null
+        : RoyaleBattleView.fromJson(battleJson);
     return RoyaleRoomSnapshot(
       code: json['code'] as String,
       status: json['status'] as String,
@@ -1393,7 +1398,12 @@ class RoyaleRoomSnapshot {
                 RoyalePlayerView.fromJson(player as Map<String, dynamic>),
           )
           .toList(),
-      battle: battleJson == null ? null : RoyaleBattleView.fromJson(battleJson),
+      battle: battle,
+      arena: json['arena'] == null
+          ? battle?.arena ?? battle_rules.defaultArenaConfig
+          : battle_rules.BattleArenaConfig.fromJson(
+              json['arena'] as Map<String, dynamic>,
+            ),
     );
   }
 }

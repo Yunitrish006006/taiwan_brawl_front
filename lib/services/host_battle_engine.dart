@@ -92,7 +92,7 @@ class HostBattleEngine {
        _viewerSide = room.viewerSide ?? 'left' {
     _leftPlayer = _buildPlayer(room, 'left');
     _rightPlayer = _buildPlayer(room, 'right');
-    _arena = room.battle?.arena ?? battle_rules.defaultArenaConfig;
+    _arena = room.battle?.arena ?? room.arena;
     _battleEvents.addAll(room.battle?.events ?? const []);
   }
 
@@ -739,6 +739,7 @@ class HostBattleEngine {
       hostUserId: _leftPlayer.userId,
       viewerSide: _viewerSide,
       players: players,
+      arena: _arena,
       battle: RoyaleBattleView(
         timeRemainingMs: _timeRemainingMs,
         yourMoney: viewerPlayer.money,
