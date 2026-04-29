@@ -490,6 +490,7 @@ extension _RoyaleArenaBattlefieldLayout on _RoyaleArenaPageState {
     bool fullscreen = false,
   }) {
     return DragTarget<_ComboDragPayload>(
+      onWillAcceptWithDetails: (details) => details.data.canDeploy,
       onAcceptWithDetails: _handleBattlefieldAccept,
       onMove: _handleBattlefieldMove,
       onLeave: (_) => _handleBattlefieldLeave(),

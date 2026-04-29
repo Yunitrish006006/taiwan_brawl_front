@@ -88,6 +88,8 @@
   "Deck must contain exactly 8 cards": "Deck must contain exactly 8 cards",
   "Deck saved": "Deck saved",
   "Delete Card": "Delete Card",
+  "Discard": "Discard",
+  "Drop here to discard": "Drop here to discard",
   "Display Settings": "Display Settings",
   "Direction": "Direction",
   "Duration ms": "Duration ms",

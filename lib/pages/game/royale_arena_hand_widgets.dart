@@ -1,9 +1,15 @@
 part of 'royale_arena_page.dart';
 
 class _ComboDragPayload {
-  const _ComboDragPayload({required this.cards});
+  const _ComboDragPayload({
+    required this.cards,
+    required this.draggedCard,
+    required this.canDeploy,
+  });
 
   final List<RoyaleCard> cards;
+  final RoyaleCard draggedCard;
+  final bool canDeploy;
 }
 
 class _DragCursorFeedback extends StatelessWidget {
@@ -15,6 +21,136 @@ class _DragCursorFeedback extends StatelessWidget {
       point: Offset(0.5, 0.5),
       active: true,
       showLabel: false,
+    );
+  }
+}
+
+class _DiscardDropZone extends StatelessWidget {
+  const _DiscardDropZone({
+    required this.discardable,
+    required this.label,
+    required this.costLabel,
+    required this.tooltip,
+    required this.onDiscard,
+    this.compact = false,
+  });
+
+  final bool discardable;
+  final String label;
+  final String costLabel;
+  final String tooltip;
+  final ValueChanged<RoyaleCard> onDiscard;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return DragTarget<_ComboDragPayload>(
+      onWillAcceptWithDetails: (_) => true,
+      onAcceptWithDetails: (details) => onDiscard(details.data.draggedCard),
+      builder: (context, candidateItems, rejectedItems) {
+        final active = candidateItems.isNotEmpty;
+        final accent = discardable
+            ? const Color(0xFFB388FF)
+            : Colors.white.withValues(alpha: 0.26);
+        final background = active
+            ? const Color(0xFF2A1748)
+            : discardable
+            ? const Color(0xFF21183A)
+            : const Color(0xFF07111F);
+
+        return Tooltip(
+          message: '$tooltip · $costLabel',
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            width: compact ? 58 : 148,
+            height: compact ? 46 : 54,
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 7 : 12,
+              vertical: compact ? 7 : 9,
+            ),
+            decoration: BoxDecoration(
+              color: background.withValues(alpha: active ? 0.95 : 0.82),
+              borderRadius: BorderRadius.circular(compact ? 16 : 18),
+              border: Border.all(
+                color: active ? const Color(0xFFFFD166) : accent,
+                width: active ? 1.8 : 1.1,
+              ),
+              boxShadow: [
+                if (active)
+                  BoxShadow(
+                    color: const Color(0xFFB388FF).withValues(alpha: 0.26),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+              ],
+            ),
+            child: compact
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.delete_outline_rounded,
+                        color: discardable ? Colors.white : Colors.white54,
+                        size: 18,
+                      ),
+                      Text(
+                        costLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: discardable ? Colors.white70 : Colors.white38,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.delete_outline_rounded,
+                        color: discardable ? Colors.white : Colors.white54,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: discardable
+                                    ? Colors.white
+                                    : Colors.white54,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              costLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: discardable
+                                    ? Colors.white.withValues(alpha: 0.76)
+                                    : Colors.white38,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        );
+      },
     );
   }
 }

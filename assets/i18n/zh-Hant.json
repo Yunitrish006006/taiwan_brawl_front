@@ -88,6 +88,8 @@
   "Deck must contain exactly 8 cards": "牌組必須剛好 8 張",
   "Deck saved": "牌組已儲存",
   "Delete Card": "刪除卡牌",
+  "Discard": "丟棄",
+  "Drop here to discard": "拖到這裡丟棄",
   "Display Settings": "顯示設定",
   "Direction": "方向",
   "Duration ms": "每格毫秒",

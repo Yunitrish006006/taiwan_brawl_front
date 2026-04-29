@@ -88,6 +88,8 @@
   "Deck must contain exactly 8 cards": "デッキはちょうど 8 枚必要です",
   "Deck saved": "デッキを保存しました",
   "Delete Card": "カードを削除",
+  "Discard": "捨てる",
+  "Drop here to discard": "ここにドラッグして捨てる",
   "Display Settings": "表示設定",
   "Direction": "方向",
   "Duration ms": "フレーム時間 ms",

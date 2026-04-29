@@ -15,7 +15,6 @@ class RoyaleDeckPage extends StatefulWidget {
 }
 
 class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
-  static const int _maxDeckSlots = 3;
   static const String _categoryAll = 'all';
   static const String _categoryUnit = 'unit';
   static const String _categoryEquipment = 'equipment';
@@ -176,13 +175,19 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     return slot == 1 ? 'Battle Deck' : 'Battle Deck $slot';
   }
 
-  int? get _nextAvailableSlot {
-    for (var slot = 1; slot <= _maxDeckSlots; slot++) {
-      if (_deckForSlot(slot) == null) {
-        return slot;
-      }
+  int get _nextAvailableSlot {
+    final usedSlots = _decks.map((deck) => deck.slot).toSet();
+    var slot = 1;
+    while (usedSlots.contains(slot)) {
+      slot += 1;
     }
-    return null;
+    return slot;
+  }
+
+  List<int> get _visibleDeckSlots {
+    final slots = _decks.map((deck) => deck.slot).toSet()..add(_activeSlot);
+    final sortedSlots = slots.toList()..sort();
+    return sortedSlots;
   }
 
   void _activateSlot(int slot) {
@@ -209,15 +214,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   }
 
   void _startNewDeck() {
-    final t = context.read<LocaleProvider>().translation;
-    final nextAvailableSlot = _nextAvailableSlot;
-    if (nextAvailableSlot == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t.text('You can only save up to 3 decks'))),
-      );
-      return;
-    }
-    _activateSlot(nextAvailableSlot);
+    _activateSlot(_nextAvailableSlot);
   }
 
   void _toggleCard(RoyaleCard card) {
@@ -641,9 +638,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
           Align(
             alignment: Alignment.centerRight,
             child: FilledButton.icon(
-              onPressed: _isSaving || _nextAvailableSlot == null
-                  ? null
-                  : _startNewDeck,
+              onPressed: _isSaving ? null : _startNewDeck,
               icon: const Icon(Icons.add_rounded),
               label: Text(t.text('New Deck')),
             ),
@@ -655,15 +650,17 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
               final slotWidth = singleColumn
                   ? constraints.maxWidth
                   : (constraints.maxWidth - 24) / 3;
+              final visibleSlots = _visibleDeckSlots;
 
               return Wrap(
                 spacing: 12,
                 runSpacing: 12,
-                children: List.generate(
-                  _maxDeckSlots,
-                  (index) =>
-                      _buildDeckSlotCard(index + 1, theme, t, width: slotWidth),
-                ),
+                children: visibleSlots
+                    .map(
+                      (slot) =>
+                          _buildDeckSlotCard(slot, theme, t, width: slotWidth),
+                    )
+                    .toList(growable: false),
               );
             },
           ),

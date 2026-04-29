@@ -814,6 +814,22 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
       return;
     }
 
+    if (command['type'] == 'discard_card') {
+      final error = _hostBattleEngine?.applyRemoteDiscard(
+        side: command['side'] as String? ?? 'right',
+        cardId: command['cardId'] as String? ?? '',
+      );
+      if (error != null) {
+        _showSnackBar(error);
+        return;
+      }
+      final engine = _hostBattleEngine;
+      if (engine != null) {
+        _scheduleHostStateSync(engine.exportBattleState(), immediate: true);
+      }
+      return;
+    }
+
     final dropX = (command['dropX'] as num?)?.toDouble();
     final dropY = (command['dropY'] as num?)?.toDouble();
     if (dropX == null || dropY == null) {
@@ -982,6 +998,19 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     return _t.text('Not enough energy');
   }
 
+  bool _canAffordDiscard(RoyalePlayerView? player) {
+    return _playerResourceForType(player, 'spirit') + 1e-6 >=
+        battle_rules.discardSpiritCost;
+  }
+
+  String _discardCostLabel() {
+    final cost = battle_rules.discardSpiritCost;
+    final value = cost == cost.roundToDouble()
+        ? cost.toInt().toString()
+        : cost.toStringAsFixed(1);
+    return '${_energyTypeShortLabel('spirit')} $value';
+  }
+
   String _energyTypeShortLabel(String energyType) {
     final locale = context.read<LocaleProvider>().locale;
     switch (locale) {
@@ -1037,6 +1066,8 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
 
     return _ComboDragPayload(
       cards: shouldUseSelectedCombo ? selectedCards : [draggedCard],
+      draggedCard: draggedCard,
+      canDeploy: !draggedCard.isJob,
     );
   }
 
@@ -1166,6 +1197,37 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     setState(() {
       _selectedCardIds.clear();
       _aimPoint = dropPoint;
+    });
+  }
+
+  void _discardCard(RoyaleCard card) {
+    if (!_canAffordDiscard(_room?.me)) {
+      _showSnackBar(_notEnoughEnergyMessageForType('spirit'));
+      return;
+    }
+
+    if (_usesHostSimulation()) {
+      final error = _hostBattleEngine?.discardCard(card.id);
+      if (error != null) {
+        _showSnackBar(error);
+        return;
+      }
+      final engine = _hostBattleEngine;
+      if (engine != null) {
+        _scheduleHostStateSync(engine.exportBattleState(), immediate: true);
+      }
+    } else {
+      _channel?.sink.add(
+        jsonEncode({'type': 'discard_card', 'cardId': card.id}),
+      );
+    }
+
+    setState(() {
+      _dragTargetActive = false;
+      _selectedCardIds.remove(card.id);
+      if (_selectedCardIds.isEmpty) {
+        _aimPoint = null;
+      }
     });
   }
 

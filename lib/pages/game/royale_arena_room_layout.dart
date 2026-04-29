@@ -210,7 +210,19 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                 '${_t.text('Selected Cards')} ${selectedCards.length} / ${_energyCostSummary(selectedCards)}',
             compact: compact,
           ),
+        _buildDiscardDropZone(compact: compact),
       ],
+    );
+  }
+
+  Widget _buildDiscardDropZone({required bool compact}) {
+    return _DiscardDropZone(
+      discardable: _canAffordDiscard(_room?.me),
+      label: _t.text('Discard'),
+      costLabel: _discardCostLabel(),
+      tooltip: _t.text('Drop here to discard'),
+      compact: compact,
+      onDiscard: _discardCard,
     );
   }
 
@@ -255,7 +267,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
               onTap: () => _toggleCardSelection(card),
               child: Draggable<_ComboDragPayload>(
                 data: _dragPayloadForHandCard(battle, card),
-                maxSimultaneousDrags: playable && !card.isJob ? 1 : 0,
+                maxSimultaneousDrags: 1,
                 dragAnchorStrategy: pointerDragAnchorStrategy,
                 feedback: Material(
                   color: Colors.transparent,
@@ -519,6 +531,8 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                           spiritEnergy: me.spiritEnergy,
                           compact: true,
                         ),
+                        const SizedBox(width: 8),
+                        _buildDiscardDropZone(compact: true),
                         if (selectedCards.isNotEmpty) ...[
                           const SizedBox(width: 8),
                           _InfoChip(

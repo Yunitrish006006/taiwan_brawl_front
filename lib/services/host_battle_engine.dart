@@ -12,6 +12,7 @@ const int _tickMs = battle_rules.tickMs;
 const int _matchDurationMs = battle_rules.matchDurationMs;
 const int _towerHp = battle_rules.towerHp;
 const int _maxComboCards = battle_rules.maxComboCards;
+const double _discardSpiritCost = battle_rules.discardSpiritCost;
 const double _globalMoveSpeedMultiplier =
     battle_rules.globalMoveSpeedMultiplier;
 const double _globalAttackSpeedMultiplier =
@@ -314,6 +315,14 @@ class HostBattleEngine {
     );
   }
 
+  String? discardCard(String cardId) {
+    return _discardCardForSide(side: _viewerSide, cardId: cardId);
+  }
+
+  String? applyRemoteDiscard({required String side, required String cardId}) {
+    return _discardCardForSide(side: side, cardId: cardId);
+  }
+
   String? _playComboForSide({
     required String side,
     required List<String> cardIds,
@@ -403,6 +412,24 @@ class HostBattleEngine {
       _applySelfEquipmentEffects(player, cards);
     }
 
+    _emitSnapshot();
+    return null;
+  }
+
+  String? _discardCardForSide({required String side, required String cardId}) {
+    if (_result != null) {
+      return null;
+    }
+    final player = _playerForSide(side);
+    if (!player.hand.contains(cardId)) {
+      return 'Selected card is not in hand';
+    }
+    if (player.spiritEnergy + 1e-6 < _discardSpiritCost) {
+      return 'Not enough Spirit Energy';
+    }
+
+    player.spiritEnergy -= _discardSpiritCost;
+    _drawReplacementCards(player, [cardId]);
     _emitSnapshot();
     return null;
   }

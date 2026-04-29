@@ -12,6 +12,7 @@ const int minFieldProgress = 0;
 const int maxFieldProgress = 1000;
 const int towerHp = 3000;
 const int maxComboCards = 3;
+const double discardSpiritCost = 1.0;
 const int lateralMin = 0;
 const int lateralMax = 1000;
 const int botMinThinkMs = 950;
