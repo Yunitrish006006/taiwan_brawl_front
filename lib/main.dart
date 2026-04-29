@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'constants/app_constants.dart';
+import 'constants/app_theme_catalog.dart';
 import 'constants/locale_catalog.dart';
-import 'constants/psn_theme.dart';
 // 以下頁面只在第一次導航時才下載對應的 JS chunk
 import 'pages/admin/card_management_page.dart' deferred as card_management;
 import 'pages/admin/role_management_page.dart' deferred as role_management;
@@ -107,9 +107,17 @@ Future<void> main() async {
           },
         ),
         ChangeNotifierProxyProvider<AuthService, ThemeProvider>(
-          create: (_) => ThemeProvider(),
+          create: (_) => ThemeProvider(
+            defaultThemeId: defaultAppThemeId,
+            themes: taiwanBrawlThemes,
+          ),
           update: (_, auth, themeProvider) {
-            final provider = themeProvider ?? ThemeProvider();
+            final provider =
+                themeProvider ??
+                ThemeProvider(
+                  defaultThemeId: defaultAppThemeId,
+                  themes: taiwanBrawlThemes,
+                );
             provider.syncForUser(
               auth.user?.id,
               themeMode: auth.user?.themeMode,
@@ -164,8 +172,8 @@ class MainApp extends StatelessWidget {
         return MaterialApp(
           title: AppConstants.appName,
           navigatorObservers: [appRouteObserver],
-          theme: PsnTheme.light(),
-          darkTheme: PsnTheme.dark(),
+          theme: themeProvider.lightTheme,
+          darkTheme: themeProvider.darkTheme,
           themeMode: themeProvider.themeMode,
           builder: (context, child) {
             return MediaQuery(

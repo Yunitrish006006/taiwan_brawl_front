@@ -9,7 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  user_ui_settings: ^0.1.0
+  user_ui_settings:
+    path: ../user_ui_settings
   user_basic_system: ^0.1.1
   cupertino_icons: ^1.0.8
   http: ^1.6.0

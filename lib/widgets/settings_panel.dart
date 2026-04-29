@@ -65,6 +65,35 @@ class SettingsPanel extends StatelessWidget {
               },
             ),
             const SizedBox(height: 8),
+            Text(t.text('Theme')),
+            DropdownButton<String>(
+              value: themeProvider.themeId,
+              items: themeProvider.availableThemes
+                  .map(
+                    (theme) => DropdownMenuItem(
+                      value: theme.id,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _ThemeSwatch(
+                            primary: theme.primary,
+                            secondary: theme.secondary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(t.text(theme.name)),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) async {
+                if (value == null) return;
+                final themeProvider = context.read<ThemeProvider>();
+                themeProvider.rememberCurrent();
+                themeProvider.setThemeId(value);
+              },
+            ),
+            const SizedBox(height: 8),
             Text(t.text('Language')),
             DropdownButton<String>(
               value: localeProvider.locale,
@@ -125,6 +154,53 @@ class SettingsPanel extends StatelessWidget {
             _LlmBotSettingsSection(user: user),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ThemeSwatch extends StatelessWidget {
+  const _ThemeSwatch({required this.primary, required this.secondary});
+
+  final Color primary;
+  final Color secondary;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 28,
+      height: 16,
+      child: Stack(
+        children: [
+          Positioned(
+            left: 0,
+            top: 1,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: primary,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
+              child: const SizedBox(width: 14, height: 14),
+            ),
+          ),
+          Positioned(
+            right: 0,
+            top: 1,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: secondary,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
+              child: const SizedBox(width: 14, height: 14),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -584,10 +584,9 @@ packages:
   user_ui_settings:
     dependency: "direct main"
     description:
-      name: user_ui_settings
-      sha256: "60e47fd8b488b203924481ca812d9d5057a105325820085fd63e6557d9dc702d"
-      url: "https://pub.dev"
-    source: hosted
+      path: "../user_ui_settings"
+      relative: true
+    source: path
     version: "0.1.0"
   vector_math:
     dependency: transitive

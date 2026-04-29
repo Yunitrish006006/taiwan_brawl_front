@@ -1,1 +1,2 @@
-export 'package:user_ui_settings/user_ui_settings.dart' show ThemeProvider;
+export 'package:user_ui_settings/user_ui_settings.dart'
+    show ThemeProvider, UserThemeDefinition;
