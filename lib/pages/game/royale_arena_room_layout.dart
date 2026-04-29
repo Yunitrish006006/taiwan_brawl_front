@@ -171,60 +171,68 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     );
   }
 
-  Widget _buildHandCardList(RoyaleBattleView battle, {required bool compact}) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: battle.yourHand.map((card) {
-          final playable = _canAffordCard(_room?.me, card);
-          final selectionOrder = _selectedCardIds.indexOf(card.id);
-          final handCard = _HandCard(
-            key: ValueKey('hand-card-${card.id}'),
-            card: card,
-            playable: playable,
-            selectedOrder: selectionOrder,
-            cardColor: _cardColor(card.type),
-            cardStats: _cardStats(card),
-            typeLabel: _cardTypeLabel(card),
-            costLabel: _cardEnergyLabel(card),
-            costIcon: card.usesMoney
-                ? Icons.attach_money_rounded
-                : card.usesSpiritEnergy
-                ? Icons.auto_awesome_rounded
-                : Icons.bolt_rounded,
-            costColor: card.usesMoney
-                ? const Color(0xFFFFD166)
-                : card.usesSpiritEnergy
-                ? const Color(0xFFB388FF)
-                : const Color(0xFF4FC3F7),
-            insufficientLabel: _notEnoughEnergyMessageForType(
-              _cardEnergyType(card),
-            ),
-            compact: compact,
-          );
+  Widget _buildHandCardList(
+    RoyaleBattleView battle, {
+    required bool compact,
+    Axis scrollDirection = Axis.horizontal,
+  }) {
+    final vertical = scrollDirection == Axis.vertical;
+    final children = battle.yourHand.map((card) {
+      final playable = _canAffordCard(_room?.me, card);
+      final selectionOrder = _selectedCardIds.indexOf(card.id);
+      final handCard = _HandCard(
+        key: ValueKey('hand-card-${card.id}'),
+        card: card,
+        playable: playable,
+        selectedOrder: selectionOrder,
+        cardColor: _cardColor(card.type),
+        cardStats: _cardStats(card),
+        typeLabel: _cardTypeLabel(card),
+        costLabel: _cardEnergyLabel(card),
+        costIcon: card.usesMoney
+            ? Icons.attach_money_rounded
+            : card.usesSpiritEnergy
+            ? Icons.auto_awesome_rounded
+            : Icons.bolt_rounded,
+        costColor: card.usesMoney
+            ? const Color(0xFFFFD166)
+            : card.usesSpiritEnergy
+            ? const Color(0xFFB388FF)
+            : const Color(0xFF4FC3F7),
+        insufficientLabel: _notEnoughEnergyMessageForType(
+          _cardEnergyType(card),
+        ),
+        compact: compact,
+      );
 
-          return Padding(
-            key: ValueKey(
-              'hand-entry-${compact ? 'compact' : 'full'}-${card.id}',
+      return Padding(
+        key: ValueKey(
+          'hand-entry-${vertical ? 'vertical' : 'horizontal'}-${card.id}',
+        ),
+        padding: EdgeInsets.only(
+          right: vertical ? 0 : (compact ? 10 : 14),
+          bottom: vertical ? (compact ? 10 : 14) : 0,
+        ),
+        child: GestureDetector(
+          onTap: () => _toggleCardSelection(card),
+          child: Draggable<_ComboDragPayload>(
+            data: _dragPayloadForHandCard(battle, card),
+            maxSimultaneousDrags: 1,
+            dragAnchorStrategy: pointerDragAnchorStrategy,
+            feedback: Material(
+              color: Colors.transparent,
+              child: const _DragCursorFeedback(),
             ),
-            padding: EdgeInsets.only(right: compact ? 10 : 14),
-            child: GestureDetector(
-              onTap: () => _toggleCardSelection(card),
-              child: Draggable<_ComboDragPayload>(
-                data: _dragPayloadForHandCard(battle, card),
-                maxSimultaneousDrags: 1,
-                dragAnchorStrategy: pointerDragAnchorStrategy,
-                feedback: Material(
-                  color: Colors.transparent,
-                  child: const _DragCursorFeedback(),
-                ),
-                childWhenDragging: Opacity(opacity: 0.3, child: handCard),
-                child: handCard,
-              ),
-            ),
-          );
-        }).toList(),
-      ),
+            childWhenDragging: Opacity(opacity: 0.3, child: handCard),
+            child: handCard,
+          ),
+        ),
+      );
+    }).toList();
+
+    return SingleChildScrollView(
+      scrollDirection: scrollDirection,
+      child: vertical ? Column(children: children) : Row(children: children),
     );
   }
 
@@ -491,6 +499,85 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     );
   }
 
+  Widget _buildImmersiveArenaSideOverlay({
+    required RoyaleBattleView battle,
+    required List<RoyaleCard> selectedCards,
+  }) {
+    final me = _room?.me ?? _placeholderPlayer(_room?.viewerSide ?? 'left');
+    final nextCardText = battle.nextCardId == null
+        ? _t.text('Unknown')
+        : battle.nextCardId!;
+
+    return _GlassPanel(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+      gradient: LinearGradient(
+        colors: [
+          const Color(0xFF07111F).withValues(alpha: 0.9),
+          const Color(0xFF0D1B2A).withValues(alpha: 0.84),
+          const Color(0xFF17324A).withValues(alpha: 0.86),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _t.text('Battle Hand'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _buildDiscardDropZone(compact: true),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _DualEnergyMeter(
+            physicalEnergy: me.physicalEnergy,
+            spiritEnergy: me.spiritEnergy,
+            compact: true,
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _InfoChip(
+                icon: Icons.style_rounded,
+                label: nextCardText,
+                compact: true,
+              ),
+              if (selectedCards.isNotEmpty)
+                _InfoChip(
+                  icon: Icons.layers_rounded,
+                  label:
+                      '${selectedCards.length} / ${_energyCostSummary(selectedCards)}',
+                  compact: true,
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: _buildHandCardList(
+              battle,
+              compact: true,
+              scrollDirection: Axis.vertical,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildImmersiveArena({
     required RoyaleRoomSnapshot room,
     required RoyaleBattleView battle,
@@ -499,8 +586,22 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     required BoxConstraints constraints,
   }) {
     final fallbackHeight = MediaQuery.sizeOf(context).height;
+    final fallbackWidth = MediaQuery.sizeOf(context).width;
+    final maxWidth = constraints.maxWidth.isFinite
+        ? constraints.maxWidth
+        : fallbackWidth;
+    final useSideHand = maxWidth >= 900;
+    final sideHandWidth = maxWidth >= 1100 ? 220.0 : 196.0;
+    final sideHandRightPadding = useSideHand ? 10.0 : 0.0;
+    final sideHandGap = useSideHand ? 12.0 : 0.0;
+    final sideReservedWidth = useSideHand
+        ? sideHandWidth + sideHandRightPadding + sideHandGap
+        : 0.0;
     final topReservedHeight = _immersiveArenaTopReservedHeight(context);
-    final bottomReservedHeight = _immersiveArenaBottomReservedHeight(context);
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
+    final bottomReservedHeight = useSideHand
+        ? safeBottom + 10
+        : _immersiveArenaBottomReservedHeight(context);
     final availableHeight = constraints.maxHeight.isFinite
         ? constraints.maxHeight
         : fallbackHeight;
@@ -509,10 +610,13 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     if (boardHeight < 0) {
       boardHeight = 0;
     }
-    final arenaAspectRatio = battle.arena.fieldAspectRatio;
-    final maxBoardWidth = constraints.maxWidth.isFinite
-        ? constraints.maxWidth
-        : MediaQuery.sizeOf(context).width;
+    final arenaAspectRatio = battle.arena.fieldAspectRatio <= 0
+        ? battle_rules.fieldAspectRatio
+        : battle.arena.fieldAspectRatio;
+    var maxBoardWidth = maxWidth - sideReservedWidth;
+    if (maxBoardWidth < 0) {
+      maxBoardWidth = 0;
+    }
     final fittedByHeightWidth = boardHeight * arenaAspectRatio;
     final boardWidth = fittedByHeightWidth <= maxBoardWidth
         ? fittedByHeightWidth
@@ -529,7 +633,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
           curve: Curves.easeOutCubic,
           top: topReservedHeight,
           left: 0,
-          right: 0,
+          right: sideReservedWidth,
           bottom: bottomReservedHeight,
           child: _buildBattlefieldPanel(
             room: room,
@@ -552,15 +656,27 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
             selectedCards: selectedCards,
           ),
         ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: _buildImmersiveArenaBottomOverlay(
-            battle: battle,
-            selectedCards: selectedCards,
+        if (useSideHand)
+          Positioned(
+            top: topReservedHeight,
+            right: sideHandRightPadding,
+            bottom: safeBottom + 10,
+            width: sideHandWidth,
+            child: _buildImmersiveArenaSideOverlay(
+              battle: battle,
+              selectedCards: selectedCards,
+            ),
+          )
+        else
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildImmersiveArenaBottomOverlay(
+              battle: battle,
+              selectedCards: selectedCards,
+            ),
           ),
-        ),
       ],
     );
   }
