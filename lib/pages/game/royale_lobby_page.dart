@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -34,6 +36,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
   bool _isSubmitting = false;
   List<RoyaleDeck> _decks = const [];
   RoyaleDeck? _selectedDeck;
+  Future<void>? _arenaLibraryLoad;
   final TextEditingController _roomCodeController = TextEditingController();
 
   @override
@@ -43,6 +46,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
     _roomCodeController.text =
         widget.initialRoomCode?.trim().toUpperCase() ?? '';
     _loadLobbyData();
+    _preloadArenaLibrary();
   }
 
   @override
@@ -58,7 +62,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
     });
 
     try {
-      final decks = await _service.fetchDecks();
+      final decks = await _service.fetchDeckSummaries();
       setState(() {
         _decks = decks;
         _selectedDeck = decks.isNotEmpty ? decks.first : null;
@@ -85,6 +89,18 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _loadArenaLibrary() {
+    return _arenaLibraryLoad ??= royale_arena_lib.loadLibrary();
+  }
+
+  void _preloadArenaLibrary() {
+    unawaited(
+      _loadArenaLibrary().catchError((_) {
+        _arenaLibraryLoad = null;
+      }),
+    );
+  }
+
   Future<void> _enterRoom(Future<RoyaleRoomSnapshot> Function() action) async {
     final t = context.read<LocaleProvider>().translation;
     if (_selectedDeck == null) {
@@ -101,7 +117,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
       if (!mounted) {
         return;
       }
-      await royale_arena_lib.loadLibrary();
+      await _loadArenaLibrary();
       if (!mounted) {
         return;
       }
@@ -172,7 +188,7 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
             .map(
               (deck) => DropdownMenuItem<RoyaleDeck>(
                 value: deck,
-                child: Text('${deck.name} (${deck.cards.length}/8)'),
+                child: Text('${deck.name} (${deck.cardCount}/8)'),
               ),
             )
             .toList(),

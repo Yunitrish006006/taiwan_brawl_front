@@ -10,8 +10,7 @@ import 'package:taiwan_brawl/services/locale_provider.dart';
 import 'package:taiwan_brawl/services/royale_service.dart';
 
 class _CaptureCreateRoomService extends RoyaleService {
-  _CaptureCreateRoomService()
-      : super(ApiClient());
+  _CaptureCreateRoomService() : super(ApiClient());
 
   bool? capturedVsBot;
   String? capturedBotController;
@@ -20,13 +19,14 @@ class _CaptureCreateRoomService extends RoyaleService {
   String? capturedHeroId;
 
   @override
-  Future<List<RoyaleDeck>> fetchDecks() async {
+  Future<List<RoyaleDeck>> fetchDeckSummaries() async {
     return [
       RoyaleDeck(
         id: 1,
         slot: 1,
         name: 'Test Deck',
         updatedAt: '2026-04-22T00:00:00Z',
+        cardCount: 1,
         cards: const [
           RoyaleCard(
             id: 'card_1',
@@ -102,7 +102,10 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    final createBotButton = find.widgetWithText(FilledButton, 'Create Bot Match');
+    final createBotButton = find.widgetWithText(
+      FilledButton,
+      'Create Bot Match',
+    );
     await tester.ensureVisible(createBotButton);
     await tester.pumpAndSettle();
     await tester.tap(createBotButton);

@@ -898,17 +898,6 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                                   player.deckName,
                                   style: const TextStyle(color: Colors.white70),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  player.hero.localizedName(
-                                    context.watch<LocaleProvider>().locale,
-                                  ),
-                                  style: const TextStyle(
-                                    color: Color(0xFFFFD166),
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                  ),
-                                ),
                               ],
                             ),
                           ),

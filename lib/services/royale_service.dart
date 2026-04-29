@@ -44,6 +44,11 @@ class RoyaleService {
     return jsonModelList(res, 'decks', RoyaleDeck.fromJson);
   }
 
+  Future<List<RoyaleDeck>> fetchDeckSummaries() async {
+    final res = await _apiClient.getJson('/api/decks?summary=1');
+    return jsonModelList(res, 'decks', RoyaleDeck.fromJson);
+  }
+
   Future<RoyaleDeck> saveDeck({
     required String name,
     required int slot,

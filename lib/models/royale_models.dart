@@ -452,6 +452,7 @@ class RoyaleDeck {
     required this.slot,
     required this.updatedAt,
     required this.cards,
+    required this.cardCount,
     this.progression,
   });
 
@@ -460,17 +461,20 @@ class RoyaleDeck {
   final int slot;
   final String updatedAt;
   final List<RoyaleCard> cards;
+  final int cardCount;
   final RoyaleDeckProgression? progression;
 
   factory RoyaleDeck.fromJson(Map<String, dynamic> json) {
+    final cards = (json['cards'] as List<dynamic>? ?? const [])
+        .map((card) => RoyaleCard.fromJson(card as Map<String, dynamic>))
+        .toList();
     return RoyaleDeck(
       id: (json['id'] as num).toInt(),
       name: json['name'] as String,
       slot: (json['slot'] as num).toInt(),
       updatedAt: (json['updatedAt'] as String?) ?? '',
-      cards: (json['cards'] as List<dynamic>)
-          .map((card) => RoyaleCard.fromJson(card as Map<String, dynamic>))
-          .toList(),
+      cards: cards,
+      cardCount: (json['cardCount'] as num?)?.toInt() ?? cards.length,
       progression: json['progression'] is Map<String, dynamic>
           ? RoyaleDeckProgression.fromJson(
               json['progression'] as Map<String, dynamic>,

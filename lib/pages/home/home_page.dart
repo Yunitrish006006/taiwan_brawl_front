@@ -45,6 +45,7 @@ class _HomePageState extends State<HomePage>
   int? _overviewRequestedForUserId;
   PageRoute<dynamic>? _observedRoute;
   int? _openingConversationUserId;
+  Future<void>? _arenaLibraryLoad;
   bool _installBannerDismissed = false;
 
   void _dismissInstallBanner() {
@@ -65,7 +66,11 @@ class _HomePageState extends State<HomePage>
       duration: const Duration(milliseconds: 900),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _entranceController.forward();
+      if (!mounted) {
+        return;
+      }
+      _entranceController.forward();
+      _preloadArenaLibrary();
     });
   }
 
@@ -108,6 +113,18 @@ class _HomePageState extends State<HomePage>
     await context.read<FriendsOverviewSyncService>().refreshFor(
       context.read<AuthService>(),
       silent: silent,
+    );
+  }
+
+  Future<void> _loadArenaLibrary() {
+    return _arenaLibraryLoad ??= royale_arena_lib.loadLibrary();
+  }
+
+  void _preloadArenaLibrary() {
+    unawaited(
+      _loadArenaLibrary().catchError((_) {
+        _arenaLibraryLoad = null;
+      }),
     );
   }
 
@@ -180,7 +197,7 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<RoyaleDeck?> _pickDeck() async {
-    final decks = await _royaleService.fetchDecks();
+    final decks = await _royaleService.fetchDeckSummaries();
     if (decks.isEmpty) {
       throw ApiException(_t.text('Please create a deck first'));
     }
@@ -267,7 +284,7 @@ class _HomePageState extends State<HomePage>
       if (!mounted) {
         return;
       }
-      await royale_arena_lib.loadLibrary();
+      await _loadArenaLibrary();
       if (!mounted) {
         return;
       }
