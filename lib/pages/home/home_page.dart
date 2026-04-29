@@ -91,7 +91,10 @@ class _HomePageState extends State<HomePage>
     }
     _overviewRequestedForUserId = userId;
     unawaited(
-      context.read<FriendsOverviewSyncService>().refreshFor(auth, silent: false),
+      context.read<FriendsOverviewSyncService>().refreshFor(
+        auth,
+        silent: false,
+      ),
     );
   }
 
@@ -193,28 +196,45 @@ class _HomePageState extends State<HomePage>
       context: context,
       builder: (context) {
         final t = context.watch<LocaleProvider>().translation;
+        final theme = Theme.of(context);
+        final scheme = theme.colorScheme;
+        final dropdownTextStyle = theme.textTheme.titleMedium?.copyWith(
+          color: scheme.onSurface,
+        );
+        final dropdownTheme = theme.copyWith(
+          inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+            fillColor: scheme.surface,
+          ),
+        );
         return AlertDialog(
           title: Text(t.text('Choose a deck to battle with')),
           content: StatefulBuilder(
             builder: (context, setState) {
-              return DropdownButtonFormField<RoyaleDeck>(
-                initialValue: selected,
-                items: decks
-                    .map(
-                      (deck) => DropdownMenuItem<RoyaleDeck>(
-                        value: deck,
-                        child: Text(deck.name),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value == null) {
-                    return;
-                  }
-                  setState(() {
-                    selected = value;
-                  });
-                },
+              return Theme(
+                data: dropdownTheme,
+                child: DropdownButtonFormField<RoyaleDeck>(
+                  initialValue: selected,
+                  dropdownColor: scheme.surface,
+                  iconEnabledColor: scheme.onSurface,
+                  iconDisabledColor: scheme.onSurface.withValues(alpha: 0.38),
+                  style: dropdownTextStyle,
+                  items: decks
+                      .map(
+                        (deck) => DropdownMenuItem<RoyaleDeck>(
+                          value: deck,
+                          child: Text(deck.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) {
+                      return;
+                    }
+                    setState(() {
+                      selected = value;
+                    });
+                  },
+                ),
               );
             },
           ),

@@ -143,29 +143,45 @@ class _RoyaleLobbyPageState extends State<RoyaleLobbyPage> {
       labelText: labelText,
       border: const OutlineInputBorder(),
       filled: true,
-      fillColor: Colors.white,
     );
   }
 
   Widget _buildDeckDropdown(Map<String, String> t) {
-    return DropdownButtonFormField<RoyaleDeck>(
-      key: ValueKey(_selectedDeck?.id),
-      initialValue: _selectedDeck,
-      dropdownColor: const Color(0xFF16324F),
-      decoration: _dropdownDecoration(t.text('Select Deck')),
-      items: _decks
-          .map(
-            (deck) => DropdownMenuItem<RoyaleDeck>(
-              value: deck,
-              child: Text('${deck.name} (${deck.cards.length}/8)'),
-            ),
-          )
-          .toList(),
-      onChanged: (value) {
-        setState(() {
-          _selectedDeck = value;
-        });
-      },
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final dropdownTextStyle = theme.textTheme.titleMedium?.copyWith(
+      color: scheme.onSurface,
+    );
+    final dropdownTheme = theme.copyWith(
+      inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+        fillColor: scheme.surface,
+      ),
+    );
+
+    return Theme(
+      data: dropdownTheme,
+      child: DropdownButtonFormField<RoyaleDeck>(
+        key: ValueKey(_selectedDeck?.id),
+        initialValue: _selectedDeck,
+        dropdownColor: scheme.surface,
+        iconEnabledColor: scheme.onSurface,
+        iconDisabledColor: scheme.onSurface.withValues(alpha: 0.38),
+        style: dropdownTextStyle,
+        decoration: _dropdownDecoration(t.text('Select Deck')),
+        items: _decks
+            .map(
+              (deck) => DropdownMenuItem<RoyaleDeck>(
+                value: deck,
+                child: Text('${deck.name} (${deck.cards.length}/8)'),
+              ),
+            )
+            .toList(),
+        onChanged: (value) {
+          setState(() {
+            _selectedDeck = value;
+          });
+        },
+      ),
     );
   }
 
