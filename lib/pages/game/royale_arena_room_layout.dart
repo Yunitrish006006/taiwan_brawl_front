@@ -160,61 +160,6 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     );
   }
 
-  Widget _buildHandInfoChips(
-    RoyaleBattleView battle,
-    List<RoyaleCard> selectedCards,
-    bool compact,
-  ) {
-    final me = _room?.me;
-    return Wrap(
-      spacing: compact ? 8 : 12,
-      runSpacing: compact ? 8 : 10,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        Text(
-          _t.text('Battle Hand'),
-          style:
-              (compact
-                      ? Theme.of(context).textTheme.titleMedium
-                      : Theme.of(context).textTheme.titleLarge)
-                  ?.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
-        ),
-        _InfoChip(
-          icon: Icons.bolt_rounded,
-          label:
-              '${_t.text('Physical Energy')} ${_playerResourceForType(me, 'physical').toStringAsFixed(1)} / ${(me?.physicalEnergy.max ?? 0).toStringAsFixed(1)}',
-          compact: compact,
-        ),
-        _InfoChip(
-          icon: Icons.auto_awesome_rounded,
-          label:
-              '${_t.text('Spirit Energy')} ${_playerResourceForType(me, 'spirit').toStringAsFixed(1)} / ${(me?.spiritEnergy.max ?? 0).toStringAsFixed(1)}',
-          compact: compact,
-        ),
-        _InfoChip(
-          icon: Icons.attach_money_rounded,
-          label: '${_t.text('Money')} ${battle.yourMoney.toStringAsFixed(1)}',
-          compact: compact,
-        ),
-        _InfoChip(
-          icon: Icons.arrow_forward_rounded,
-          label: battle.nextCardId == null
-              ? '${_t.text('Next Card')} ${_t.text('Unknown')}'
-              : '${_t.text('Next Card')} ${battle.nextCardId}',
-          compact: compact,
-        ),
-        if (selectedCards.isNotEmpty)
-          _InfoChip(
-            icon: Icons.layers_rounded,
-            label:
-                '${_t.text('Selected Cards')} ${selectedCards.length} / ${_energyCostSummary(selectedCards)}',
-            compact: compact,
-          ),
-        _buildDiscardDropZone(compact: compact),
-      ],
-    );
-  }
-
   Widget _buildDiscardDropZone({required bool compact}) {
     return _DiscardDropZone(
       discardable: _canAffordDiscard(_room?.me),
@@ -280,17 +225,6 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
           );
         }).toList(),
       ),
-    );
-  }
-
-  String _commandDeckHintText(bool compact) {
-    if (compact) {
-      return _t.text(
-        'Tap cards to build a combo, then drag onto the battlefield. Work cards trigger instantly.',
-      );
-    }
-    return _t.text(
-      'Tap cards to build a combo first. Equipment cards apply to units cast together. Work cards are cast immediately and resolve a random event.',
     );
   }
 
@@ -424,7 +358,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
             ),
             const SizedBox(height: 8),
             _GlassPanel(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               gradient: LinearGradient(
                 colors: [
                   const Color(0xFF07111F).withValues(alpha: 0.82),
@@ -433,31 +367,32 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.touch_app_rounded,
-                    color: Color(0xFFFFD166),
-                    size: 16,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _battlefieldHintText(
-                        _dragTargetActive,
-                        selectedCards,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _InfoChip(
+                      icon: Icons.map_rounded,
+                      label: _arenaDisplayName(room.arena),
+                      compact: true,
+                    ),
+                    const SizedBox(width: 8),
+                    _InfoChip(
+                      icon: Icons.style_rounded,
+                      label: battle.nextCardId ?? _t.text('Unknown'),
+                      compact: true,
+                    ),
+                    if (selectedCards.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      _InfoChip(
+                        icon: Icons.layers_rounded,
+                        label:
+                            '${selectedCards.length} / ${_energyCostSummary(selectedCards)}',
                         compact: true,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
+                    ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -574,6 +509,17 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
     if (boardHeight < 0) {
       boardHeight = 0;
     }
+    final arenaAspectRatio = battle.arena.fieldAspectRatio;
+    final maxBoardWidth = constraints.maxWidth.isFinite
+        ? constraints.maxWidth
+        : MediaQuery.sizeOf(context).width;
+    final fittedByHeightWidth = boardHeight * arenaAspectRatio;
+    final boardWidth = fittedByHeightWidth <= maxBoardWidth
+        ? fittedByHeightWidth
+        : maxBoardWidth;
+    boardHeight = arenaAspectRatio <= 0
+        ? boardHeight
+        : boardWidth / arenaAspectRatio;
 
     return Stack(
       fit: StackFit.expand,
@@ -590,7 +536,7 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
             battle: battle,
             mySide: mySide,
             selectedCards: selectedCards,
-            boardWidth: constraints.maxWidth,
+            boardWidth: boardWidth,
             boardHeight: boardHeight,
             compact: true,
             fullscreen: true,
@@ -616,109 +562,6 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildWideDesktopArena({
-    required RoyaleRoomSnapshot room,
-    required RoyaleBattleView battle,
-    required RoyalePlayerView? me,
-    required RoyalePlayerView? opponent,
-    required String mySide,
-    required List<RoyaleCard> selectedCards,
-    required BoxConstraints constraints,
-  }) {
-    final viewportHeight = constraints.maxHeight.isFinite
-        ? constraints.maxHeight
-        : MediaQuery.sizeOf(context).height;
-    final maxContentWidth = constraints.maxWidth < 1380
-        ? constraints.maxWidth
-        : 1380.0;
-    final pagePadding = constraints.maxWidth < 1280 ? 16.0 : 20.0;
-    final columnGap = constraints.maxWidth < 1280 ? 16.0 : 20.0;
-    final sidebarWidth = constraints.maxWidth >= 1360 ? 392.0 : 352.0;
-    final battlefieldCompact =
-        viewportHeight < 820 || constraints.maxWidth < 1320;
-    final panelHorizontalChrome = battlefieldCompact ? 20.0 : 28.0;
-    final panelVerticalChrome = battlefieldCompact ? 72.0 : 88.0;
-    var contentHeight = viewportHeight - pagePadding * 2;
-    if (contentHeight < 0) {
-      contentHeight = 0;
-    }
-    var battlefieldLaneWidth =
-        maxContentWidth - pagePadding * 2 - sidebarWidth - columnGap;
-    if (battlefieldLaneWidth < 300) {
-      battlefieldLaneWidth = 300;
-    }
-    final battlefieldAspectRatio = battle.arena.fieldAspectRatio;
-    var boardWidth =
-        (contentHeight - panelVerticalChrome) * battlefieldAspectRatio;
-    final boardWidthLimit = battlefieldLaneWidth - panelHorizontalChrome;
-    if (boardWidth > _battlefieldDesktopMaxWidth) {
-      boardWidth = _battlefieldDesktopMaxWidth;
-    }
-    if (boardWidth > boardWidthLimit) {
-      boardWidth = boardWidthLimit;
-    }
-    if (boardWidth < 280) {
-      boardWidth = 280;
-    }
-    final boardHeight = boardWidth / battlefieldAspectRatio;
-
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1380),
-        child: Padding(
-          padding: EdgeInsets.all(pagePadding),
-          child: SizedBox(
-            height: contentHeight,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: _buildBattlefieldPanel(
-                      room: room,
-                      battle: battle,
-                      mySide: mySide,
-                      selectedCards: selectedCards,
-                      boardWidth: boardWidth,
-                      boardHeight: boardHeight,
-                      compact: battlefieldCompact,
-                    ),
-                  ),
-                ),
-                SizedBox(width: columnGap),
-                SizedBox(
-                  width: sidebarWidth,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildHudSection(
-                        battle: battle,
-                        me: me,
-                        opponent: opponent,
-                        mySide: mySide,
-                        simulationMode: room.simulationMode,
-                        compact: true,
-                      ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: _buildCommandDeck(
-                          battle: battle,
-                          compact: true,
-                          selectedCards: selectedCards,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -1018,274 +861,19 @@ extension _RoyaleArenaRoomLayout on _RoyaleArenaPageState {
 
   Widget _buildArena(RoyaleRoomSnapshot room) {
     final battle = room.battle!;
-    final me = room.me;
-    final opponent = room.opponent;
     final mySide = room.viewerSide ?? 'left';
     final selectedCards = _selectedCards(battle);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 880;
-        final compactPhone = constraints.maxWidth < 600;
-        final wideDesktop = constraints.maxWidth >= 1100;
-        if (compactPhone) {
-          return _buildImmersiveArena(
-            room: room,
-            battle: battle,
-            mySide: mySide,
-            selectedCards: selectedCards,
-            constraints: constraints,
-          );
-        }
-        if (wideDesktop) {
-          return _buildWideDesktopArena(
-            room: room,
-            battle: battle,
-            me: me,
-            opponent: opponent,
-            mySide: mySide,
-            selectedCards: selectedCards,
-            constraints: constraints,
-          );
-        }
-        final boardWidth = _boardWidthFor(constraints, compact);
-        final boardHeight = boardWidth / battle.arena.fieldAspectRatio;
-        final contentPadding = compact ? 14.0 : 20.0;
-        final children = <Widget>[
-          _buildHudSection(
-            battle: battle,
-            me: me,
-            opponent: opponent,
-            mySide: mySide,
-            simulationMode: room.simulationMode,
-            compact: compact,
-          ),
-          const SizedBox(height: 16),
-          _buildBattlefieldPanel(
-            room: room,
-            battle: battle,
-            mySide: mySide,
-            selectedCards: selectedCards,
-            boardWidth: boardWidth,
-            boardHeight: boardHeight,
-            compact: compact,
-          ),
-          const SizedBox(height: 12),
-          _buildCommandDeck(
-            battle: battle,
-            compact: compact,
-            selectedCards: selectedCards,
-          ),
-        ];
-        return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1200),
-            child: ListView(
-              padding: EdgeInsets.all(contentPadding),
-              children: children,
-            ),
-          ),
+        return _buildImmersiveArena(
+          room: room,
+          battle: battle,
+          mySide: mySide,
+          selectedCards: selectedCards,
+          constraints: constraints,
         );
       },
-    );
-  }
-
-  Widget _buildHudSection({
-    required RoyaleBattleView battle,
-    required RoyalePlayerView? me,
-    required RoyalePlayerView? opponent,
-    required String mySide,
-    required String simulationMode,
-    required bool compact,
-  }) {
-    return _GlassPanel(
-      padding: EdgeInsets.all(compact ? 12 : 16),
-      child: Column(
-        children: [
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            alignment: WrapAlignment.center,
-            children: [
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: compact ? 14 : 18,
-                  vertical: compact ? 8 : 10,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.14),
-                  ),
-                ),
-                child: Text(
-                  _formatTime(battle.timeRemainingMs),
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: compact ? 22 : 28,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ),
-              _DualEnergyMeter(
-                physicalEnergy:
-                    me?.physicalEnergy ??
-                    _placeholderPlayer(mySide).physicalEnergy,
-                spiritEnergy:
-                    me?.spiritEnergy ?? _placeholderPlayer(mySide).spiritEnergy,
-                compact: compact,
-              ),
-              _ArenaLegendChip(
-                label: simulationMode == 'host'
-                    ? _t.text('Host Simulation (Experimental)')
-                    : _t.text('Server Simulation'),
-                color: simulationMode == 'host'
-                    ? const Color(0xFFB084F5)
-                    : const Color(0xFF48C7F4),
-                compact: compact,
-              ),
-              if (opponent != null &&
-                  _shouldShowAddFriendButton(opponent, me?.userId))
-                ActionChip(
-                  avatar: Icon(Icons.person_add_alt_1, size: compact ? 16 : 18),
-                  label: Text(
-                    '${_t.text('Add')} ${opponent.name} ${_t.text('as a friend')}',
-                    style: TextStyle(fontSize: compact ? 11 : 13),
-                  ),
-                  onPressed: () => _sendFriendRequestToPlayer(opponent),
-                  visualDensity: compact
-                      ? const VisualDensity(horizontal: -2, vertical: -2)
-                      : VisualDensity.standard,
-                  materialTapTargetSize: compact
-                      ? MaterialTapTargetSize.shrinkWrap
-                      : MaterialTapTargetSize.padded,
-                ),
-              if (!compact) ...[
-                _ArenaLegendChip(
-                  label: _t.text('Single Lane Battle'),
-                  color: const Color(0xFF46C2CB),
-                ),
-                _ArenaLegendChip(
-                  label: _t.text('Up to 3-card combo'),
-                  color: const Color(0xFFFFB703),
-                ),
-                _ArenaLegendChip(
-                  label: _t.text('Equipment can stack'),
-                  color: const Color(0xFF9B5DE5),
-                ),
-              ],
-            ],
-          ),
-          SizedBox(height: compact ? 10 : 14),
-          Row(
-            children: [
-              Expanded(
-                child: _PlayerHudCard(
-                  title: me?.name ?? _t.text('You'),
-                  subtitle: mySide == 'left' ? 'Blue Side' : 'Red Side',
-                  hero: me?.hero ?? _placeholderPlayer(mySide).hero,
-                  physicalHealth:
-                      me?.physicalHealth ??
-                      _placeholderPlayer(mySide).physicalHealth,
-                  spiritHealth:
-                      me?.spiritHealth ??
-                      _placeholderPlayer(mySide).spiritHealth,
-                  physicalEnergy:
-                      me?.physicalEnergy ??
-                      _placeholderPlayer(mySide).physicalEnergy,
-                  spiritEnergy:
-                      me?.spiritEnergy ??
-                      _placeholderPlayer(mySide).spiritEnergy,
-                  money: me?.money ?? _placeholderPlayer(mySide).money,
-                  towerHp: me?.towerHp ?? 0,
-                  maxTowerHp: me?.maxTowerHp ?? 1,
-                  color: _sideColor(mySide),
-                  alignEnd: false,
-                  compact: compact,
-                ),
-              ),
-              SizedBox(width: compact ? 8 : 14),
-              Expanded(
-                child: _PlayerHudCard(
-                  title: opponent?.name ?? _t.text('Opponent'),
-                  subtitle: mySide == 'left' ? 'Red Side' : 'Blue Side',
-                  hero:
-                      opponent?.hero ??
-                      _placeholderPlayer(opponent?.side ?? 'right').hero,
-                  physicalHealth:
-                      opponent?.physicalHealth ??
-                      _placeholderPlayer(
-                        opponent?.side ?? 'right',
-                      ).physicalHealth,
-                  spiritHealth:
-                      opponent?.spiritHealth ??
-                      _placeholderPlayer(
-                        opponent?.side ?? 'right',
-                      ).spiritHealth,
-                  physicalEnergy:
-                      opponent?.physicalEnergy ??
-                      _placeholderPlayer(
-                        opponent?.side ?? 'right',
-                      ).physicalEnergy,
-                  spiritEnergy:
-                      opponent?.spiritEnergy ??
-                      _placeholderPlayer(
-                        opponent?.side ?? 'right',
-                      ).spiritEnergy,
-                  money:
-                      opponent?.money ??
-                      _placeholderPlayer(opponent?.side ?? 'right').money,
-                  towerHp: opponent?.towerHp ?? 0,
-                  maxTowerHp: opponent?.maxTowerHp ?? 1,
-                  color: _sideColor(opponent?.side ?? 'right'),
-                  alignEnd: true,
-                  compact: compact,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCommandDeck({
-    required RoyaleBattleView battle,
-    required bool compact,
-    required List<RoyaleCard> selectedCards,
-  }) {
-    return _GlassPanel(
-      padding: EdgeInsets.fromLTRB(
-        compact ? 12 : 16,
-        compact ? 12 : 16,
-        compact ? 12 : 16,
-        compact ? 14 : 18,
-      ),
-      gradient: const LinearGradient(
-        colors: [Color(0xFF0D1B2A), Color(0xFF132238), Color(0xFF1A2F48)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHandInfoChips(battle, selectedCards, compact),
-          SizedBox(height: compact ? 12 : 16),
-          _buildHandCardList(battle, compact: compact),
-          SizedBox(height: compact ? 10 : 14),
-          Text(
-            _commandDeckHintText(compact),
-            maxLines: compact ? 2 : 3,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.72),
-              fontSize: compact ? 11 : 13,
-            ),
-          ),
-        ],
-      ),
     );
   }
 

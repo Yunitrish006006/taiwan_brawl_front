@@ -25,8 +25,6 @@ part 'royale_arena_board_widgets.dart';
 part 'royale_arena_chrome.dart';
 part 'royale_arena_hand_widgets.dart';
 
-const double _battlefieldPhoneMaxWidth = 430;
-const double _battlefieldDesktopMaxWidth = 520;
 const Duration _hostStateSyncInterval = Duration(milliseconds: 100);
 const Duration _socketReconnectDelay = Duration(milliseconds: 250);
 const Duration _battlePollingInterval = Duration(milliseconds: 800);
@@ -1083,8 +1081,14 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     }
 
     final local = renderBox.globalToLocal(globalOffset);
-    final dropX = (local.dx / renderBox.size.width).clamp(0.0, 1.0);
-    final dropY = (local.dy / renderBox.size.height).clamp(0.0, 1.0);
+    if (local.dx < 0 ||
+        local.dy < 0 ||
+        local.dx > renderBox.size.width ||
+        local.dy > renderBox.size.height) {
+      return null;
+    }
+    final dropX = local.dx / renderBox.size.width;
+    final dropY = local.dy / renderBox.size.height;
     return Offset(dropX, dropY);
   }
 
@@ -1410,13 +1414,6 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     return true;
   }
 
-  double _boardWidthFor(BoxConstraints constraints, bool compact) {
-    final maxWidth = compact
-        ? _battlefieldPhoneMaxWidth
-        : _battlefieldDesktopMaxWidth;
-    return constraints.maxWidth < maxWidth ? constraints.maxWidth : maxWidth;
-  }
-
   RoyalePlayerView _placeholderPlayer(String side) {
     const placeholderHero = RoyaleHero(
       id: 'waiting',
@@ -1588,10 +1585,7 @@ class _RoyaleArenaPageState extends State<RoyaleArenaPage> {
     final friendsOverview = context
         .watch<FriendsOverviewSyncService>()
         .overview;
-    final isImmersiveBattle =
-        MediaQuery.sizeOf(context).width < 600 &&
-        _room != null &&
-        _room!.status != 'lobby';
+    final isImmersiveBattle = _room != null && _room!.status != 'lobby';
     return Scaffold(
       backgroundColor: const Color(0xFF07111F),
       drawer: _buildRoomFriendDrawer(friendsOverview),
