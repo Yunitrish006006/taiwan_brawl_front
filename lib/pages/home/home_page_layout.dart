@@ -25,7 +25,7 @@ extension _HomePageLayout on _HomePageState {
   }
 
   bool _shouldShowInstallBanner() {
-    final ctx = web_push_bridge.getDisplayContext();
+    final ctx = display_context_bridge.getDisplayContext();
     return ctx.isMobile && !ctx.isStandalone;
   }
 
@@ -444,7 +444,8 @@ extension _HomePageLayout on _HomePageState {
     required bool isLoadingFriends,
   }) {
     final roomInvites = overview?.roomInvites ?? const <RoomInviteItem>[];
-    final incomingRequests = overview?.incomingRequests ?? const <FriendRequestItem>[];
+    final incomingRequests =
+        overview?.incomingRequests ?? const <FriendRequestItem>[];
     final friends = overview?.friends ?? const <SocialUser>[];
     final roomInviteByInviterUserId = <int, RoomInviteItem>{
       for (final invite in roomInvites) invite.inviter.userId: invite,

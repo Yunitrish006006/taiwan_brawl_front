@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -11,32 +12,67 @@ import '../models/chat_models.dart';
 import 'api_client.dart';
 import 'auth_service.dart';
 import 'local_chat_repository.dart';
-import 'web_push_bridge.dart' as web_push_bridge;
 
 class PushConfiguration {
   const PushConfiguration({
-    required this.iosEnabled,
-    required this.webEnabled,
-    required this.webPublicKey,
-    required this.webServiceWorkerPath,
-    required this.webServiceWorkerScope,
+    required this.fcmEnabled,
+    required this.fcmDeliveryEnabled,
+    required this.enabledPlatforms,
+    required this.projectId,
+    required this.apiKey,
+    required this.appId,
+    required this.messagingSenderId,
+    required this.webVapidKey,
+    this.authDomain,
+    this.storageBucket,
+    this.measurementId,
+    this.iosBundleId,
   });
 
-  final bool iosEnabled;
-  final bool webEnabled;
-  final String? webPublicKey;
-  final String webServiceWorkerPath;
-  final String webServiceWorkerScope;
+  final bool fcmEnabled;
+  final bool fcmDeliveryEnabled;
+  final List<String> enabledPlatforms;
+  final String? projectId;
+  final String? apiKey;
+  final String? appId;
+  final String? messagingSenderId;
+  final String? webVapidKey;
+  final String? authDomain;
+  final String? storageBucket;
+  final String? measurementId;
+  final String? iosBundleId;
 
-  bool get isEnabledForCurrentPlatform {
-    if (kIsWeb) {
-      return webEnabled && (webPublicKey ?? '').trim().isNotEmpty;
+  bool get hasFirebaseOptions {
+    return _hasText(projectId) &&
+        _hasText(apiKey) &&
+        _hasText(appId) &&
+        _hasText(messagingSenderId);
+  }
+
+  bool isEnabledForPlatform(String? platform) {
+    if (!fcmEnabled || !fcmDeliveryEnabled || !hasFirebaseOptions) {
+      return false;
     }
+    if (platform == null || !enabledPlatforms.contains(platform)) {
+      return false;
+    }
+    if (platform == 'web' && !_hasText(webVapidKey)) {
+      return false;
+    }
+    return true;
+  }
 
-    return switch (defaultTargetPlatform) {
-      TargetPlatform.iOS => iosEnabled,
-      _ => false,
-    };
+  FirebaseOptions toFirebaseOptions() {
+    return FirebaseOptions(
+      apiKey: apiKey!.trim(),
+      appId: appId!.trim(),
+      messagingSenderId: messagingSenderId!.trim(),
+      projectId: projectId!.trim(),
+      authDomain: _nullIfBlank(authDomain),
+      storageBucket: _nullIfBlank(storageBucket),
+      measurementId: _nullIfBlank(measurementId),
+      iosBundleId: _nullIfBlank(iosBundleId),
+    );
   }
 
   static PushConfiguration? fromJson(Map<String, dynamic>? json) {
@@ -44,67 +80,83 @@ class PushConfiguration {
       return null;
     }
 
-    final ios = json['ios'] is Map<String, dynamic>
-        ? json['ios'] as Map<String, dynamic>
+    final fcm = json['fcm'] is Map<String, dynamic>
+        ? json['fcm'] as Map<String, dynamic>
         : const <String, dynamic>{};
-    final web = json['web'] is Map<String, dynamic>
-        ? json['web'] as Map<String, dynamic>
-        : const <String, dynamic>{};
+    final platforms = json['enabledPlatforms'] is List
+        ? (json['enabledPlatforms'] as List)
+              .whereType<String>()
+              .map((value) => value.trim().toLowerCase())
+              .where((value) => value.isNotEmpty)
+              .toSet()
+              .toList()
+        : const <String>[];
 
     return PushConfiguration(
-      iosEnabled: ios['enabled'] == true,
-      webEnabled: web['enabled'] == true,
-      webPublicKey: (web['publicKey'] as String?)?.trim(),
-      webServiceWorkerPath:
-          (web['serviceWorkerPath'] as String?)?.trim().isNotEmpty == true
-          ? (web['serviceWorkerPath'] as String).trim()
-          : '/web-push-sw.js',
-      webServiceWorkerScope:
-          (web['serviceWorkerScope'] as String?)?.trim().isNotEmpty == true
-          ? (web['serviceWorkerScope'] as String).trim()
-          : '/push-notifications/',
+      fcmEnabled: fcm['enabled'] == true,
+      fcmDeliveryEnabled: json['deliveryEnabled'] == true,
+      enabledPlatforms: platforms,
+      projectId: _readString(fcm['projectId']),
+      apiKey: _readString(fcm['apiKey']),
+      appId: _readString(fcm['appId']),
+      messagingSenderId: _readString(fcm['messagingSenderId']),
+      webVapidKey: _readString(fcm['webVapidKey']),
+      authDomain: _readString(fcm['authDomain']),
+      storageBucket: _readString(fcm['storageBucket']),
+      measurementId: _readString(fcm['measurementId']),
+      iosBundleId: _readString(fcm['iosBundleId']),
     );
+  }
+
+  static bool _hasText(String? value) => (value ?? '').trim().isNotEmpty;
+
+  static String? _readString(Object? value) {
+    final text = (value as String?)?.trim();
+    return (text ?? '').isEmpty ? null : text;
+  }
+
+  static String? _nullIfBlank(String? value) {
+    final text = value?.trim();
+    return (text ?? '').isEmpty ? null : text;
   }
 }
 
 class NotificationService extends ChangeNotifier {
   NotificationService(this._apiClient, {LocalChatRepository? localRepository})
-      : _localRepository = localRepository ?? LocalChatRepository();
+    : _localRepository = localRepository ?? LocalChatRepository();
 
   static const Duration _pollInterval = Duration(seconds: 2);
   static const String _metaBoxName = 'app_meta';
   static const String _installationIdKey = 'push.installation_id';
-  static const MethodChannel _iosChannel = MethodChannel(
-    'taiwan_brawl/notifications',
-  );
 
   final ApiClient _apiClient;
   final LocalChatRepository _localRepository;
 
   Future<void> _syncQueue = Future.value();
   Timer? _pollTimer;
+  StreamSubscription<RemoteMessage>? _foregroundMessageSubscription;
+  StreamSubscription<RemoteMessage>? _messageOpenedSubscription;
+  StreamSubscription<String>? _tokenRefreshSubscription;
   bool _pollInFlight = false;
   bool _didSyncLoggedOutState = false;
   bool _platformHooksInitialized = false;
+  bool _firebaseInitialized = false;
   bool _pushConfigLoaded = false;
+  bool _canRequestWebPushPermission = kIsWeb;
   PushConfiguration? _pushConfiguration;
   int? _currentUserId;
   int? _registeredPushUserId;
   int? _activeConversationUserId;
   int? _pendingConversationUserId;
+  String? _currentUserLocale;
   String? _installationId;
 
   int? get pendingConversationUserId => _pendingConversationUserId;
 
-  bool get canRequestWebPushPermission {
-    if (!kIsWeb) return false;
-    final permission = web_push_bridge.getNotificationPermission();
-    return permission == 'default';
-  }
+  bool get canRequestWebPushPermission =>
+      kIsWeb && _canRequestWebPushPermission;
 
-  Future<void> initialize() async {
-    await _ensurePlatformHooksInitialized();
-  }
+  Future<void> initialize() async {}
 
   void clearPendingConversationUserId() {
     if (_pendingConversationUserId == null) {
@@ -125,13 +177,12 @@ class NotificationService extends ChangeNotifier {
       return;
     }
 
-    await _ensurePlatformHooksInitialized();
-
     final user = auth.user;
     if (user == null) {
       final shouldNotify =
           _currentUserId != null || _pendingConversationUserId != null;
       _currentUserId = null;
+      _currentUserLocale = null;
       _registeredPushUserId = null;
       _activeConversationUserId = null;
       _pendingConversationUserId = null;
@@ -149,6 +200,7 @@ class NotificationService extends ChangeNotifier {
     _didSyncLoggedOutState = false;
     final didSwitchUser = _currentUserId != user.id;
     _currentUserId = user.id;
+    _currentUserLocale = user.locale;
     _startPolling();
 
     if (_registeredPushUserId != user.id) {
@@ -193,18 +245,45 @@ class NotificationService extends ChangeNotifier {
       debugPrintStack(stackTrace: stackTrace);
     }
 
-    if (kIsWeb) {
-      await web_push_bridge.unregisterWebPush();
+    try {
+      final config = await _loadPushConfiguration();
+      if (config != null && config.hasFirebaseOptions) {
+        await _ensureFirebaseInitialized(config);
+        await FirebaseMessaging.instance.deleteToken();
+      }
+    } catch (_) {
+      // Best effort only.
+    }
+  }
+
+  Future<void> _ensureFirebaseInitialized(PushConfiguration config) async {
+    if (_firebaseInitialized) {
       return;
     }
 
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
-      try {
-        await _iosChannel.invokeMethod<void>('unregisterForRemoteNotifications');
-      } catch (_) {
-        // Best effort only.
-      }
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(options: config.toFirebaseOptions());
     }
+    _firebaseInitialized = true;
+
+    try {
+      await FirebaseMessaging.instance.setAutoInitEnabled(true);
+    } catch (_) {
+      // Unsupported on some platforms.
+    }
+
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.macOS)) {
+      await FirebaseMessaging.instance
+          .setForegroundNotificationPresentationOptions(
+            alert: true,
+            badge: true,
+            sound: true,
+          );
+    }
+
+    await _ensurePlatformHooksInitialized();
   }
 
   Future<void> _ensurePlatformHooksInitialized() async {
@@ -214,42 +293,41 @@ class NotificationService extends ChangeNotifier {
     _platformHooksInitialized = true;
 
     if (kIsWeb) {
-      final conversationUserId =
-          await web_push_bridge.consumePendingConversationUserId();
-      _handleOpenedConversationUserId(conversationUserId);
-      return;
+      _handleOpenedConversationUserId(
+        _readInt(Uri.base.queryParameters['conversationUserId']),
+      );
     }
 
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
-      _iosChannel.setMethodCallHandler(_handleIosMethodCall);
-      try {
-        final initialPayload = await _iosChannel
-            .invokeMapMethod<Object?, Object?>('consumeNotificationOpen');
-        _handleOpenedConversationPayload(initialPayload);
-      } catch (error, stackTrace) {
-        debugPrint('Read initial iOS notification failed: $error');
-        debugPrintStack(stackTrace: stackTrace);
-      }
+    try {
+      final initialMessage = await FirebaseMessaging.instance
+          .getInitialMessage();
+      _handleRemoteMessage(initialMessage);
+    } catch (error, stackTrace) {
+      debugPrint('Read initial FCM notification failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
     }
+
+    _messageOpenedSubscription = FirebaseMessaging.onMessageOpenedApp.listen(
+      _handleRemoteMessage,
+    );
+    _foregroundMessageSubscription = FirebaseMessaging.onMessage.listen(
+      _handleRemoteMessage,
+    );
+    _tokenRefreshSubscription = FirebaseMessaging.instance.onTokenRefresh
+        .listen(_handleTokenRefresh);
   }
 
-  Future<dynamic> _handleIosMethodCall(MethodCall call) async {
-    switch (call.method) {
-      case 'notificationOpened':
-        _handleOpenedConversationPayload(call.arguments);
-        return null;
-      default:
-        return null;
-    }
-  }
-
-  void _handleOpenedConversationPayload(Object? raw) {
-    if (raw is! Map) {
+  void _handleRemoteMessage(RemoteMessage? message) {
+    if (message == null) {
       return;
     }
-    final map = Map<String, dynamic>.from(raw);
     _handleOpenedConversationUserId(
-      _readInt(map['conversationUserId'] ?? map['senderId']),
+      _readInt(
+        message.data['conversationUserId'] ??
+            message.data['senderId'] ??
+            message.data['conversation_user_id'] ??
+            message.data['sender_id'],
+      ),
     );
   }
 
@@ -268,96 +346,126 @@ class NotificationService extends ChangeNotifier {
   }
 
   Future<void> _registerCurrentDevice(AppUser user) async {
+    final platform = _currentPushPlatform;
     final config = await _loadPushConfiguration();
-    if (config == null || !config.isEnabledForCurrentPlatform) {
+    if (config == null || !config.isEnabledForPlatform(platform)) {
+      _setCanRequestWebPushPermission(false);
       return;
     }
 
+    await _ensureFirebaseInitialized(config);
+    final token = await _requestFcmToken(config);
+    if ((token ?? '').isEmpty) {
+      await unregisterCurrentDevice();
+      return;
+    }
+
+    await _registerFcmToken(
+      token!.trim(),
+      platform: platform!,
+      locale: user.locale,
+    );
+  }
+
+  Future<void> _handleTokenRefresh(String token) async {
+    final platform = _currentPushPlatform;
+    final userId = _currentUserId;
+    if (userId == null || platform == null || token.trim().isEmpty) {
+      return;
+    }
+
+    await _registerFcmToken(
+      token.trim(),
+      platform: platform,
+      locale: _currentUserLocale,
+    );
+  }
+
+  Future<String?> _requestFcmToken(PushConfiguration config) async {
+    try {
+      final settings = await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+      );
+      _updateWebPermissionPrompt(settings);
+      if (!_isPermissionUsable(settings.authorizationStatus)) {
+        return null;
+      }
+
+      return FirebaseMessaging.instance.getToken(
+        vapidKey: kIsWeb ? config.webVapidKey?.trim() : null,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('FCM registration failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      return null;
+    }
+  }
+
+  bool _isPermissionUsable(AuthorizationStatus status) {
+    return status == AuthorizationStatus.authorized ||
+        status == AuthorizationStatus.provisional;
+  }
+
+  void _updateWebPermissionPrompt(NotificationSettings? settings) {
+    if (!kIsWeb) {
+      return;
+    }
+    final canRequest =
+        settings == null ||
+        settings.authorizationStatus == AuthorizationStatus.notDetermined;
+    _setCanRequestWebPushPermission(canRequest);
+  }
+
+  void _setCanRequestWebPushPermission(bool canRequest) {
+    if (!kIsWeb) {
+      return;
+    }
+    if (_canRequestWebPushPermission == canRequest) {
+      return;
+    }
+    _canRequestWebPushPermission = canRequest;
+    notifyListeners();
+  }
+
+  Future<void> _registerFcmToken(
+    String token, {
+    required String platform,
+    required String? locale,
+  }) async {
     final installationId = await _loadInstallationId();
     if (installationId == null || installationId.isEmpty) {
       return;
     }
 
-    final registrationBody = await _buildRegistrationBody(config);
-    if (registrationBody == null) {
-      await unregisterCurrentDevice();
-      return;
-    }
-
     final packageInfo = await _loadPackageInfo();
-    final platform = registrationBody['platform'] as String?;
-    if ((platform ?? '').isEmpty) {
-      return;
-    }
 
     try {
       await _apiClient.postJson('/api/notifications/register', {
         'installationId': installationId,
         'platform': platform,
-        'locale': user.locale,
+        'token': token,
+        'locale': locale,
         'appVersion': packageInfo,
         'userAgent': _platformUserAgent,
-        ...registrationBody,
+        'provider': 'fcm',
       });
     } catch (error, stackTrace) {
-      debugPrint('Register push device failed: $error');
+      debugPrint('Register FCM device failed: $error');
       debugPrintStack(stackTrace: stackTrace);
     }
   }
 
-  /// 由使用者手勢觸發，用於 iOS Safari PWA 等需要 user gesture 才能請求通知權限的情境。
   Future<void> requestPushPermission(AppUser user) async {
     _registeredPushUserId = null;
     await _registerCurrentDevice(user);
     _registeredPushUserId = user.id;
     notifyListeners();
-  }
-
-  Future<Map<String, dynamic>?> _buildRegistrationBody(
-    PushConfiguration config,
-  ) async {
-    if (kIsWeb) {
-      final publicKey = (config.webPublicKey ?? '').trim();
-      if (publicKey.isEmpty) {
-        return null;
-      }
-
-      final subscription = await web_push_bridge.registerWebPush(
-        publicKey: publicKey,
-        serviceWorkerPath: config.webServiceWorkerPath,
-        serviceWorkerScope: config.webServiceWorkerScope,
-      );
-      if (subscription == null) {
-        return null;
-      }
-
-      return {
-        'platform': 'web',
-        'subscription': subscription,
-      };
-    }
-
-    if (defaultTargetPlatform != TargetPlatform.iOS) {
-      return null;
-    }
-
-    try {
-      final token = await _iosChannel.invokeMethod<String>(
-        'registerForRemoteNotifications',
-      );
-      final normalizedToken = token?.trim();
-      if ((normalizedToken ?? '').isEmpty) {
-        return null;
-      }
-      return {
-        'platform': 'ios',
-        'token': normalizedToken,
-      };
-    } catch (error, stackTrace) {
-      debugPrint('APNs registration failed: $error');
-      debugPrintStack(stackTrace: stackTrace);
-      return null;
-    }
   }
 
   Future<PushConfiguration?> _loadPushConfiguration() async {
@@ -428,7 +536,9 @@ class NotificationService extends ChangeNotifier {
     }
 
     return switch (defaultTargetPlatform) {
+      TargetPlatform.android => 'android',
       TargetPlatform.iOS => 'ios',
+      TargetPlatform.macOS => 'macos',
       _ => null,
     };
   }
@@ -438,7 +548,7 @@ class NotificationService extends ChangeNotifier {
       return 'flutter-web';
     }
 
-    return 'flutter-${defaultTargetPlatform.name}';
+    return 'flutter-${defaultTargetPlatform.name.toLowerCase()}';
   }
 
   void _startPolling() {
@@ -544,6 +654,9 @@ class NotificationService extends ChangeNotifier {
   @override
   void dispose() {
     _stopPolling();
+    unawaited(_foregroundMessageSubscription?.cancel());
+    unawaited(_messageOpenedSubscription?.cancel());
+    unawaited(_tokenRefreshSubscription?.cancel());
     super.dispose();
   }
 }

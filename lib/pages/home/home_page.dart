@@ -15,7 +15,7 @@ import '../../services/locale_provider.dart';
 import '../../services/chat_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/royale_service.dart';
-import '../../services/web_push_bridge.dart' as web_push_bridge;
+import '../../services/display_context_bridge.dart' as display_context_bridge;
 import '../../constants/app_constants.dart';
 import '../../constants/psn_theme.dart';
 import '../social/dm_page.dart' deferred as dm_page_lib;
