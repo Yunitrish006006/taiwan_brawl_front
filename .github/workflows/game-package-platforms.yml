@@ -382,7 +382,7 @@ jobs:
         if: matrix.install_linux_deps == true
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev
 
       - name: Resolve frontend dependencies
         working-directory: taiwan_brawl_front
@@ -397,6 +397,8 @@ jobs:
         run: |
           if [[ "$BUILD_TARGET" == "ios" && "$NO_CODESIGN" == "true" ]]; then
             flutter build ios --no-codesign
+          elif [[ "$BUILD_TARGET" == "android" ]]; then
+            flutter build apk --debug
           elif [[ "$BUILD_TARGET" == "web" ]]; then
             bash tool/build_web.sh
           else
