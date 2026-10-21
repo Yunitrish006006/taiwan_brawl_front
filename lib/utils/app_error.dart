@@ -3,13 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../services/api_client.dart' show ApiException;
 
 /// Unified error types for the application
-enum AppErrorType {
-  network,
-  server,
-  auth,
-  validation,
-  unknown,
-}
+enum AppErrorType { network, server, auth, validation, unknown }
 
 /// App-wide error wrapper with type, message, and optional details
 class AppError implements Exception {

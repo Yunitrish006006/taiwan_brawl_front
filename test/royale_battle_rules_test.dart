@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:taiwan_brawl/services/royale_battle_rules.dart';
+import 'package:taiwan_brawl_game_mini_royale/taiwan_brawl_game_mini_royale.dart';
 
 void main() {
   test(

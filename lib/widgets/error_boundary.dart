@@ -80,7 +80,10 @@ class AsyncErrorBoundary extends StatelessWidget {
         }
 
         if (snapshot.hasError) {
-          final error = AppError.generic(snapshot.error!, st: snapshot.stackTrace);
+          final error = AppError.generic(
+            snapshot.error!,
+            st: snapshot.stackTrace,
+          );
           return errorBuilder?.call(context, error) ??
               ErrorFallbackWidget(error: error, onRetry: () {});
         }

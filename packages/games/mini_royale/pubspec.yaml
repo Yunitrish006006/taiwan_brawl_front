@@ -1,0 +1,19 @@
+name: taiwan_brawl_game_mini_royale
+description: Mini Royale game module contracts and version identity.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  crypto: ^3.0.6
+  flutter:
+    sdk: flutter
+  provider: ^6.1.5+1
+  user_ui_settings:
+    path: ../../../../user_ui_settings
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

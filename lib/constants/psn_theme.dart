@@ -213,7 +213,10 @@ abstract final class PsnTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(3),
-          borderSide: const BorderSide(color: PsnColors.playstationBlue, width: 2),
+          borderSide: const BorderSide(
+            color: PsnColors.playstationBlue,
+            width: 2,
+          ),
         ),
       ),
       snackBarTheme: const SnackBarThemeData(
@@ -409,7 +412,10 @@ abstract final class PsnTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(3),
-          borderSide: const BorderSide(color: PsnColors.playstationBlue, width: 2),
+          borderSide: const BorderSide(
+            color: PsnColors.playstationBlue,
+            width: 2,
+          ),
         ),
       ),
       snackBarTheme: const SnackBarThemeData(

@@ -692,8 +692,8 @@ extension _CardManagementFormLayout on _CardManagementPageState {
               assetIdController: _assetIdController,
               frameIndexController: _assetFrameIndexController,
               durationMsController: _assetDurationMsController,
-              animationOptions: _CardManagementPageState
-                  ._characterAssetAnimationOptions,
+              animationOptions:
+                  _CardManagementPageState._characterAssetAnimationOptions,
               selectedAnimation: _selectedCharacterAssetAnimation,
               onAnimationChanged: _setSelectedCharacterAssetAnimation,
               useCustomAnimation: _useCustomCharacterAssetAnimation,

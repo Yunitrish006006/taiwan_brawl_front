@@ -3,18 +3,20 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../../models/app_user.dart';
 import '../../models/friends_models.dart';
-import '../../models/royale_models.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 import '../../services/friends_service.dart';
 import '../../services/friends_overview_sync_service.dart';
 import '../../services/locale_provider.dart';
 import '../../services/chat_service.dart';
+import '../../services/chat_service_factory.dart';
+import '../../services/messaging_core_service.dart';
 import '../../services/notification_service.dart';
-import '../../services/royale_service.dart';
+import '../../services/game_library_controller.dart';
+import '../../game_modules/game_module_home_entries.dart';
+import '../../game_modules/game_module_room_invite_registry.dart';
 import '../../services/display_context_bridge.dart' as display_context_bridge;
 import '../../constants/app_constants.dart';
 import '../../constants/psn_theme.dart';
@@ -24,7 +26,8 @@ import '../../utils/snackbar.dart';
 import '../../widgets/friend_search_dialog.dart' deferred as friend_search_lib;
 import '../../widgets/ad_banner_widget.dart';
 import '../../widgets/app_version_text.dart';
-import '../game/royale_arena_page.dart' deferred as royale_arena_lib;
+import '../../widgets/messaging_storage_status_banner.dart';
+import '../../widgets/preview_widgets.dart';
 
 part 'home_page_layout.dart';
 
@@ -38,14 +41,12 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage>
     with RouteAware, TickerProviderStateMixin {
   late final FriendsService _friendsService;
-  late final RoyaleService _royaleService;
   late final ChatService _chatService;
   late final AnimationController _entranceController;
   String? _busyKey;
   int? _overviewRequestedForUserId;
   PageRoute<dynamic>? _observedRoute;
   int? _openingConversationUserId;
-  Future<void>? _arenaLibraryLoad;
   bool _installBannerDismissed = false;
 
   void _dismissInstallBanner() {
@@ -57,10 +58,8 @@ class _HomePageState extends State<HomePage>
   @override
   void initState() {
     super.initState();
-    final apiClient = ApiClient();
-    _friendsService = FriendsService(apiClient);
-    _royaleService = RoyaleService(apiClient);
-    _chatService = ChatService(apiClient);
+    _friendsService = context.read<FriendsService>();
+    _chatService = context.read<ChatServiceFactory>().create();
     _entranceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -70,7 +69,6 @@ class _HomePageState extends State<HomePage>
         return;
       }
       _entranceController.forward();
-      _preloadArenaLibrary();
     });
   }
 
@@ -116,18 +114,6 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  Future<void> _loadArenaLibrary() {
-    return _arenaLibraryLoad ??= royale_arena_lib.loadLibrary();
-  }
-
-  void _preloadArenaLibrary() {
-    unawaited(
-      _loadArenaLibrary().catchError((_) {
-        _arenaLibraryLoad = null;
-      }),
-    );
-  }
-
   @override
   void didPopNext() {
     unawaited(_refreshFriendsOverview(silent: false));
@@ -135,6 +121,7 @@ class _HomePageState extends State<HomePage>
 
   @override
   void dispose() {
+    _chatService.dispose();
     _entranceController.dispose();
     if (_observedRoute != null) {
       appRouteObserver.unsubscribe(this);
@@ -196,105 +183,16 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  Future<RoyaleDeck?> _pickDeck() async {
-    final decks = await _royaleService.fetchDeckSummaries();
-    if (decks.isEmpty) {
-      throw ApiException(_t.text('Please create a deck first'));
-    }
-    if (decks.length == 1) {
-      return decks.first;
-    }
-
-    RoyaleDeck selected = decks.first;
-    if (!mounted) {
-      return null;
-    }
-    return showDialog<RoyaleDeck>(
-      context: context,
-      builder: (context) {
-        final t = context.watch<LocaleProvider>().translation;
-        final theme = Theme.of(context);
-        final scheme = theme.colorScheme;
-        final dropdownTextStyle = theme.textTheme.titleMedium?.copyWith(
-          color: scheme.onSurface,
-        );
-        final dropdownTheme = theme.copyWith(
-          inputDecorationTheme: theme.inputDecorationTheme.copyWith(
-            fillColor: scheme.surface,
-          ),
-        );
-        return AlertDialog(
-          title: Text(t.text('Choose a deck to battle with')),
-          content: StatefulBuilder(
-            builder: (context, setState) {
-              return Theme(
-                data: dropdownTheme,
-                child: DropdownButtonFormField<RoyaleDeck>(
-                  initialValue: selected,
-                  dropdownColor: scheme.surface,
-                  iconEnabledColor: scheme.onSurface,
-                  iconDisabledColor: scheme.onSurface.withValues(alpha: 0.38),
-                  style: dropdownTextStyle,
-                  items: decks
-                      .map(
-                        (deck) => DropdownMenuItem<RoyaleDeck>(
-                          value: deck,
-                          child: Text(deck.name),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value == null) {
-                      return;
-                    }
-                    setState(() {
-                      selected = value;
-                    });
-                  },
-                ),
-              );
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(t.text('Cancel')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(selected),
-              child: Text(t.text('Confirm')),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<void> _acceptRoomInvite(RoomInviteItem invite) async {
     await _runDrawerFriendAction('room-accept-${invite.id}', () async {
-      final deck = await _pickDeck();
-      if (deck == null) {
+      final handler = gameModuleRoomInviteHandlers[invite.gameId];
+      if (handler == null) {
+        final navigator = Navigator.of(context);
+        navigator.pop();
+        navigator.pushNamed('/game-library');
         return;
       }
-      final result = await _friendsService.acceptRoomInvite(invite.id);
-      final room = await _royaleService.joinRoom(
-        roomCode: result.roomCode,
-        deckId: deck.id,
-      );
-      if (!mounted) {
-        return;
-      }
-      await _loadArenaLibrary();
-      if (!mounted) {
-        return;
-      }
-      final navigator = Navigator.of(context);
-      navigator.pop();
-      navigator.push(
-        MaterialPageRoute(
-          builder: (_) => royale_arena_lib.RoyaleArenaPage(roomCode: room.code),
-        ),
-      );
+      await handler.accept(context, invite);
     });
   }
 
@@ -382,6 +280,7 @@ class _HomePageState extends State<HomePage>
     }
 
     _maybeOpenConversationFromPush(notificationService, friendsSync.overview);
+    final messagingStorageStatus = context.watch<MessagingStorageStatus>();
 
     return Scaffold(
       drawer: _buildDrawer(
@@ -403,6 +302,7 @@ class _HomePageState extends State<HomePage>
             icon: const Icon(Icons.person),
             tooltip: t.text('Profile'),
           ),
+          const PreviewResetButton(),
           IconButton(
             onPressed: () async {
               await context.read<AuthService>().logout();
@@ -414,15 +314,24 @@ class _HomePageState extends State<HomePage>
           ),
         ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 760),
-          child: _buildPrimaryActionList(
-            user,
-            t,
-            installBannerDismissed: _installBannerDismissed,
+      body: Column(
+        children: [
+          const PreviewModeBanner(),
+          MessagingStorageStatusBanner(status: messagingStorageStatus),
+          const PreviewP2pDemo(),
+          Expanded(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: _buildPrimaryActionList(
+                  user,
+                  t,
+                  installBannerDismissed: _installBannerDismissed,
+                ),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

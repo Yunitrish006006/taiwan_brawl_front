@@ -1,0 +1,21 @@
+name: taiwan_brawl_game_archery
+description: Archery game module for Taiwan Brawl.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.5+1
+  user_ui_settings:
+    path: ../../../../user_ui_settings
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

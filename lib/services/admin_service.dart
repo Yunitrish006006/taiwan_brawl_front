@@ -1,34 +1,32 @@
 import '../models/admin_models.dart';
-import '../models/royale_models.dart';
+import 'package:taiwan_brawl_game_mini_royale/taiwan_brawl_game_mini_royale.dart';
 import 'api_client.dart';
+import 'admin_remote_source.dart';
 import 'service_utils.dart';
 
 class AdminService {
-  AdminService(this._apiClient);
+  AdminService(ApiClient apiClient, {AdminRemoteSource? remoteSource})
+    : _remoteSource = remoteSource ?? ServerAdminRemoteSource(apiClient);
 
-  final ApiClient _apiClient;
+  final AdminRemoteSource _remoteSource;
 
   Future<List<ManageUser>> searchUsers(String query) async {
-    final res = await _apiClient.getJson(
-      buildApiPath('/api/admin/users', queryParameters: {'query': query}),
-    );
+    final res = await _remoteSource.searchUsers(query);
     return jsonModelList(res, 'users', ManageUser.fromJson);
   }
 
   Future<ManageUser> updateUserRole(int userId, String role) async {
-    final res = await _apiClient.putJson('/api/admin/users/$userId/role', {
-      'role': role,
-    });
+    final res = await _remoteSource.updateUserRole(userId, role);
     return jsonModel(res, 'user', ManageUser.fromJson);
   }
 
   Future<List<RoyaleCard>> fetchCards() async {
-    final res = await _apiClient.getJson('/api/cards');
+    final res = await _remoteSource.fetchCards();
     return jsonModelList(res, 'cards', RoyaleCard.fromJson);
   }
 
   Future<RoyaleCard> upsertCard(Map<String, dynamic> payload) async {
-    final res = await _apiClient.postJson('/api/admin/cards', payload);
+    final res = await _remoteSource.upsertCard(payload);
     return jsonModel(res, 'card', RoyaleCard.fromJson);
   }
 
@@ -38,7 +36,7 @@ class AdminService {
     required String contentType,
     String? fileName,
   }) async {
-    final res = await _apiClient.postJson('/api/admin/cards/$cardId/image', {
+    final res = await _remoteSource.uploadCardImage(cardId, {
       'bytesBase64': bytesBase64,
       'contentType': contentType,
       'fileName': fileName,
@@ -53,8 +51,9 @@ class AdminService {
     required String contentType,
     String? fileName,
   }) async {
-    final res = await _apiClient.postJson(
-      '/api/admin/cards/$cardId/character-images/$direction',
+    final res = await _remoteSource.uploadCardCharacterImage(
+      cardId,
+      direction,
       {
         'bytesBase64': bytesBase64,
         'contentType': contentType,
@@ -68,9 +67,7 @@ class AdminService {
     String cardId, {
     required String direction,
   }) async {
-    final res = await _apiClient.deleteJson(
-      '/api/admin/cards/$cardId/character-images/$direction',
-    );
+    final res = await _remoteSource.deleteCardCharacterImage(cardId, direction);
     return jsonNullableModel(res, 'card', RoyaleCard.fromJson);
   }
 
@@ -86,17 +83,16 @@ class AdminService {
     required String contentType,
     String? fileName,
   }) async {
-    final res = await _apiClient
-        .postJson('/api/admin/cards/$cardId/character-assets/$assetId', {
-          'animation': animation,
-          'direction': direction,
-          'frameIndex': frameIndex,
-          'durationMs': durationMs,
-          'loop': loop,
-          'bytesBase64': bytesBase64,
-          'contentType': contentType,
-          'fileName': fileName,
-        });
+    final res = await _remoteSource.uploadCardCharacterAsset(cardId, assetId, {
+      'animation': animation,
+      'direction': direction,
+      'frameIndex': frameIndex,
+      'durationMs': durationMs,
+      'loop': loop,
+      'bytesBase64': bytesBase64,
+      'contentType': contentType,
+      'fileName': fileName,
+    });
     return jsonModel(res, 'card', RoyaleCard.fromJson);
   }
 
@@ -104,9 +100,7 @@ class AdminService {
     required String cardId,
     required String assetId,
   }) async {
-    final res = await _apiClient.deleteJson(
-      '/api/admin/cards/$cardId/character-assets/$assetId',
-    );
+    final res = await _remoteSource.deleteCardCharacterAsset(cardId, assetId);
     return jsonNullableModel(res, 'card', RoyaleCard.fromJson);
   }
 
@@ -116,7 +110,7 @@ class AdminService {
     required String contentType,
     String? fileName,
   }) async {
-    final res = await _apiClient.postJson('/api/admin/cards/$cardId/bg-image', {
+    final res = await _remoteSource.uploadCardBgImage(cardId, {
       'bytesBase64': bytesBase64,
       'contentType': contentType,
       'fileName': fileName,
@@ -125,18 +119,16 @@ class AdminService {
   }
 
   Future<RoyaleCard?> deleteCardBgImage(String cardId) async {
-    final res = await _apiClient.deleteJson(
-      '/api/admin/cards/$cardId/bg-image',
-    );
+    final res = await _remoteSource.deleteCardBgImage(cardId);
     return jsonNullableModel(res, 'card', RoyaleCard.fromJson);
   }
 
   Future<RoyaleCard?> deleteCardImage(String cardId) async {
-    final res = await _apiClient.deleteJson('/api/admin/cards/$cardId/image');
+    final res = await _remoteSource.deleteCardImage(cardId);
     return jsonNullableModel(res, 'card', RoyaleCard.fromJson);
   }
 
   Future<void> deleteCard(String cardId) async {
-    await _apiClient.deleteJson('/api/admin/cards/$cardId');
+    await _remoteSource.deleteCard(cardId);
   }
 }

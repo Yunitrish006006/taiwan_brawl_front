@@ -205,7 +205,9 @@ class _FriendSearchDialogState extends State<_FriendSearchDialog> {
                     : null,
                 child: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
                     ? null
-                    : Text(user.name.isEmpty ? '?' : user.name.characters.first),
+                    : Text(
+                        user.name.isEmpty ? '?' : user.name.characters.first,
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(

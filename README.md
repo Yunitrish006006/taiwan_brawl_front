@@ -58,6 +58,24 @@ flutter pub get
 flutter run -d chrome
 ```
 
+### 離線本地預覽
+
+預覽模式會直接進入示範首頁，使用瀏覽器本地 Hive 儲存與 deterministic mock API，
+不需要 Google OAuth、Cloudflare API 或網路。首頁包含好友、編輯/收回/已讀訊息、
+以及同頁雙 peer 的 in-memory P2P 同步示範；右上角可重置預覽資料。
+
+```bash
+flutter run -d chrome --dart-define=PREVIEW_MODE=true
+```
+
+或建立可用靜態伺服器開啟的 Web release：
+
+```bash
+PREVIEW_MODE=true ./tool/build_web.sh
+```
+
+預覽資料只保存在目前瀏覽器的本地儲存中，正式模式不會啟用這些 mock adapter。
+
 如果要指定後端 API：
 
 ```bash
@@ -73,6 +91,15 @@ Web release build：
 
 ```bash
 flutter build web --release
+```
+
+前端也提供獨立建置入口；它只需要 Flutter SDK，不依賴 backend 或 Wrangler：
+
+```bash
+FLUTTER_BIN_DIR=/path/to/flutter/bin \
+API_BASE_URL=https://example.test \
+BUILD_NAME=0.132.0 \
+./tool/build_web.sh
 ```
 
 後端 repo 的 `deploy.sh` 會自動：

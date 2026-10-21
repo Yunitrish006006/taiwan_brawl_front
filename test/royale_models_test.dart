@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:taiwan_brawl/models/royale_models.dart';
+import 'package:taiwan_brawl_game_mini_royale/taiwan_brawl_game_mini_royale.dart';
 
 void main() {
   test('card localizedName falls back to English and legacy name', () {

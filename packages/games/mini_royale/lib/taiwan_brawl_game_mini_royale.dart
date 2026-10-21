@@ -1,0 +1,38 @@
+/// Public, host-neutral contracts for the Mini Royale game module.
+library;
+
+export 'src/mini_royale_module.dart';
+export 'src/gameplay_rules.dart';
+export 'src/gameplay_rules_source.dart';
+export 'src/battle_rules.dart';
+export 'src/battle_selection.dart';
+export 'src/royale_models.dart';
+export 'src/mini_royale_remote_port.dart';
+export 'src/mini_royale_room_commands.dart';
+export 'src/mini_royale_service.dart';
+export 'src/mini_royale_player_data.dart';
+export 'src/royale_lobby_page.dart';
+export 'src/host_battle_engine.dart';
+export 'src/battle_animation_cache_service.dart';
+export 'src/battle_animation_cache_store.dart';
+export 'src/battle_animation_remote_source.dart';
+export 'src/mini_royale_library_settings.dart';
+export 'src/royale_field_event_info.dart';
+export 'src/arena_field_painter.dart';
+export 'src/mini_royale_arena_preview.dart';
+export 'src/arena_overlay_widgets.dart';
+export 'src/arena_tower_token.dart';
+export 'src/arena_unit_token.dart';
+export 'src/arena_battlefield_canvas.dart';
+export 'src/arena_drop_target.dart';
+export 'src/arena_animated_unit_portrait.dart';
+export 'src/arena_battle_result_overlay.dart';
+export 'src/arena_battlefield_header.dart';
+export 'src/arena_battlefield_units.dart';
+export 'src/arena_targeting.dart';
+export 'src/arena_presentation.dart';
+export 'src/immersive_battle_layout.dart';
+export 'src/arena_social_port.dart';
+export 'src/arena_localization_port.dart';
+export 'src/arena_hand_widgets.dart';
+export 'src/room_lobby_panel.dart';

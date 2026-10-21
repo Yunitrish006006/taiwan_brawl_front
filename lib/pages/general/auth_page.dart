@@ -9,12 +9,15 @@ import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 import '../../services/locale_provider.dart';
 import '../../constants/app_constants.dart';
+import '../../config/app_configuration.dart';
 import '../../constants/psn_theme.dart';
 import '../../utils/snackbar.dart';
 import '../../widgets/google_sign_in_web_button.dart';
 
 class AuthPage extends StatefulWidget {
-  const AuthPage({super.key});
+  const AuthPage({super.key, this.configuration});
+
+  final AppConfiguration? configuration;
 
   @override
   State<AuthPage> createState() => _AuthPageState();
@@ -43,12 +46,13 @@ class _AuthPageState extends State<AuthPage> {
 
   Future<void> _initializeGoogleSignIn() async {
     final t = context.read<LocaleProvider>().translation;
+    final configuration = widget.configuration ?? AppConfiguration.environment;
     try {
       await _googleSignIn.initialize(
         clientId: kIsWeb
-            ? _nonEmptyOrNull(AppConstants.googleWebClientId)
+            ? _nonEmptyOrNull(configuration.googleWebClientId)
             : null,
-        serverClientId: _nonEmptyOrNull(AppConstants.googleServerClientId),
+        serverClientId: _nonEmptyOrNull(configuration.googleServerClientId),
       );
 
       _googleAuthSubscription ??= _googleSignIn.authenticationEvents.listen((

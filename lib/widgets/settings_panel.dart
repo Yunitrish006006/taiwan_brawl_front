@@ -1,16 +1,14 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 import '../models/app_user.dart';
+import '../config/app_configuration.dart';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
-import '../services/battle_animation_cache_service.dart';
 import '../services/theme_provider.dart';
 import '../services/ui_settings_provider.dart';
 import '../services/locale_provider.dart';
+import '../services/llm_bot_service.dart';
 import '../utils/snackbar.dart';
 
 class SettingsPanel extends StatelessWidget {
@@ -149,8 +147,6 @@ class SettingsPanel extends StatelessWidget {
               },
             ),
             const SizedBox(height: 16),
-            const _BattleAnimationCacheSettingsSection(),
-            const SizedBox(height: 16),
             _LlmBotSettingsSection(user: user),
           ],
         ),
@@ -202,29 +198,6 @@ class _ThemeSwatch extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _BattleAnimationCacheSettingsSection extends StatelessWidget {
-  const _BattleAnimationCacheSettingsSection();
-
-  @override
-  Widget build(BuildContext context) {
-    final cacheService = context.watch<BattleAnimationCacheService>();
-    final t = context.watch<LocaleProvider>().translation;
-    return SwitchListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(t.text('Preload and keep battle animations')),
-      subtitle: Text(
-        t.text(
-          'Stores battle character animations locally and reuses them until the server version changes.',
-        ),
-      ),
-      value: cacheService.enabled,
-      onChanged: (value) {
-        context.read<BattleAnimationCacheService>().setEnabled(value);
-      },
     );
   }
 }
@@ -333,7 +306,6 @@ class _LlmBotSettingsSectionState extends State<_LlmBotSettingsSection> {
     final user = context.read<AuthService>().user ?? widget.user;
 
     // Need either a freshly entered key or a saved one (use backend as proxy)
-    final usingBackendProxy = apiKey.isEmpty && user.hasLlmApiKey;
     final hasKey = apiKey.isNotEmpty || user.hasLlmApiKey;
 
     if (!hasKey) {
@@ -347,92 +319,29 @@ class _LlmBotSettingsSectionState extends State<_LlmBotSettingsSection> {
     });
 
     try {
-      if (usingBackendProxy) {
-        // Use the backend as a proxy — call /api/llm-bot/decide with a minimal dummy state.
-        final apiClient = context.read<ApiClient>();
-        const dummyDeckCards = [
-          {'id': 'test_card', 'name': 'Test Card', 'energyCost': 1},
-        ];
-        try {
-          await apiClient.postJson('/api/llm-bot/decide', {
-            'state': {
-              'roomCode': 'TEST',
-              'playerSide': 'left',
-              'timeRemainingMs': 60000,
-              'players': {
-                'left': {
-                  'userId': 0,
-                  'deckCards': dummyDeckCards,
-                  'handCardIds': [],
-                  'queueCardIds': [],
-                  'towerHp': 1000,
-                  'maxTowerHp': 1000,
-                },
-                'right': {
-                  'userId': 1,
-                  'deckCards': dummyDeckCards,
-                  'handCardIds': [],
-                  'queueCardIds': [],
-                  'towerHp': 1000,
-                  'maxTowerHp': 1000,
-                },
-              },
-              'units': [],
-              'events': [],
-            },
-          });
-          if (!mounted) return;
-          setState(() => _testResult = 'ok');
-          showAppSnackBar(context, t.text('LLM connection test succeeded'));
-        } on ApiException catch (e) {
-          if (!mounted) return;
-          setState(() => _testResult = 'fail');
-          showAppSnackBar(
-            context,
-            '${t.text('LLM connection test failed')}: ${e.message}',
-          );
-        }
-      } else {
-        // Direct call with user-entered key
-        final baseUrl = rawBaseUrl.isEmpty
-            ? 'https://api.openai.com/v1'
-            : rawBaseUrl.replaceAll(RegExp(r'/+$'), '');
-        final url = baseUrl.endsWith('/chat/completions')
-            ? baseUrl
-            : '$baseUrl/chat/completions';
-        final effectiveModel = model.isEmpty ? 'gpt-4o-mini' : model;
-
-        final resp = await http.post(
-          Uri.parse(url),
-          headers: {
-            'Authorization': 'Bearer $apiKey',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode({
-            'model': effectiveModel,
-            'messages': [
-              {'role': 'user', 'content': 'reply with ok'},
-            ],
-            'max_tokens': 8,
-          }),
-        );
-        if (!mounted) return;
-        if (resp.statusCode == 200) {
-          setState(() => _testResult = 'ok');
-          showAppSnackBar(context, t.text('LLM connection test succeeded'));
-        } else {
-          setState(() => _testResult = 'fail');
-          String errMsg = '';
-          try {
-            final body = jsonDecode(resp.body);
-            errMsg = body['error']?['message'] ?? body['error'] ?? '';
-          } catch (_) {}
-          showAppSnackBar(
-            context,
-            '${t.text('LLM connection test failed')}: ${errMsg.isEmpty ? resp.statusCode : errMsg}',
-          );
-        }
-      }
+      await context.read<LlmBotService>().testConnection(
+        user: user,
+        baseUrl: rawBaseUrl,
+        model: model,
+        apiKey: apiKey,
+      );
+      if (!mounted) return;
+      setState(() => _testResult = 'ok');
+      showAppSnackBar(context, t.text('LLM connection test succeeded'));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _testResult = 'fail');
+      showAppSnackBar(
+        context,
+        '${t.text('LLM connection test failed')}: ${e.message}',
+      );
+    } on LlmConnectionException catch (e) {
+      if (!mounted) return;
+      setState(() => _testResult = 'fail');
+      showAppSnackBar(
+        context,
+        '${t.text('LLM connection test failed')}: ${e.message}',
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _testResult = 'fail');
@@ -446,6 +355,7 @@ class _LlmBotSettingsSectionState extends State<_LlmBotSettingsSection> {
   Widget build(BuildContext context) {
     final t = context.watch<LocaleProvider>().translation;
     final user = context.watch<AuthService>().user ?? widget.user;
+    final configuration = context.watch<AppConfiguration>();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -465,7 +375,7 @@ class _LlmBotSettingsSectionState extends State<_LlmBotSettingsSection> {
           controller: _baseUrlController,
           decoration: InputDecoration(
             labelText: t.text('LLM Base URL'),
-            hintText: 'https://api.openai.com/v1',
+            hintText: configuration.defaultLlmBaseUrl,
           ),
         ),
         const SizedBox(height: 8),
@@ -473,7 +383,7 @@ class _LlmBotSettingsSectionState extends State<_LlmBotSettingsSection> {
           controller: _modelController,
           decoration: InputDecoration(
             labelText: t.text('LLM Model'),
-            hintText: 'gpt-4o-mini',
+            hintText: configuration.defaultLlmModel,
           ),
         ),
         const SizedBox(height: 8),

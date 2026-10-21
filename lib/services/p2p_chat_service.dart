@@ -1,14 +1,16 @@
 import 'dart:async';
-import 'dart:convert';
 
-import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
 import '../models/chat_models.dart';
 import 'local_chat_repository.dart';
-import 'signaling_service.dart';
+import 'p2p_message_session.dart';
+import 'p2p_message_transport.dart';
 
-/// Manages a single WebRTC DataChannel connection for peer-to-peer chat.
-/// Falls back to server relay when the peer is not reachable.
+/// Manages one WebRTC DataChannel connection for P2P chat.
+///
+/// The public facade remains compatible with the previous service, while the
+/// actual peer connection is now a reusable shared [MessageTransport].
 class P2PChatService {
   P2PChatService({
     required this.selfId,
@@ -16,147 +18,150 @@ class P2PChatService {
     required this.signalingService,
     required this.localRepo,
     required this.onMessage,
-  });
+    MessageRepository? eventRepository,
+    EventAuthenticator? authenticator,
+    String? deviceId,
+    P2PMessageTransportFactory? transportFactory,
+    this.iceConfiguration = P2PMessageTransport.defaultIceConfiguration,
+  }) : _eventRepository = eventRepository ?? MessageRepository(),
+       _ownsEventRepository = eventRepository == null,
+       _transportFactory = transportFactory {
+    _session = P2PMessageSession(
+      selfId: selfId,
+      friendId: friendId,
+      repository: _eventRepository,
+      onMessage: onMessage,
+      authenticator: authenticator,
+      deviceId: deviceId,
+    );
+  }
 
   final int selfId;
   final int friendId;
-  final SignalingService signalingService;
+  final PeerSignalingChannel signalingService;
+  final Map<String, dynamic> iceConfiguration;
+  final P2PMessageTransportFactory? _transportFactory;
+  @Deprecated('P2P event state is stored by the shared MessageRepository')
   final LocalChatRepository localRepo;
-
-  /// Called whenever a new message arrives via DataChannel.
   final void Function(ChatMessage) onMessage;
 
-  RTCPeerConnection? _pc;
-  RTCDataChannel? _dataChannel;
-  StreamSubscription<Map<String, dynamic>>? _signalSub;
+  final MessageRepository _eventRepository;
+  final bool _ownsEventRepository;
+  late final P2PMessageSession _session;
+  P2PMessageTransport? _transport;
 
-  bool get isConnected => _dataChannel?.state == RTCDataChannelState.RTCDataChannelOpen;
+  bool get isConnected => _transport?.isConnected == true;
 
-  static const Map<String, dynamic> _iceConfig = {
-    'iceServers': [
-      {'urls': 'stun:stun.l.google.com:19302'},
-    ]
-  };
+  Future<void> startAsCaller() async => _init(isCaller: true);
 
-  /// Initiate connection as the caller (creates offer).
-  Future<void> startAsCaller() async {
-    await _init(isCaller: true);
+  Future<void> startAsAnswerer() async => _init(isCaller: false);
+
+  /// Starts the manual, serverless negotiation phase without waiting for a
+  /// DataChannel. Exchange the exported bundle with the other device, then
+  /// call [completeManualNegotiation].
+  Future<void> prepareManualNegotiation({required bool isCaller}) async {
+    if (signalingService is! ManualPeerSignaling) {
+      throw StateError('Manual negotiation requires ManualPeerSignaling');
+    }
+    await _transport?.disconnect();
+    final transport = _newTransport(isCaller: isCaller);
+    _transport = transport;
+    await transport.prepare();
   }
 
-  /// Wait for an incoming offer (answerer side).
-  Future<void> startAsAnswerer() async {
-    await _init(isCaller: false);
+  /// Completes a manual negotiation after the exchanged bundles have been
+  /// imported through [importNegotiationBundle].
+  Future<void> completeManualNegotiation() async {
+    final transport = _transport;
+    if (transport == null) {
+      throw StateError('Manual negotiation has not been prepared');
+    }
+    await _session.attach(transport);
   }
 
   Future<void> _init({required bool isCaller}) async {
-    _pc = await createPeerConnection(_iceConfig);
-
-    _pc!.onIceCandidate = (candidate) {
-      signalingService.send(friendId, {
-        'type': 'ice_candidate',
-        'candidate': candidate.toMap(),
-      });
-    };
-
-    _pc!.onDataChannel = (channel) {
-      _setupDataChannel(channel);
-    };
-
-    _signalSub = signalingService.signalStream.listen(_handleSignal);
-
-    if (isCaller) {
-      final dc = await _pc!.createDataChannel(
-        'chat',
-        RTCDataChannelInit()..ordered = true,
-      );
-      _setupDataChannel(dc);
-
-      final offer = await _pc!.createOffer();
-      await _pc!.setLocalDescription(offer);
-      signalingService.send(friendId, {
-        'type': 'offer',
-        'sdp': offer.sdp,
-      });
-    }
+    await _transport?.disconnect();
+    final transport = _newTransport(isCaller: isCaller);
+    _transport = transport;
+    await _session.attach(transport);
   }
 
-  void _setupDataChannel(RTCDataChannel channel) {
-    _dataChannel = channel;
-    channel.onDataChannelState = (state) {};
-    channel.onMessage = (RTCDataChannelMessage msg) {
-      try {
-        final map = jsonDecode(msg.text) as Map<String, dynamic>;
-        final chatMsg = ChatMessage(
-          senderId: friendId,
-          receiverId: selfId,
-          text: map['text'] as String? ?? '',
-          createdAt: map['createdAt'] as String? ?? DateTime.now().toIso8601String(),
+  P2PMessageTransport _newTransport({required bool isCaller}) {
+    return _transportFactory?.call(
+          friendId: friendId,
+          signalingService: signalingService,
+          isCaller: isCaller,
+          iceConfiguration: iceConfiguration,
+        ) ??
+        P2PMessageTransport(
+          friendId: friendId,
+          signalingService: signalingService,
+          isCaller: isCaller,
+          iceConfiguration: iceConfiguration,
         );
-        localRepo.saveMessage(selfId, chatMsg);
-        onMessage(chatMsg);
-      } catch (_) {}
-    };
   }
 
-  Future<void> _handleSignal(Map<String, dynamic> payload) async {
-    final type = payload['type'] as String?;
-    if (type == null || _pc == null) return;
-
-    switch (type) {
-      case 'offer':
-        await _pc!.setRemoteDescription(
-          RTCSessionDescription(payload['sdp'] as String, 'offer'),
-        );
-        final answer = await _pc!.createAnswer();
-        await _pc!.setLocalDescription(answer);
-        signalingService.send(friendId, {
-          'type': 'answer',
-          'sdp': answer.sdp,
-        });
-
-      case 'answer':
-        await _pc!.setRemoteDescription(
-          RTCSessionDescription(payload['sdp'] as String, 'answer'),
-        );
-
-      case 'ice_candidate':
-        final raw = payload['candidate'];
-        if (raw is Map) {
-          await _pc!.addCandidate(RTCIceCandidate(
-            raw['candidate'] as String?,
-            raw['sdpMid'] as String?,
-            raw['sdpMLineIndex'] as int?,
-          ));
-        }
-    }
-  }
-
-  /// Send a message over DataChannel. Returns false if channel not open.
+  /// Sends a created event using the shared envelope.
+  ///
+  /// Events are durable in the shared repository even while the peer is
+  /// temporarily disconnected; the session flushes them after attachment.
   bool sendMessage(String text) {
-    if (!isConnected) return false;
-    final createdAt = DateTime.now().toIso8601String();
-    _dataChannel!.send(RTCDataChannelMessage(jsonEncode({
-      'text': text,
-      'createdAt': createdAt,
-    })));
-
-    // Save outgoing message locally
-    final msg = ChatMessage(
-      senderId: selfId,
-      receiverId: friendId,
-      text: text,
-      createdAt: createdAt,
-    );
-    localRepo.saveMessage(selfId, msg);
-    onMessage(msg);
+    unawaited(_session.send(text));
     return true;
   }
 
+  /// Queues an edit for a locally authored P2P message.
+  Future<bool> editMessage(String messageId, String text) {
+    return _session.edit(messageId, text);
+  }
+
+  /// Queues a recall for a locally authored P2P message.
+  Future<bool> recallMessage(String messageId) {
+    return _session.recall(messageId);
+  }
+
+  /// Exports the current manual signaling queue for copy/paste, QR, or a
+  /// local rendezvous channel. Hosted signaling deliberately has no such
+  /// export surface because its negotiation is already live.
+  String exportNegotiationBundle({
+    required String sessionId,
+    required String senderDeviceId,
+  }) {
+    final manual = signalingService;
+    if (manual is! ManualPeerSignaling) {
+      throw StateError(
+        'Negotiation bundle export requires ManualPeerSignaling',
+      );
+    }
+    return manual.exportBundle(
+      sessionId: sessionId,
+      senderDeviceId: senderDeviceId,
+    );
+  }
+
+  /// Imports a bundle produced by another manual peer after checking the
+  /// expected session and sender device identity.
+  void importNegotiationBundle(
+    String encoded, {
+    String? expectedSessionId,
+    String? expectedSenderDeviceId,
+  }) {
+    final manual = signalingService;
+    if (manual is! ManualPeerSignaling) {
+      throw StateError(
+        'Negotiation bundle import requires ManualPeerSignaling',
+      );
+    }
+    manual.importBundle(
+      encoded,
+      expectedSessionId: expectedSessionId,
+      expectedSenderDeviceId: expectedSenderDeviceId,
+    );
+  }
+
   Future<void> dispose() async {
-    await _signalSub?.cancel();
-    await _dataChannel?.close();
-    await _pc?.close();
-    _dataChannel = null;
-    _pc = null;
+    await _session.dispose();
+    _transport = null;
+    if (_ownsEventRepository) await _eventRepository.dispose();
   }
 }

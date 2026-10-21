@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
-import 'package:taiwan_brawl/models/royale_models.dart';
+import 'package:taiwan_brawl_game_mini_royale/taiwan_brawl_game_mini_royale.dart';
 import 'package:taiwan_brawl/pages/game/royale_lobby_page.dart';
 import 'package:taiwan_brawl/services/api_client.dart';
 import 'package:taiwan_brawl/services/auth_service.dart';
@@ -82,6 +82,38 @@ class _CaptureCreateRoomService extends RoyaleService {
 }
 
 void main() {
+  test('shows the server remedy for unsupported gameplay content', () {
+    final error = ApiException(
+      'GAME_VERSION_INCOMPATIBLE',
+      statusCode: 409,
+      responseBody: {
+        'error': 'GAME_VERSION_INCOMPATIBLE',
+        'detail': 'Remove gameplay packs or update the server.',
+      },
+    );
+
+    expect(
+      miniRoyaleLobbyErrorMessage(error),
+      'Remove gameplay packs or update the server.',
+    );
+  });
+
+  test('shows a package-owned compatibility error from the host adapter', () {
+    const error = MiniRoyaleServiceException(
+      'GAME_VERSION_INCOMPATIBLE',
+      statusCode: 409,
+      responseBody: {
+        'error': 'GAME_VERSION_INCOMPATIBLE',
+        'detail': 'Install the room-required gameplay version.',
+      },
+    );
+
+    expect(
+      miniRoyaleLobbyErrorMessage(error),
+      'Install the room-required gameplay version.',
+    );
+  });
+
   testWidgets('Create Bot Match sends vsBot=true', (tester) async {
     final localeProvider = LocaleProvider(
       defaultLocale: 'zh-Hant',

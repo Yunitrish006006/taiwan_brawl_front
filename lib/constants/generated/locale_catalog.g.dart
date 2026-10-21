@@ -5,18 +5,21 @@ const String generatedDefaultLocaleCode = 'zh-Hant';
 const String generatedEnglishLocaleCode = 'en';
 
 const Map<String, String> localeEn = <String, String>{
-  "A saved API key is already configured": "A saved API key is already configured",
+  "A saved API key is already configured":
+      "A saved API key is already configured",
   "Accept": "Accept",
   "Action failed": "Action failed",
   "Add": "Add",
   "Add Friend": "Add Friend",
   "Add Friend Button": "Add Friend",
-  "Add unit animation assets here. idle, move, attack, hit, stun, and spawn all use the same animation-token model. You can also define your own token.": "Add unit animation assets here. idle, move, attack, hit, stun, and spawn all use the same animation-token model. You can also define your own token.",
+  "Add unit animation assets here. idle, move, attack, hit, stun, and spawn all use the same animation-token model. You can also define your own token.":
+      "Add unit animation assets here. idle, move, attack, hit, stun, and spawn all use the same animation-token model. You can also define your own token.",
   "Age": "Age",
   "All": "All",
   "Ally Combo": "Ally Combo",
   "Already friends": "Already friends",
-  "An uploaded avatar image is ready to use": "An uploaded avatar image is ready to use",
+  "An uploaded avatar image is ready to use":
+      "An uploaded avatar image is ready to use",
   "Animation": "Animation",
   "Arcade Violet": "Arcade Violet",
   "Archery Game": "Archery Game",
@@ -24,9 +27,11 @@ const Map<String, String> localeEn = <String, String>{
   "Asset ID": "Asset ID",
   "Attack Range": "Attack Range",
   "Attack Speed": "Attack Speed",
-  "Automatically restore your login state and personal preferences": "Automatically restore your login state and personal preferences",
+  "Automatically restore your login state and personal preferences":
+      "Automatically restore your login state and personal preferences",
   "Available Cards": "Available Cards",
-  "Available roles are Admin, Card Manager, and Player. This version only changes role assignments and does not attach role-specific features yet.": "Available roles are Admin, Card Manager, and Player. This version only changes role assignments and does not attach role-specific features yet.",
+  "Available roles are Admin, Card Manager, and Player. This version only changes role assignments and does not attach role-specific features yet.":
+      "Available roles are Admin, Card Manager, and Player. This version only changes role assignments and does not attach role-specific features yet.",
   "Avatar Preview": "Avatar Preview",
   "Avatar Preview (Pending Upload)": "Avatar Preview (Pending Upload)",
   "Avatar Source": "Avatar Source",
@@ -37,7 +42,8 @@ const Map<String, String> localeEn = <String, String>{
   "Base Pay": "Base Pay",
   "Battle finished": "Battle finished",
   "Battle invite sent": "Battle invite sent",
-  "Battle starts as soon as both players are ready": "Battle starts after both players are ready and online",
+  "Battle starts as soon as both players are ready":
+      "Battle starts after both players are ready and online",
   "Bio": "Bio",
   "Block": "Block",
   "Blocked": "Blocked",
@@ -58,20 +64,25 @@ const Map<String, String> localeEn = <String, String>{
   "Card deleted successfully": "Card deleted successfully",
   "Card saved successfully": "Card saved successfully",
   "Cards": "Cards",
-  "Cards are stored in the D1 cards table. Starter definitions live in src/royale_cards.js and seed the table when empty.": "Cards are stored in the D1 cards table. Starter definitions live in src/royale_cards.js and seed the table when empty.",
+  "Cards are stored in the D1 cards table. Starter definitions live in src/royale_cards.js and seed the table when empty.":
+      "Cards are stored in the D1 cards table. Starter definitions live in src/royale_cards.js and seed the table when empty.",
   "Central Bridge": "Central Bridge",
   "Character Animation Assets": "Character Animation Assets",
   "Character Direction Images": "Character Direction Images",
   "Character Growth": "Character Growth",
   "Character Image": "Character Image",
-  "Character asset removed successfully": "Character asset removed successfully",
-  "Character asset uploaded successfully": "Character asset uploaded successfully",
+  "Character asset removed successfully":
+      "Character asset removed successfully",
+  "Character asset uploaded successfully":
+      "Character asset uploaded successfully",
   "Chat History Sync": "Chat History Sync",
-  "Chat Sync Upload Description": "Upload chat history from this device (valid for 1 hour), then download it on another device to merge.",
+  "Chat Sync Upload Description":
+      "Upload chat history from this device (valid for 1 hour), then download it on another device to merge.",
   "Choose Avatar Image": "Choose Avatar Image",
   "Choose Image": "Choose Image",
   "Choose a deck to battle with": "Choose a deck to battle with",
-  "Choose an 8-card deck. After creating the room, send the room code to your friend so both of you can get ready.": "Choose an 8-card deck. After creating the room, send the room code to your friend so both of you can get ready.",
+  "Choose an 8-card deck. After creating the room, send the room code to your friend so both of you can get ready.":
+      "Choose an 8-card deck. After creating the room, send the room code to your friend so both of you can get ready.",
   "Clear Saved API Key": "Clear Saved API Key",
   "Collision Behavior": "Collision Behavior",
   "Company": "Company",
@@ -80,13 +91,15 @@ const Map<String, String> localeEn = <String, String>{
   "Create Room": "Create Room",
   "Create a 1v1 Room": "Create a 1v1 Room",
   "Create a new card": "Create a new card",
-  "Create or edit card stats and effects. Changes are saved to the live cards table immediately.": "Create or edit card stats and effects. Changes are saved to the live cards table immediately.",
+  "Create or edit card stats and effects. Changes are saved to the live cards table immediately.":
+      "Create or edit card stats and effects. Changes are saved to the live cards table immediately.",
   "Current Elixir": "Current Elixir",
   "Custom": "Custom",
   "Custom Avatar URL": "Custom Avatar URL",
   "Damage": "Damage",
   "Damage Boost": "Damage Boost",
-  "Damage dealt on each successful attack.": "Damage dealt on each successful attack.",
+  "Damage dealt on each successful attack.":
+      "Damage dealt on each successful attack.",
   "Dark": "Dark",
   "Day Labor": "Day Labor",
   "Deck Name": "Deck Name",
@@ -100,14 +113,16 @@ const Map<String, String> localeEn = <String, String>{
   "Dismiss": "Dismiss",
   "Display Settings": "Display Settings",
   "Download Chat History": "Download History",
-  "Drag a single card or combo, or select cards first then tap the 2D battlefield.": "Drag a single card or combo, or select cards first then tap the 2D battlefield.",
+  "Drag a single card or combo, or select cards first then tap the 2D battlefield.":
+      "Drag a single card or combo, or select cards first then tap the 2D battlefield.",
   "Draw": "Draw",
   "Draw Strength": "Draw Strength",
   "Drawing...": "Drawing...",
   "Drop here to discard": "Drop here to discard",
   "Duration ms": "Duration ms",
   "Edit Profile": "Edit Profile",
-  "Editing existing card IDs is disabled. Create a new card if you need a different ID.": "Editing existing card IDs is disabled. Create a new card if you need a different ID.",
+  "Editing existing card IDs is disabled. Create a new card if you need a different ID.":
+      "Editing existing card IDs is disabled. Create a new card if you need a different ID.",
   "Effect Kind": "Effect Kind",
   "Effect Value": "Effect Value",
   "Enable Notifications": "Enable Notifications",
@@ -121,7 +136,8 @@ const Map<String, String> localeEn = <String, String>{
   "Equipment": "Equipment",
   "Equipment Card": "Equipment Card",
   "Equipment can stack": "Equipment can stack",
-  "Equipment cards must be played with at least one unit card": "Equipment cards must be played with at least one unit card",
+  "Equipment cards must be played with at least one unit card":
+      "Equipment cards must be played with at least one unit card",
   "Equipment: +Damage": "Equipment: +Damage",
   "Equipment: +Health": "Equipment: +Health",
   "Equipment: +Speed": "Equipment: +Speed",
@@ -138,7 +154,8 @@ const Map<String, String> localeEn = <String, String>{
   "Font Size": "Font Size",
   "Food": "Food",
   "Frame": "Frame",
-  "Frame duration must be at least 33 ms": "Frame duration must be at least 33 ms",
+  "Frame duration must be at least 33 ms":
+      "Frame duration must be at least 33 ms",
   "Frame index must be 0 or greater": "Frame index must be 0 or greater",
   "Friend List": "Friend List",
   "Friend Requests": "Friend Requests",
@@ -148,30 +165,40 @@ const Map<String, String> localeEn = <String, String>{
   "Front": "Front",
   "Go to Lobby": "Go to Lobby",
   "Go to Room": "Go to Room",
-  "Google sign-in did not return a usable credential": "Google sign-in did not return a usable credential",
+  "Google sign-in did not return a usable credential":
+      "Google sign-in did not return a usable credential",
   "Google sign-in error": "Google sign-in error",
-  "Google sign-in initialization failed": "Google sign-in initialization failed",
-  "Google sign-in is currently available on web only": "Google sign-in is currently available on web only",
-  "Google sign-in is currently unavailable": "Google sign-in is currently unavailable",
+  "Google sign-in initialization failed":
+      "Google sign-in initialization failed",
+  "Google sign-in is currently available on web only":
+      "Google sign-in is currently available on web only",
+  "Google sign-in is currently unavailable":
+      "Google sign-in is currently unavailable",
   "Google sign-in is loading...": "Google sign-in is loading...",
   "Ground": "Ground",
   "HP": "HP",
   "Health": "Health",
   "Health Boost": "Health Boost",
   "Heuristic Bot": "Heuristic Bot",
-  "Heuristic Bot uses the built-in combat logic and does not require any external API key.": "Heuristic Bot uses the built-in combat logic and does not require any external API key.",
-  "Hit points. Uses normal game damage values.": "Hit points. Uses normal game damage values.",
+  "Heuristic Bot uses the built-in combat logic and does not require any external API key.":
+      "Heuristic Bot uses the built-in combat logic and does not require any external API key.",
+  "Hit points. Uses normal game damage values.":
+      "Hit points. Uses normal game damage values.",
   "Hold Position": "Hold Position",
   "Host Simulation (Experimental)": "Host Simulation (Experimental)",
-  "Host simulation is currently available for bot matches only": "Host simulation is currently available for bot matches only",
-  "Host simulation runs on the room host device. This experimental mode locks after battle starts.": "Host simulation runs on the room host device. This experimental mode locks after battle starts.",
-  "Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.": "Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.",
+  "Host simulation is currently available for bot matches only":
+      "Host simulation is currently available for bot matches only",
+  "Host simulation runs on the room host device. This experimental mode locks after battle starts.":
+      "Host simulation runs on the room host device. This experimental mode locks after battle starts.",
+  "Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.":
+      "Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.",
   "Image must be 1 MB or smaller": "Image must be 1 MB or smaller",
   "Image removed successfully": "Image removed successfully",
   "Image uploaded successfully": "Image uploaded successfully",
   "Initial Character": "Initial Character",
   "Initially unlocked": "Initially unlocked",
-  "Install the app for the best experience": "Install the app for the best experience",
+  "Install the app for the best experience":
+      "Install the app for the best experience",
   "Invitation already sent": "Invitation already sent",
   "Invite Battle": "Invite Battle",
   "Island Green": "Island Green",
@@ -180,14 +207,17 @@ const Map<String, String> localeEn = <String, String>{
   "Job cards must be played alone": "Job cards must be played alone",
   "Join Room": "Join Room",
   "Join a Friend's Room": "Join a Friend's Room",
-  "Join a lobby, build your strategy and fight to the top.": "Join a lobby, build your strategy and fight to the top.",
+  "Join a lobby, build your strategy and fight to the top.":
+      "Join a lobby, build your strategy and fight to the top.",
   "LLM API Key": "LLM API Key",
   "LLM Base URL": "LLM Base URL",
   "LLM Bot": "LLM Bot",
   "LLM Bot Settings": "LLM Bot Settings",
-  "LLM Bot uses your saved OpenAI-compatible API key and model settings to choose from legal battle actions.": "LLM Bot uses your saved OpenAI-compatible API key and model settings to choose from legal battle actions.",
+  "LLM Bot uses your saved OpenAI-compatible API key and model settings to choose from legal battle actions.":
+      "LLM Bot uses your saved OpenAI-compatible API key and model settings to choose from legal battle actions.",
   "LLM Model": "LLM Model",
-  "LLM bot requires a saved API key. Open Profile > Display Settings > LLM Bot Settings first.": "LLM bot requires a saved API key. Open Profile > Display Settings > LLM Bot Settings first.",
+  "LLM bot requires a saved API key. Open Profile > Display Settings > LLM Bot Settings first.":
+      "LLM bot requires a saved API key. Open Profile > Display Settings > LLM Bot Settings first.",
   "LLM bot settings saved": "LLM bot settings saved",
   "LLM connection test failed": "LLM connection test failed",
   "LLM connection test succeeded": "LLM connection test succeeded",
@@ -195,10 +225,12 @@ const Map<String, String> localeEn = <String, String>{
   "Last online": "Last online",
   "Leave blank to keep the saved key": "Leave blank to keep the saved key",
   "Left": "Left",
-  "Legacy username/password login and registration are no longer available": "Legacy username/password login and registration are no longer available",
+  "Legacy username/password login and registration are no longer available":
+      "Legacy username/password login and registration are no longer available",
   "Level": "Level",
   "Light": "Light",
-  "Live connection lost. Please refresh the page.": "Live connection lost. Please refresh the page.",
+  "Live connection lost. Please refresh the page.":
+      "Live connection lost. Please refresh the page.",
   "Login Guide": "Login Guide",
   "Logout": "Logout",
   "Long press to draw": "Long press to draw",
@@ -212,7 +244,8 @@ const Map<String, String> localeEn = <String, String>{
   "Mini Royale Lobby Battle": "Taiwan Brawl Lobby Battle",
   "Money": "Money",
   "Move Speed": "Move Speed",
-  "Movement speed in world units per second before global battle multipliers.": "Movement speed in world units per second before global battle multipliers.",
+  "Movement speed in world units per second before global battle multipliers.":
+      "Movement speed in world units per second before global battle multipliers.",
   "Name": "Name",
   "New Card": "New Card",
   "Next Card": "Next Card",
@@ -239,7 +272,8 @@ const Map<String, String> localeEn = <String, String>{
   "Offline": "Offline",
   "Online": "Online",
   "Only admins can view this page": "Only admins can view this page",
-  "Only card managers and admins can view this page": "Only card managers and admins can view this page",
+  "Only card managers and admins can view this page":
+      "Only card managers and admins can view this page",
   "Open Friends": "Open Friends",
   "Opponent": "Opponent",
   "PNG, JPG, WEBP, or GIF up to 1 MB": "PNG, JPG, WEBP, or GIF up to 1 MB",
@@ -257,7 +291,8 @@ const Map<String, String> localeEn = <String, String>{
   "Please select a hero first": "Please select a hero first",
   "Please upload an avatar image first": "Please upload an avatar image first",
   "Politics": "Politics",
-  "Precision targeting enabled. Tap the battlefield to place cards.": "Precision targeting enabled. Tap the battlefield to place cards.",
+  "Precision targeting enabled. Tap the battlefield to place cards.":
+      "Precision targeting enabled. Tap the battlefield to place cards.",
   "Preload and keep battle animations": "Preload and keep battle animations",
   "Profile": "Profile",
   "Profile updated": "Profile updated",
@@ -270,7 +305,8 @@ const Map<String, String> localeEn = <String, String>{
   "Refresh Friends List": "Refresh Friends List",
   "Reject": "Reject",
   "Relationship Status": "Relationship Status",
-  "Release to cast all selected cards here": "Release to cast all selected cards here",
+  "Release to cast all selected cards here":
+      "Release to cast all selected cards here",
   "Remove": "Remove",
   "Remove Friend": "Remove Friend",
   "Remove Image": "Remove Image",
@@ -288,7 +324,8 @@ const Map<String, String> localeEn = <String, String>{
   "Save Card": "Save Card",
   "Save Deck": "Save Deck",
   "Save LLM Settings": "Save LLM Settings",
-  "Save the card first before uploading an image": "Save the card first before uploading an image",
+  "Save the card first before uploading an image":
+      "Save the card first before uploading an image",
   "Saving...": "Saving...",
   "Score": "Score",
   "Search": "Search",
@@ -297,7 +334,8 @@ const Map<String, String> localeEn = <String, String>{
   "Search by name, email, or player ID": "Search by name, email, or player ID",
   "Search players": "Search players",
   "Searching...": "Searching...",
-  "Seconds between attacks. Smaller values attack faster.": "Seconds between attacks. Smaller values attack faster.",
+  "Seconds between attacks. Smaller values attack faster.":
+      "Seconds between attacks. Smaller values attack faster.",
   "Security": "Security",
   "Select Deck": "Select Deck",
   "Select Hero": "Select Hero",
@@ -311,9 +349,11 @@ const Map<String, String> localeEn = <String, String>{
   "Sent Requests": "Sent Requests",
   "Sent a friend request to": "Sent a friend request to",
   "Server Simulation": "Server Simulation",
-  "Server simulation runs in the room server and is the default recommended mode.": "Server simulation runs in the room server and is the default recommended mode.",
+  "Server simulation runs in the room server and is the default recommended mode.":
+      "Server simulation runs in the room server and is the default recommended mode.",
   "Shield": "Shield",
-  "Sign in to continue to the portal and game pages.": "Sign in to continue to the portal and game pages.",
+  "Sign in to continue to the portal and game pages.":
+      "Sign in to continue to the portal and game pages.",
   "Sign in with Google": "Sign in with Google",
   "Simulation Mode": "Simulation Mode",
   "Single Lane Battle": "Single Lane Battle",
@@ -325,25 +365,33 @@ const Map<String, String> localeEn = <String, String>{
   "Spell area radius in world units.": "Spell area radius in world units.",
   "Spirit Energy": "Spirit Energy",
   "Spirit Health": "Spirit Health",
-  "Stores battle character animations locally and reuses them until the server version changes.": "Stores battle character animations locally and reuses them until the server version changes.",
+  "Stores battle character animations locally and reuses them until the server version changes.":
+      "Stores battle character animations locally and reuses them until the server version changes.",
   "Swarm": "Swarm",
   "Taiwan Brawl Blue": "Taiwan Brawl Blue",
   "Taiwan Brawl Portal": "Taiwan Brawl Portal",
-  "Taiwan Brawl Portal uses Google sign-in and keeps your session with a secure cookie.": "Taiwan Brawl Portal uses Google sign-in and keeps your session with a secure cookie.",
+  "Taiwan Brawl Portal uses Google sign-in and keeps your session with a secure cookie.":
+      "Taiwan Brawl Portal uses Google sign-in and keeps your session with a secure cookie.",
   "Tank": "Tank",
-  "Tap cards to build a combo first. Equipment cards apply to units cast together. Drag a single card or combo into your deployment zone.": "Tap cards to build a combo first. Equipment cards apply to units cast together. Drag a single card or combo into your deployment zone.",
-  "Tap cards to build a combo first. Equipment cards apply to units cast together. Work cards are cast immediately and resolve a random event.": "Tap cards to build a combo first. Equipment cards apply to units cast together. Work cards are cast immediately and resolve a random event.",
-  "Tap cards to build a combo, then drag a single card or combo onto the battlefield.": "Tap cards to build a combo, then drag a single card or combo onto the battlefield.",
-  "Tap cards to build a combo, then drag onto the battlefield. Work cards trigger instantly.": "Tap cards to build a combo, then drag onto the battlefield. Work cards trigger instantly.",
+  "Tap cards to build a combo first. Equipment cards apply to units cast together. Drag a single card or combo into your deployment zone.":
+      "Tap cards to build a combo first. Equipment cards apply to units cast together. Drag a single card or combo into your deployment zone.",
+  "Tap cards to build a combo first. Equipment cards apply to units cast together. Work cards are cast immediately and resolve a random event.":
+      "Tap cards to build a combo first. Equipment cards apply to units cast together. Work cards are cast immediately and resolve a random event.",
+  "Tap cards to build a combo, then drag a single card or combo onto the battlefield.":
+      "Tap cards to build a combo, then drag a single card or combo onto the battlefield.",
+  "Tap cards to build a combo, then drag onto the battlefield. Work cards trigger instantly.":
+      "Tap cards to build a combo, then drag onto the battlefield. Work cards trigger instantly.",
   "Target Rule": "Target Rule",
   "Target is moving": "Target is moving",
   "Target is stationary": "Target is stationary",
   "Test Connection": "Test Connection",
-  "Test your precision in this single-player archery challenge.": "Test your precision in this single-player archery challenge.",
+  "Test your precision in this single-player archery challenge.":
+      "Test your precision in this single-player archery challenge.",
   "Theme": "Theme",
   "Theme Mode": "Theme Mode",
   "They invited you": "They invited you",
-  "This account does not have an available Google avatar.": "This account does not have an available Google avatar.",
+  "This account does not have an available Google avatar.":
+      "This account does not have an available Google avatar.",
   "This is you": "This is you",
   "Tower": "Tower",
   "Traditional Chinese": "Traditional Chinese",
@@ -353,7 +401,8 @@ const Map<String, String> localeEn = <String, String>{
   "Unblock": "Unblock",
   "Unblocked": "Unblocked",
   "Unit": "Unit",
-  "Unit body size in world units. Final reach uses body radius plus attack range.": "Unit body size in world units. Final reach uses body radius plus attack range.",
+  "Unit body size in world units. Final reach uses body radius plus attack range.":
+      "Unit body size in world units. Final reach uses body radius plus attack range.",
   "Unknown": "Unknown",
   "Unknown error": "Unknown error",
   "Unlock": "Unlock",
@@ -366,31 +415,41 @@ const Map<String, String> localeEn = <String, String>{
   "Upload Image": "Upload Image",
   "Upload Selected Image": "Upload Selected Image",
   "Uploaded Avatar Image": "Uploaded Avatar Image",
-  "Use an OpenAI-compatible chat completions endpoint for the LLM bot opponent. API keys are stored on your player profile and used only when you create an LLM bot match.": "Use an OpenAI-compatible chat completions endpoint for the LLM bot opponent. API keys are stored on your player profile and used only when you create an LLM bot match.",
-  "Use an uploaded image stored in Taiwan Brawl. You can pick a file from your device and future Google sign-ins will not overwrite it.": "Use an uploaded image stored in Taiwan Brawl. You can pick a file from your device and future Google sign-ins will not overwrite it.",
-  "Use your Google sign-in avatar. It will sync again the next time you sign in.": "Use your Google sign-in avatar. It will sync again the next time you sign in.",
-  "Use your custom image URL. Future Google sign-ins will not overwrite it.": "Use your custom image URL. Future Google sign-ins will not overwrite it.",
-  "Verify the current session directly via /api/me": "Verify the current session directly via /api/me",
+  "Use an OpenAI-compatible chat completions endpoint for the LLM bot opponent. API keys are stored on your player profile and used only when you create an LLM bot match.":
+      "Use an OpenAI-compatible chat completions endpoint for the LLM bot opponent. API keys are stored on your player profile and used only when you create an LLM bot match.",
+  "Use an uploaded image stored in Taiwan Brawl. You can pick a file from your device and future Google sign-ins will not overwrite it.":
+      "Use an uploaded image stored in Taiwan Brawl. You can pick a file from your device and future Google sign-ins will not overwrite it.",
+  "Use your Google sign-in avatar. It will sync again the next time you sign in.":
+      "Use your Google sign-in avatar. It will sync again the next time you sign in.",
+  "Use your custom image URL. Future Google sign-ins will not overwrite it.":
+      "Use your custom image URL. Future Google sign-ins will not overwrite it.",
+  "Verify the current session directly via /api/me":
+      "Verify the current session directly via /api/me",
   "Verifying Google sign-in...": "Verifying Google sign-in...",
   "Waiting": "Waiting",
   "Waiting for confirmation": "Waiting for confirmation",
   "Waiting for players": "Waiting for players",
-  "Weapon reach in world units. This does not include the unit body radius.": "Weapon reach in world units. This does not include the unit body radius.",
+  "Weapon reach in world units. This does not include the unit body radius.":
+      "Weapon reach in world units. This does not include the unit body radius.",
   "Welcome back": "Welcome back",
   "Work Profile": "Work Profile",
-  "World unit scale: the battlefield uses 1000-based integer coordinates. Example: Attack Range 280 means 28% of the map height, and Body Radius 18 means the unit body takes 1.8% of the map height.": "World unit scale: the battlefield uses 1000-based integer coordinates. Example: Attack Range 280 means 28% of the map height, and Body Radius 18 means the unit body takes 1.8% of the map height.",
+  "World unit scale: the battlefield uses 1000-based integer coordinates. Example: Attack Range 280 means 28% of the map height, and Body Radius 18 means the unit body takes 1.8% of the map height.":
+      "World unit scale: the battlefield uses 1000-based integer coordinates. Example: Attack Range 280 means 28% of the map height, and Body Radius 18 means the unit body takes 1.8% of the map height.",
   "You": "You",
   "You are now friends": "You are now friends",
   "You blocked them": "You blocked them",
-  "You can preselect up to 3 cards at once": "You can preselect up to 3 cards at once",
+  "You can preselect up to 3 cards at once":
+      "You can preselect up to 3 cards at once",
   "You cannot change your own role": "You cannot change your own role",
-  "You do not have any friends yet. Go add a few.": "You do not have any friends yet. Go add a few.",
+  "You do not have any friends yet. Go add a few.":
+      "You do not have any friends yet. Go add a few.",
   "You lost": "You lost",
   "You won": "You won",
   "Your Deployment Zone": "Your Deployment Zone",
   "Your Left Base": "Your Left Base",
   "Your Right Base": "Your Right Base",
-  "Your session will be kept with a secure cookie after login": "Your session will be kept with a secure cookie after login",
+  "Your session will be kept with a secure cookie after login":
+      "Your session will be kept with a secure cookie after login",
   "as a friend": "as a friend",
   "event": "Event",
   "invites you to join room": "invites you to join room",
@@ -410,7 +469,8 @@ const Map<String, String> localeJa = <String, String>{
   "Add": "追加",
   "Add Friend": "フレンド追加",
   "Add Friend Button": "フレンド追加",
-  "Add unit animation assets here. idle, move, attack, hit, stun, and spawn all use the same animation-token model. You can also define your own token.": "ここでキャラクターのアニメーション素材を管理します。idle、move、attack、hit、stun、spawn はすべて同じ animation token モデルを使い、独自トークンも定義できます。",
+  "Add unit animation assets here. idle, move, attack, hit, stun, and spawn all use the same animation-token model. You can also define your own token.":
+      "ここでキャラクターのアニメーション素材を管理します。idle、move、attack、hit、stun、spawn はすべて同じ animation token モデルを使い、独自トークンも定義できます。",
   "Age": "年齢",
   "All": "すべて",
   "Ally Combo": "同時出し味方",
@@ -423,9 +483,11 @@ const Map<String, String> localeJa = <String, String>{
   "Asset ID": "素材 ID",
   "Attack Range": "攻撃距離",
   "Attack Speed": "攻撃速度",
-  "Automatically restore your login state and personal preferences": "・ログイン状態と個人設定を自動で復元",
+  "Automatically restore your login state and personal preferences":
+      "・ログイン状態と個人設定を自動で復元",
   "Available Cards": "選択可能なカード",
-  "Available roles are Admin, Card Manager, and Player. This version only changes role assignments and does not attach role-specific features yet.": "割り当て可能な権限は Admin、Card Manager、Player です。このバージョンでは権限変更のみで、権限ごとの機能はまだ紐づけていません。",
+  "Available roles are Admin, Card Manager, and Player. This version only changes role assignments and does not attach role-specific features yet.":
+      "割り当て可能な権限は Admin、Card Manager、Player です。このバージョンでは権限変更のみで、権限ごとの機能はまだ紐づけていません。",
   "Avatar Preview": "アバタープレビュー",
   "Avatar Preview (Pending Upload)": "アバタープレビュー（未アップロード）",
   "Avatar Source": "アバターソース",
@@ -436,7 +498,8 @@ const Map<String, String> localeJa = <String, String>{
   "Base Pay": "基本給",
   "Battle finished": "対戦終了",
   "Battle invite sent": "対戦招待を送信しました",
-  "Battle starts as soon as both players are ready": "両者が準備完了かつオンラインになると対戦が始まります",
+  "Battle starts as soon as both players are ready":
+      "両者が準備完了かつオンラインになると対戦が始まります",
   "Bio": "自己紹介",
   "Block": "ブロック",
   "Blocked": "ブロック済み",
@@ -457,7 +520,8 @@ const Map<String, String> localeJa = <String, String>{
   "Card deleted successfully": "カードを削除しました",
   "Card saved successfully": "カードを保存しました",
   "Cards": "カード",
-  "Cards are stored in the D1 cards table. Starter definitions live in src/royale_cards.js and seed the table when empty.": "カードは D1 の cards テーブルに保存されています。src/royale_cards.js には初期定義のみがあり、テーブルが空のときだけ初期投入に使われます。",
+  "Cards are stored in the D1 cards table. Starter definitions live in src/royale_cards.js and seed the table when empty.":
+      "カードは D1 の cards テーブルに保存されています。src/royale_cards.js には初期定義のみがあり、テーブルが空のときだけ初期投入に使われます。",
   "Central Bridge": "中央ブリッジ",
   "Character Animation Assets": "キャラクターアニメーション素材",
   "Character Direction Images": "キャラクター方向画像",
@@ -466,11 +530,13 @@ const Map<String, String> localeJa = <String, String>{
   "Character asset removed successfully": "キャラクターアニメーション素材を削除しました",
   "Character asset uploaded successfully": "キャラクターアニメーション素材をアップロードしました",
   "Chat History Sync": "チャット履歴の同期",
-  "Chat Sync Upload Description": "このデバイスのチャット履歴をサーバーにアップロード（1時間有効）し、別のデバイスでダウンロードして統合します。",
+  "Chat Sync Upload Description":
+      "このデバイスのチャット履歴をサーバーにアップロード（1時間有効）し、別のデバイスでダウンロードして統合します。",
   "Choose Avatar Image": "アバター画像を選択",
   "Choose Image": "画像を選択",
   "Choose a deck to battle with": "出戦するデッキを選択",
-  "Choose an 8-card deck. After creating the room, send the room code to your friend so both of you can get ready.": "8 枚のカードでデッキを選び、ルーム作成後にルームコードを友達へ送ると対戦準備ができます。",
+  "Choose an 8-card deck. After creating the room, send the room code to your friend so both of you can get ready.":
+      "8 枚のカードでデッキを選び、ルーム作成後にルームコードを友達へ送ると対戦準備ができます。",
   "Clear Saved API Key": "保存済み API Key を削除",
   "Collision Behavior": "衝突時の挙動",
   "Company": "会社",
@@ -479,7 +545,8 @@ const Map<String, String> localeJa = <String, String>{
   "Create Room": "ルームを作成",
   "Create a 1v1 Room": "1v1 ルームを作成",
   "Create a new card": "新しいカードを作成",
-  "Create or edit card stats and effects. Changes are saved to the live cards table immediately.": "カードの数値と効果を作成・編集できます。変更はそのまま本番の cards テーブルへ保存されます。",
+  "Create or edit card stats and effects. Changes are saved to the live cards table immediately.":
+      "カードの数値と効果を作成・編集できます。変更はそのまま本番の cards テーブルへ保存されます。",
   "Current Elixir": "現在のエリクサー",
   "Custom": "カスタム",
   "Custom Avatar URL": "カスタムアバター URL",
@@ -499,14 +566,16 @@ const Map<String, String> localeJa = <String, String>{
   "Dismiss": "閉じる",
   "Display Settings": "表示設定",
   "Download Chat History": "履歴をダウンロード",
-  "Drag a single card or combo, or select cards first then tap the 2D battlefield.": "単体カードやコンボをドラッグするか、先にカードを選んでから 2D 戦場をタップしてください。",
+  "Drag a single card or combo, or select cards first then tap the 2D battlefield.":
+      "単体カードやコンボをドラッグするか、先にカードを選んでから 2D 戦場をタップしてください。",
   "Draw": "引き分け",
   "Draw Strength": "弓を引く体力",
   "Drawing...": "引いています...",
   "Drop here to discard": "ここにドラッグして捨てる",
   "Duration ms": "フレーム時間 ms",
   "Edit Profile": "プロフィール編集",
-  "Editing existing card IDs is disabled. Create a new card if you need a different ID.": "既存カードの ID は編集できません。別の ID が必要な場合は新しいカードを作成してください。",
+  "Editing existing card IDs is disabled. Create a new card if you need a different ID.":
+      "既存カードの ID は編集できません。別の ID が必要な場合は新しいカードを作成してください。",
   "Effect Kind": "効果種類",
   "Effect Value": "効果数値",
   "Enable Notifications": "通知を有効にする",
@@ -520,7 +589,8 @@ const Map<String, String> localeJa = <String, String>{
   "Equipment": "装備",
   "Equipment Card": "装備カード",
   "Equipment can stack": "装備を重ねがけ可能",
-  "Equipment cards must be played with at least one unit card": "装備カードは少なくとも 1 枚のユニットカードと一緒に出す必要があります",
+  "Equipment cards must be played with at least one unit card":
+      "装備カードは少なくとも 1 枚のユニットカードと一緒に出す必要があります",
   "Equipment: +Damage": "装備: +ダメージ",
   "Equipment: +Health": "装備: +体力",
   "Equipment: +Speed": "装備: +速度",
@@ -547,10 +617,12 @@ const Map<String, String> localeJa = <String, String>{
   "Front": "正面",
   "Go to Lobby": "ロビーへ移動",
   "Go to Room": "ルームへ移動",
-  "Google sign-in did not return a usable credential": "Google ログインで有効な認証情報が返されませんでした",
+  "Google sign-in did not return a usable credential":
+      "Google ログインで有効な認証情報が返されませんでした",
   "Google sign-in error": "Google ログインエラー",
   "Google sign-in initialization failed": "Google ログインの初期化に失敗しました",
-  "Google sign-in is currently available on web only": "Google ログインは現在 Web 版のみ対応しています",
+  "Google sign-in is currently available on web only":
+      "Google ログインは現在 Web 版のみ対応しています",
   "Google sign-in is currently unavailable": "Google ログインは現在利用できません",
   "Google sign-in is loading...": "Google ログインを読み込み中...",
   "Ground": "地上",
@@ -558,13 +630,17 @@ const Map<String, String> localeJa = <String, String>{
   "Health": "健康度",
   "Health Boost": "体力強化",
   "Heuristic Bot": "ルール Bot",
-  "Heuristic Bot uses the built-in combat logic and does not require any external API key.": "ルール Bot は内蔵の戦闘ロジックを使うため、外部 API key は不要です。",
+  "Heuristic Bot uses the built-in combat logic and does not require any external API key.":
+      "ルール Bot は内蔵の戦闘ロジックを使うため、外部 API key は不要です。",
   "Hit points. Uses normal game damage values.": "HP。通常の戦闘ダメージ値を使います。",
   "Hold Position": "その場で停止",
   "Host Simulation (Experimental)": "ホスト演算（実験）",
-  "Host simulation is currently available for bot matches only": "ホスト演算は現在 Bot 戦のみ対応しています",
-  "Host simulation runs on the room host device. This experimental mode locks after battle starts.": "ホスト演算はルームのホスト端末上で動作します。この実験モードは対戦開始後に切り替えできません。",
-  "Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.": "ホスト演算はあなたの端末上で動作します。この実験モードは現在 Bot 戦のみ対応し、対戦開始後は切り替えできません。",
+  "Host simulation is currently available for bot matches only":
+      "ホスト演算は現在 Bot 戦のみ対応しています",
+  "Host simulation runs on the room host device. This experimental mode locks after battle starts.":
+      "ホスト演算はルームのホスト端末上で動作します。この実験モードは対戦開始後に切り替えできません。",
+  "Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.":
+      "ホスト演算はあなたの端末上で動作します。この実験モードは現在 Bot 戦のみ対応し、対戦開始後は切り替えできません。",
   "Image must be 1 MB or smaller": "画像は 1 MB 以下にしてください",
   "Image removed successfully": "画像を削除しました",
   "Image uploaded successfully": "画像をアップロードしました",
@@ -579,14 +655,17 @@ const Map<String, String> localeJa = <String, String>{
   "Job cards must be played alone": "仕事カードは単独で使う必要があります",
   "Join Room": "ルームに参加",
   "Join a Friend's Room": "友達のルームに参加",
-  "Join a lobby, build your strategy and fight to the top.": "ロビーに参加して戦略を立て、頂点を目指せ！",
+  "Join a lobby, build your strategy and fight to the top.":
+      "ロビーに参加して戦略を立て、頂点を目指せ！",
   "LLM API Key": "LLM API Key",
   "LLM Base URL": "LLM Base URL",
   "LLM Bot": "LLM Bot",
   "LLM Bot Settings": "LLM Bot 設定",
-  "LLM Bot uses your saved OpenAI-compatible API key and model settings to choose from legal battle actions.": "LLM Bot は保存済みの OpenAI 互換 API key とモデル設定を使い、合法な戦闘アクションから選択します。",
+  "LLM Bot uses your saved OpenAI-compatible API key and model settings to choose from legal battle actions.":
+      "LLM Bot は保存済みの OpenAI 互換 API key とモデル設定を使い、合法な戦闘アクションから選択します。",
   "LLM Model": "LLM モデル",
-  "LLM bot requires a saved API key. Open Profile > Display Settings > LLM Bot Settings first.": "LLM Bot には保存済み API key が必要です。先にプロフィール > 表示設定 > LLM Bot 設定を開いてください。",
+  "LLM bot requires a saved API key. Open Profile > Display Settings > LLM Bot Settings first.":
+      "LLM Bot には保存済み API key が必要です。先にプロフィール > 表示設定 > LLM Bot 設定を開いてください。",
   "LLM bot settings saved": "LLM Bot 設定を保存しました",
   "LLM connection test failed": "LLM 接続テスト失敗",
   "LLM connection test succeeded": "LLM 接続テスト成功",
@@ -594,10 +673,12 @@ const Map<String, String> localeJa = <String, String>{
   "Last online": "最終ログイン",
   "Leave blank to keep the saved key": "空欄のままなら保存済み key を維持します",
   "Left": "左向き",
-  "Legacy username/password login and registration are no longer available": "・旧式の ID/パスワードログインと登録は提供しません",
+  "Legacy username/password login and registration are no longer available":
+      "・旧式の ID/パスワードログインと登録は提供しません",
   "Level": "レベル",
   "Light": "ライト",
-  "Live connection lost. Please refresh the page.": "リアルタイム接続が切れました。ページを更新してください。",
+  "Live connection lost. Please refresh the page.":
+      "リアルタイム接続が切れました。ページを更新してください。",
   "Login Guide": "ログインガイド",
   "Logout": "ログアウト",
   "Long press to draw": "長押しで弓を引く",
@@ -611,7 +692,8 @@ const Map<String, String> localeJa = <String, String>{
   "Mini Royale Lobby Battle": "ゴーストアイランド乱闘 ルーム対戦",
   "Money": "資金",
   "Move Speed": "移動速度",
-  "Movement speed in world units per second before global battle multipliers.": "グローバル戦闘倍率をかける前の、1 秒あたりの移動ワールド単位です。",
+  "Movement speed in world units per second before global battle multipliers.":
+      "グローバル戦闘倍率をかける前の、1 秒あたりの移動ワールド単位です。",
   "Name": "名前",
   "New Card": "新しいカード",
   "Next Card": "次のカード",
@@ -638,7 +720,8 @@ const Map<String, String> localeJa = <String, String>{
   "Offline": "オフライン",
   "Online": "オンライン",
   "Only admins can view this page": "Admin のみこのページを表示できます",
-  "Only card managers and admins can view this page": "カード管理者または Admin のみこのページを表示できます",
+  "Only card managers and admins can view this page":
+      "カード管理者または Admin のみこのページを表示できます",
   "Open Friends": "フレンドを開く",
   "Opponent": "相手",
   "PNG, JPG, WEBP, or GIF up to 1 MB": "PNG、JPG、WEBP、GIF に対応、最大 1 MB",
@@ -656,7 +739,8 @@ const Map<String, String> localeJa = <String, String>{
   "Please select a hero first": "先にヒーローを選んでください",
   "Please upload an avatar image first": "先にアバター画像をアップロードしてください",
   "Politics": "政治",
-  "Precision targeting enabled. Tap the battlefield to place cards.": "精密配置が有効です。戦場をタップして座標を指定してください。",
+  "Precision targeting enabled. Tap the battlefield to place cards.":
+      "精密配置が有効です。戦場をタップして座標を指定してください。",
   "Preload and keep battle animations": "対戦アニメーションを事前読み込みして保持",
   "Profile": "プロフィール",
   "Profile updated": "プロフィールを更新しました",
@@ -687,7 +771,8 @@ const Map<String, String> localeJa = <String, String>{
   "Save Card": "カードを保存",
   "Save Deck": "デッキを保存",
   "Save LLM Settings": "LLM 設定を保存",
-  "Save the card first before uploading an image": "先にカードを保存してから画像をアップロードしてください",
+  "Save the card first before uploading an image":
+      "先にカードを保存してから画像をアップロードしてください",
   "Saving...": "保存中...",
   "Score": "スコア",
   "Search": "検索",
@@ -696,7 +781,8 @@ const Map<String, String> localeJa = <String, String>{
   "Search by name, email, or player ID": "名前、メール、またはプレイヤー ID で検索",
   "Search players": "プレイヤーを検索",
   "Searching...": "検索中...",
-  "Seconds between attacks. Smaller values attack faster.": "攻撃間隔の秒数です。小さいほど攻撃が速くなります。",
+  "Seconds between attacks. Smaller values attack faster.":
+      "攻撃間隔の秒数です。小さいほど攻撃が速くなります。",
   "Security": "治安",
   "Select Deck": "デッキを選択",
   "Select Hero": "ヒーローを選択",
@@ -710,9 +796,11 @@ const Map<String, String> localeJa = <String, String>{
   "Sent Requests": "送信済み申請",
   "Sent a friend request to": "フレンド申請を送信しました:",
   "Server Simulation": "サーバー演算",
-  "Server simulation runs in the room server and is the default recommended mode.": "サーバー演算はルームサーバー側で実行され、現在の標準かつ推奨モードです。",
+  "Server simulation runs in the room server and is the default recommended mode.":
+      "サーバー演算はルームサーバー側で実行され、現在の標準かつ推奨モードです。",
   "Shield": "シールド",
-  "Sign in to continue to the portal and game pages.": "ログインするとホームとゲームページを利用できます。",
+  "Sign in to continue to the portal and game pages.":
+      "ログインするとホームとゲームページを利用できます。",
   "Sign in with Google": "Google でログイン",
   "Simulation Mode": "演算方式",
   "Single Lane Battle": "単一路線バトル",
@@ -724,25 +812,33 @@ const Map<String, String> localeJa = <String, String>{
   "Spell area radius in world units.": "呪文の範囲半径です。ワールド単位を使います。",
   "Spirit Energy": "精神エネルギー",
   "Spirit Health": "精神体力",
-  "Stores battle character animations locally and reuses them until the server version changes.": "対戦キャラクターアニメーションを端末に保存し、サーバー版が変わるまで再利用します。",
+  "Stores battle character animations locally and reuses them until the server version changes.":
+      "対戦キャラクターアニメーションを端末に保存し、サーバー版が変わるまで再利用します。",
   "Swarm": "群体",
   "Taiwan Brawl Blue": "Taiwan Brawl ブルー",
   "Taiwan Brawl Portal": "Taiwan Brawl ポータル",
-  "Taiwan Brawl Portal uses Google sign-in and keeps your session with a secure cookie.": "Taiwan Brawl Portal は Google ログインを使い、安全な Cookie でセッションを維持します。",
+  "Taiwan Brawl Portal uses Google sign-in and keeps your session with a secure cookie.":
+      "Taiwan Brawl Portal は Google ログインを使い、安全な Cookie でセッションを維持します。",
   "Tank": "タンク",
-  "Tap cards to build a combo first. Equipment cards apply to units cast together. Drag a single card or combo into your deployment zone.": "先にカードを選んでコンボを作れます。装備カードは同時に出したユニットへ適用されます。単体カードまたはコンボを自分の配置エリアへドラッグしてください。",
-  "Tap cards to build a combo first. Equipment cards apply to units cast together. Work cards are cast immediately and resolve a random event.": "まずカードでコンボを組みます。装備カードは同時に出すユニットにだけ適用されます。仕事カードは即発動し、ランダムイベントを解決します。",
-  "Tap cards to build a combo, then drag a single card or combo onto the battlefield.": "カードをタップしてコンボを作り、単体カードまたはコンボを戦場へドラッグしてください。",
-  "Tap cards to build a combo, then drag onto the battlefield. Work cards trigger instantly.": "カードでコンボを組んでから戦場へドラッグします。仕事カードはタップで即発動します。",
+  "Tap cards to build a combo first. Equipment cards apply to units cast together. Drag a single card or combo into your deployment zone.":
+      "先にカードを選んでコンボを作れます。装備カードは同時に出したユニットへ適用されます。単体カードまたはコンボを自分の配置エリアへドラッグしてください。",
+  "Tap cards to build a combo first. Equipment cards apply to units cast together. Work cards are cast immediately and resolve a random event.":
+      "まずカードでコンボを組みます。装備カードは同時に出すユニットにだけ適用されます。仕事カードは即発動し、ランダムイベントを解決します。",
+  "Tap cards to build a combo, then drag a single card or combo onto the battlefield.":
+      "カードをタップしてコンボを作り、単体カードまたはコンボを戦場へドラッグしてください。",
+  "Tap cards to build a combo, then drag onto the battlefield. Work cards trigger instantly.":
+      "カードでコンボを組んでから戦場へドラッグします。仕事カードはタップで即発動します。",
   "Target Rule": "対象ルール",
   "Target is moving": "的が動きます",
   "Target is stationary": "的は動きません",
   "Test Connection": "接続テスト",
-  "Test your precision in this single-player archery challenge.": "シングルプレイヤーのアーチェリーチャレンジで精度を試そう。",
+  "Test your precision in this single-player archery challenge.":
+      "シングルプレイヤーのアーチェリーチャレンジで精度を試そう。",
   "Theme": "テーマ",
   "Theme Mode": "テーマモード",
   "They invited you": "相手があなたを招待しています",
-  "This account does not have an available Google avatar.": "このアカウントでは利用できる Google アバターがありません。",
+  "This account does not have an available Google avatar.":
+      "このアカウントでは利用できる Google アバターがありません。",
   "This is you": "あなた自身です",
   "Tower": "タワー",
   "Traditional Chinese": "繁体字中国語",
@@ -752,7 +848,8 @@ const Map<String, String> localeJa = <String, String>{
   "Unblock": "ブロック解除",
   "Unblocked": "ブロックを解除しました",
   "Unit": "ユニット",
-  "Unit body size in world units. Final reach uses body radius plus attack range.": "ユニット本体の大きさです。最終射程は本体半径と攻撃距離を足して計算します。",
+  "Unit body size in world units. Final reach uses body radius plus attack range.":
+      "ユニット本体の大きさです。最終射程は本体半径と攻撃距離を足して計算します。",
   "Unknown": "不明",
   "Unknown error": "不明なエラー",
   "Unlock": "解放",
@@ -765,19 +862,25 @@ const Map<String, String> localeJa = <String, String>{
   "Upload Image": "画像をアップロード",
   "Upload Selected Image": "選択画像をアップロード",
   "Uploaded Avatar Image": "アップロード済みアバター画像",
-  "Use an OpenAI-compatible chat completions endpoint for the LLM bot opponent. API keys are stored on your player profile and used only when you create an LLM bot match.": "LLM 対戦相手には OpenAI 互換の chat completions エンドポイントを使います。API key はプレイヤープロフィールに保存され、LLM Bot 対戦を作成するときだけ使用されます。",
-  "Use an uploaded image stored in Taiwan Brawl. You can pick a file from your device and future Google sign-ins will not overwrite it.": "Taiwan Brawl に保存したアップロード画像を使います。端末から画像を選べて、今後の Google ログインでも上書きされません。",
-  "Use your Google sign-in avatar. It will sync again the next time you sign in.": "Google ログイン時のアバターを使用します。次回ログイン時にも再同期されます。",
-  "Use your custom image URL. Future Google sign-ins will not overwrite it.": "カスタム画像 URL を使用します。今後の Google ログインでも上書きされません。",
+  "Use an OpenAI-compatible chat completions endpoint for the LLM bot opponent. API keys are stored on your player profile and used only when you create an LLM bot match.":
+      "LLM 対戦相手には OpenAI 互換の chat completions エンドポイントを使います。API key はプレイヤープロフィールに保存され、LLM Bot 対戦を作成するときだけ使用されます。",
+  "Use an uploaded image stored in Taiwan Brawl. You can pick a file from your device and future Google sign-ins will not overwrite it.":
+      "Taiwan Brawl に保存したアップロード画像を使います。端末から画像を選べて、今後の Google ログインでも上書きされません。",
+  "Use your Google sign-in avatar. It will sync again the next time you sign in.":
+      "Google ログイン時のアバターを使用します。次回ログイン時にも再同期されます。",
+  "Use your custom image URL. Future Google sign-ins will not overwrite it.":
+      "カスタム画像 URL を使用します。今後の Google ログインでも上書きされません。",
   "Verify the current session directly via /api/me": "・/api/me で現在のセッションを直接確認",
   "Verifying Google sign-in...": "Google ログインを確認中...",
   "Waiting": "待機中",
   "Waiting for confirmation": "相手の確認待ち",
   "Waiting for players": "プレイヤー待機中",
-  "Weapon reach in world units. This does not include the unit body radius.": "武器の届く距離です。ワールド単位で、本体半径は含みません。",
+  "Weapon reach in world units. This does not include the unit body radius.":
+      "武器の届く距離です。ワールド単位で、本体半径は含みません。",
   "Welcome back": "お帰りなさい",
   "Work Profile": "仕事タイプ",
-  "World unit scale: the battlefield uses 1000-based integer coordinates. Example: Attack Range 280 means 28% of the map height, and Body Radius 18 means the unit body takes 1.8% of the map height.": "ワールド単位は 1000 基準の整数座標です。例: Attack Range 280 はマップ高さの 28%、Body Radius 18 はユニット本体がマップ高さの 1.8% を占めます。",
+  "World unit scale: the battlefield uses 1000-based integer coordinates. Example: Attack Range 280 means 28% of the map height, and Body Radius 18 means the unit body takes 1.8% of the map height.":
+      "ワールド単位は 1000 基準の整数座標です。例: Attack Range 280 はマップ高さの 28%、Body Radius 18 はユニット本体がマップ高さの 1.8% を占めます。",
   "You": "あなた",
   "You are now friends": "フレンドになりました",
   "You blocked them": "相手をブロックしています",
@@ -789,7 +892,8 @@ const Map<String, String> localeJa = <String, String>{
   "Your Deployment Zone": "自分の配置エリア",
   "Your Left Base": "自分の左拠点",
   "Your Right Base": "自分の右拠点",
-  "Your session will be kept with a secure cookie after login": "ログイン後は安全な Cookie でセッションが維持されます",
+  "Your session will be kept with a secure cookie after login":
+      "ログイン後は安全な Cookie でセッションが維持されます",
   "as a friend": "をフレンドに",
   "event": "イベントカード",
   "invites you to join room": "がルームに招待しました",
@@ -809,7 +913,8 @@ const Map<String, String> localeZhHant = <String, String>{
   "Add": "加",
   "Add Friend": "加好友",
   "Add Friend Button": "加好友",
-  "Add unit animation assets here. idle, move, attack, hit, stun, and spawn all use the same animation-token model. You can also define your own token.": "在這裡管理角色動畫素材。idle、move、attack、hit、stun、spawn 都是同一套 animation token 模型，你也可以自訂 token。",
+  "Add unit animation assets here. idle, move, attack, hit, stun, and spawn all use the same animation-token model. You can also define your own token.":
+      "在這裡管理角色動畫素材。idle、move、attack、hit、stun、spawn 都是同一套 animation token 模型，你也可以自訂 token。",
   "Age": "年齡",
   "All": "全部",
   "Ally Combo": "同組友軍",
@@ -822,9 +927,11 @@ const Map<String, String> localeZhHant = <String, String>{
   "Asset ID": "素材 ID",
   "Attack Range": "攻擊距離",
   "Attack Speed": "攻擊速度",
-  "Automatically restore your login state and personal preferences": "• 自動恢復登入狀態與個人偏好",
+  "Automatically restore your login state and personal preferences":
+      "• 自動恢復登入狀態與個人偏好",
   "Available Cards": "可選卡牌",
-  "Available roles are Admin, Card Manager, and Player. This version only changes role assignments and does not attach role-specific features yet.": "目前可分配的身份組有 Admin、Card Manager、Player。這一版先只做角色切換，不綁實際功能。",
+  "Available roles are Admin, Card Manager, and Player. This version only changes role assignments and does not attach role-specific features yet.":
+      "目前可分配的身份組有 Admin、Card Manager、Player。這一版先只做角色切換，不綁實際功能。",
   "Avatar Preview": "目前頭像預覽",
   "Avatar Preview (Pending Upload)": "頭像預覽（尚未上傳）",
   "Avatar Source": "頭像來源",
@@ -856,7 +963,8 @@ const Map<String, String> localeZhHant = <String, String>{
   "Card deleted successfully": "卡牌已刪除",
   "Card saved successfully": "卡牌已儲存",
   "Cards": "卡牌",
-  "Cards are stored in the D1 cards table. Starter definitions live in src/royale_cards.js and seed the table when empty.": "目前卡牌存放在 D1 的 cards 資料表。src/royale_cards.js 只保留起始卡牌定義，資料表為空時才會拿來初始化。",
+  "Cards are stored in the D1 cards table. Starter definitions live in src/royale_cards.js and seed the table when empty.":
+      "目前卡牌存放在 D1 的 cards 資料表。src/royale_cards.js 只保留起始卡牌定義，資料表為空時才會拿來初始化。",
   "Central Bridge": "中央橋面",
   "Character Animation Assets": "角色動畫素材",
   "Character Direction Images": "角色方向圖片",
@@ -869,7 +977,8 @@ const Map<String, String> localeZhHant = <String, String>{
   "Choose Avatar Image": "選擇頭像圖片",
   "Choose Image": "選擇圖片",
   "Choose a deck to battle with": "選擇要出戰的牌組",
-  "Choose an 8-card deck. After creating the room, send the room code to your friend so both of you can get ready.": "選一組 8 張牌的牌組，建立房間後把房碼丟給朋友就能開始準備。",
+  "Choose an 8-card deck. After creating the room, send the room code to your friend so both of you can get ready.":
+      "選一組 8 張牌的牌組，建立房間後把房碼丟給朋友就能開始準備。",
   "Clear Saved API Key": "清除已儲存的 API Key",
   "Collision Behavior": "碰撞行為",
   "Company": "公司",
@@ -878,7 +987,8 @@ const Map<String, String> localeZhHant = <String, String>{
   "Create Room": "建立房間",
   "Create a 1v1 Room": "建立 1v1 房間",
   "Create a new card": "建立新卡牌",
-  "Create or edit card stats and effects. Changes are saved to the live cards table immediately.": "建立或編輯卡牌數值與效果，變更會直接寫進正式使用中的 cards 資料表。",
+  "Create or edit card stats and effects. Changes are saved to the live cards table immediately.":
+      "建立或編輯卡牌數值與效果，變更會直接寫進正式使用中的 cards 資料表。",
   "Current Elixir": "目前聖水",
   "Custom": "自訂",
   "Custom Avatar URL": "自訂頭像網址",
@@ -898,14 +1008,16 @@ const Map<String, String> localeZhHant = <String, String>{
   "Dismiss": "關閉",
   "Display Settings": "顯示設定",
   "Download Chat History": "下載記錄",
-  "Drag a single card or combo, or select cards first then tap the 2D battlefield.": "拖曳單卡或組合包，或先選卡再點擊 2D 場地",
+  "Drag a single card or combo, or select cards first then tap the 2D battlefield.":
+      "拖曳單卡或組合包，或先選卡再點擊 2D 場地",
   "Draw": "平手",
   "Draw Strength": "拉弦體力",
   "Drawing...": "拉弦中...",
   "Drop here to discard": "拖到這裡丟棄",
   "Duration ms": "每格毫秒",
   "Edit Profile": "編輯個人資料",
-  "Editing existing card IDs is disabled. Create a new card if you need a different ID.": "編輯既有卡牌時不能修改卡牌 ID。如果你需要不同的 ID，請改用新增卡牌。",
+  "Editing existing card IDs is disabled. Create a new card if you need a different ID.":
+      "編輯既有卡牌時不能修改卡牌 ID。如果你需要不同的 ID，請改用新增卡牌。",
   "Effect Kind": "效果類型",
   "Effect Value": "效果數值",
   "Enable Notifications": "啟用通知",
@@ -919,7 +1031,8 @@ const Map<String, String> localeZhHant = <String, String>{
   "Equipment": "裝備",
   "Equipment Card": "裝備卡",
   "Equipment can stack": "裝備可疊加",
-  "Equipment cards must be played with at least one unit card": "裝備卡需要和至少一張單位卡一起丟出去",
+  "Equipment cards must be played with at least one unit card":
+      "裝備卡需要和至少一張單位卡一起丟出去",
   "Equipment: +Damage": "裝備: +傷害",
   "Equipment: +Health": "裝備: +生命",
   "Equipment: +Speed": "裝備: +速度",
@@ -957,13 +1070,17 @@ const Map<String, String> localeZhHant = <String, String>{
   "Health": "健康度",
   "Health Boost": "生命加成",
   "Heuristic Bot": "規則機器人",
-  "Heuristic Bot uses the built-in combat logic and does not require any external API key.": "規則機器人使用內建戰鬥邏輯，不需要外部 API key。",
+  "Heuristic Bot uses the built-in combat logic and does not require any external API key.":
+      "規則機器人使用內建戰鬥邏輯，不需要外部 API key。",
   "Hit points. Uses normal game damage values.": "生命值，使用一般戰鬥傷害數值。",
   "Hold Position": "原地停住",
   "Host Simulation (Experimental)": "房主運算（實驗）",
-  "Host simulation is currently available for bot matches only": "房主運算目前只開放人機對戰使用",
-  "Host simulation runs on the room host device. This experimental mode locks after battle starts.": "房主運算會直接在開房者的裝置上執行。這個實驗模式開打後就會鎖定不可切換。",
-  "Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.": "房主運算會直接在你的裝置上執行。這個實驗模式目前只開放人機房，開打後就會鎖定不可切換。",
+  "Host simulation is currently available for bot matches only":
+      "房主運算目前只開放人機對戰使用",
+  "Host simulation runs on the room host device. This experimental mode locks after battle starts.":
+      "房主運算會直接在開房者的裝置上執行。這個實驗模式開打後就會鎖定不可切換。",
+  "Host simulation runs on your device. This experimental mode is currently available for bot matches only and locks after battle starts.":
+      "房主運算會直接在你的裝置上執行。這個實驗模式目前只開放人機房，開打後就會鎖定不可切換。",
   "Image must be 1 MB or smaller": "圖片大小必須小於等於 1 MB",
   "Image removed successfully": "圖片已移除",
   "Image uploaded successfully": "圖片已上傳",
@@ -983,9 +1100,11 @@ const Map<String, String> localeZhHant = <String, String>{
   "LLM Base URL": "LLM Base URL",
   "LLM Bot": "LLM 機器人",
   "LLM Bot Settings": "LLM 機器人設定",
-  "LLM Bot uses your saved OpenAI-compatible API key and model settings to choose from legal battle actions.": "LLM 機器人會使用你儲存的 OpenAI 相容 API key 與模型設定，從合法戰鬥動作中做選擇。",
+  "LLM Bot uses your saved OpenAI-compatible API key and model settings to choose from legal battle actions.":
+      "LLM 機器人會使用你儲存的 OpenAI 相容 API key 與模型設定，從合法戰鬥動作中做選擇。",
   "LLM Model": "LLM 模型",
-  "LLM bot requires a saved API key. Open Profile > Display Settings > LLM Bot Settings first.": "LLM 機器人需要先儲存 API key。請先到個人檔案 > 顯示設定 > LLM 機器人設定。",
+  "LLM bot requires a saved API key. Open Profile > Display Settings > LLM Bot Settings first.":
+      "LLM 機器人需要先儲存 API key。請先到個人檔案 > 顯示設定 > LLM 機器人設定。",
   "LLM bot settings saved": "LLM 機器人設定已儲存",
   "LLM connection test failed": "LLM 連線測試失敗",
   "LLM connection test succeeded": "LLM 連線測試成功",
@@ -993,7 +1112,8 @@ const Map<String, String> localeZhHant = <String, String>{
   "Last online": "最後上線",
   "Leave blank to keep the saved key": "留空可保留目前已儲存的 key",
   "Left": "朝左",
-  "Legacy username/password login and registration are no longer available": "• 不再提供舊版帳密與註冊入口",
+  "Legacy username/password login and registration are no longer available":
+      "• 不再提供舊版帳密與註冊入口",
   "Level": "等級",
   "Light": "亮色",
   "Live connection lost. Please refresh the page.": "即時連線中斷，請重新整理頁面",
@@ -1010,7 +1130,8 @@ const Map<String, String> localeZhHant = <String, String>{
   "Mini Royale Lobby Battle": "鬼島亂鬥 房間對戰",
   "Money": "金錢",
   "Move Speed": "移動速度",
-  "Movement speed in world units per second before global battle multipliers.": "每秒移動的世界單位數，尚未套用全域戰鬥倍率。",
+  "Movement speed in world units per second before global battle multipliers.":
+      "每秒移動的世界單位數，尚未套用全域戰鬥倍率。",
   "Name": "名稱",
   "New Card": "新增卡牌",
   "Next Card": "下一張",
@@ -1055,7 +1176,8 @@ const Map<String, String> localeZhHant = <String, String>{
   "Please select a hero first": "請先選擇角色",
   "Please upload an avatar image first": "請先上傳一張頭像圖片",
   "Politics": "政治",
-  "Precision targeting enabled. Tap the battlefield to place cards.": "已啟用精準投放，點擊場地即可指定座標",
+  "Precision targeting enabled. Tap the battlefield to place cards.":
+      "已啟用精準投放，點擊場地即可指定座標",
   "Preload and keep battle animations": "預載並保留對戰動畫",
   "Profile": "個人資料",
   "Profile updated": "個人資料已更新",
@@ -1095,7 +1217,8 @@ const Map<String, String> localeZhHant = <String, String>{
   "Search by name, email, or player ID": "輸入名稱、Email 或玩家 ID",
   "Search players": "搜尋玩家",
   "Searching...": "搜尋中...",
-  "Seconds between attacks. Smaller values attack faster.": "兩次攻擊之間的秒數，越小代表攻擊越快。",
+  "Seconds between attacks. Smaller values attack faster.":
+      "兩次攻擊之間的秒數，越小代表攻擊越快。",
   "Security": "治安",
   "Select Deck": "選擇牌組",
   "Select Hero": "選擇角色",
@@ -1109,7 +1232,8 @@ const Map<String, String> localeZhHant = <String, String>{
   "Sent Requests": "已送出的邀請",
   "Sent a friend request to": "已向",
   "Server Simulation": "伺服器運算",
-  "Server simulation runs in the room server and is the default recommended mode.": "伺服器運算會在房間伺服器端執行，也是目前預設且最建議的模式。",
+  "Server simulation runs in the room server and is the default recommended mode.":
+      "伺服器運算會在房間伺服器端執行，也是目前預設且最建議的模式。",
   "Shield": "護盾",
   "Sign in to continue to the portal and game pages.": "登入後即可繼續使用首頁與遊戲頁面。",
   "Sign in with Google": "使用 Google 帳號登入",
@@ -1123,25 +1247,33 @@ const Map<String, String> localeZhHant = <String, String>{
   "Spell area radius in world units.": "法術範圍半徑，使用世界單位。",
   "Spirit Energy": "精神能量",
   "Spirit Health": "精神血量",
-  "Stores battle character animations locally and reuses them until the server version changes.": "將對戰角色動畫存到本機，伺服器版本變更前會重複使用。",
+  "Stores battle character animations locally and reuses them until the server version changes.":
+      "將對戰角色動畫存到本機，伺服器版本變更前會重複使用。",
   "Swarm": "群體",
   "Taiwan Brawl Blue": "鬼島亂鬥藍",
   "Taiwan Brawl Portal": "鬼島亂鬥入口",
-  "Taiwan Brawl Portal uses Google sign-in and keeps your session with a secure cookie.": "Taiwan Brawl Portal 使用 Google 帳號登入，登入後會用安全 Cookie 維持 session。",
+  "Taiwan Brawl Portal uses Google sign-in and keeps your session with a secure cookie.":
+      "Taiwan Brawl Portal 使用 Google 帳號登入，登入後會用安全 Cookie 維持 session。",
   "Tank": "坦克",
-  "Tap cards to build a combo first. Equipment cards apply to units cast together. Drag a single card or combo into your deployment zone.": "點卡片可先加入組合包，裝備卡會套用到同次出牌的單位。拖曳單卡或組合包到你的部署區即可出牌。",
-  "Tap cards to build a combo first. Equipment cards apply to units cast together. Work cards are cast immediately and resolve a random event.": "先點卡組出 combo。裝備卡只會套在一起施放的單位上；工作卡會立刻施放並觸發隨機事件。",
-  "Tap cards to build a combo, then drag a single card or combo onto the battlefield.": "點卡片可選入組合，拖曳單卡或組合包到戰場部署",
-  "Tap cards to build a combo, then drag onto the battlefield. Work cards trigger instantly.": "先點卡組 combo，再拖到戰場上。工作卡點一下就會立刻觸發。",
+  "Tap cards to build a combo first. Equipment cards apply to units cast together. Drag a single card or combo into your deployment zone.":
+      "點卡片可先加入組合包，裝備卡會套用到同次出牌的單位。拖曳單卡或組合包到你的部署區即可出牌。",
+  "Tap cards to build a combo first. Equipment cards apply to units cast together. Work cards are cast immediately and resolve a random event.":
+      "先點卡組出 combo。裝備卡只會套在一起施放的單位上；工作卡會立刻施放並觸發隨機事件。",
+  "Tap cards to build a combo, then drag a single card or combo onto the battlefield.":
+      "點卡片可選入組合，拖曳單卡或組合包到戰場部署",
+  "Tap cards to build a combo, then drag onto the battlefield. Work cards trigger instantly.":
+      "先點卡組 combo，再拖到戰場上。工作卡點一下就會立刻觸發。",
   "Target Rule": "目標規則",
   "Target is moving": "靶會動",
   "Target is stationary": "靶不會動",
   "Test Connection": "測試連線",
-  "Test your precision in this single-player archery challenge.": "在單人射箭挑戰中測試你的精準度。",
+  "Test your precision in this single-player archery challenge.":
+      "在單人射箭挑戰中測試你的精準度。",
   "Theme": "主題",
   "Theme Mode": "主題模式",
   "They invited you": "對方已邀請你",
-  "This account does not have an available Google avatar.": "這個帳號目前沒有可用的 Google 頭像",
+  "This account does not have an available Google avatar.":
+      "這個帳號目前沒有可用的 Google 頭像",
   "This is you": "這是你自己",
   "Tower": "塔",
   "Traditional Chinese": "繁體中文",
@@ -1151,7 +1283,8 @@ const Map<String, String> localeZhHant = <String, String>{
   "Unblock": "解除封鎖",
   "Unblocked": "已解除封鎖",
   "Unit": "單位",
-  "Unit body size in world units. Final reach uses body radius plus attack range.": "角色本體大小，使用世界單位。最終攻擊範圍會用本體半徑加上攻擊距離計算。",
+  "Unit body size in world units. Final reach uses body radius plus attack range.":
+      "角色本體大小，使用世界單位。最終攻擊範圍會用本體半徑加上攻擊距離計算。",
   "Unknown": "未知",
   "Unknown error": "未知錯誤",
   "Unlock": "解鎖",
@@ -1164,19 +1297,26 @@ const Map<String, String> localeZhHant = <String, String>{
   "Upload Image": "上傳圖片",
   "Upload Selected Image": "上傳選定圖片",
   "Uploaded Avatar Image": "上傳的頭像圖片",
-  "Use an OpenAI-compatible chat completions endpoint for the LLM bot opponent. API keys are stored on your player profile and used only when you create an LLM bot match.": "LLM 對手使用 OpenAI 相容的 chat completions 端點。API key 會儲存在你的玩家設定中，只有建立 LLM 機器人對戰時才會使用。",
-  "Use an uploaded image stored in Taiwan Brawl. You can pick a file from your device and future Google sign-ins will not overwrite it.": "使用你上傳到鬼島亂鬥的圖片，可以直接從裝置選圖，之後 Google 登入也不會覆蓋它。",
-  "Use your Google sign-in avatar. It will sync again the next time you sign in.": "使用 Google 登入時的頭像，之後重新登入也會自動同步最新照片。",
-  "Use your custom image URL. Future Google sign-ins will not overwrite it.": "使用你自訂的圖片網址，之後 Google 登入也不會覆蓋它。",
-  "Verify the current session directly via /api/me": "• 直接使用 /api/me 驗證目前 session",
+  "Use an OpenAI-compatible chat completions endpoint for the LLM bot opponent. API keys are stored on your player profile and used only when you create an LLM bot match.":
+      "LLM 對手使用 OpenAI 相容的 chat completions 端點。API key 會儲存在你的玩家設定中，只有建立 LLM 機器人對戰時才會使用。",
+  "Use an uploaded image stored in Taiwan Brawl. You can pick a file from your device and future Google sign-ins will not overwrite it.":
+      "使用你上傳到鬼島亂鬥的圖片，可以直接從裝置選圖，之後 Google 登入也不會覆蓋它。",
+  "Use your Google sign-in avatar. It will sync again the next time you sign in.":
+      "使用 Google 登入時的頭像，之後重新登入也會自動同步最新照片。",
+  "Use your custom image URL. Future Google sign-ins will not overwrite it.":
+      "使用你自訂的圖片網址，之後 Google 登入也不會覆蓋它。",
+  "Verify the current session directly via /api/me":
+      "• 直接使用 /api/me 驗證目前 session",
   "Verifying Google sign-in...": "正在驗證 Google 登入...",
   "Waiting": "等待中",
   "Waiting for confirmation": "等待對方確認中",
   "Waiting for players": "等待玩家",
-  "Weapon reach in world units. This does not include the unit body radius.": "武器延伸距離，使用世界單位，不包含角色本體半徑。",
+  "Weapon reach in world units. This does not include the unit body radius.":
+      "武器延伸距離，使用世界單位，不包含角色本體半徑。",
   "Welcome back": "歡迎回來",
   "Work Profile": "工作類型",
-  "World unit scale: the battlefield uses 1000-based integer coordinates. Example: Attack Range 280 means 28% of the map height, and Body Radius 18 means the unit body takes 1.8% of the map height.": "世界單位採用 1000 制整數座標。例：Attack Range 280 代表地圖高度的 28%，Body Radius 18 代表角色本體佔地圖高度的 1.8%。",
+  "World unit scale: the battlefield uses 1000-based integer coordinates. Example: Attack Range 280 means 28% of the map height, and Body Radius 18 means the unit body takes 1.8% of the map height.":
+      "世界單位採用 1000 制整數座標。例：Attack Range 280 代表地圖高度的 28%，Body Radius 18 代表角色本體佔地圖高度的 1.8%。",
   "You": "你",
   "You are now friends": "已成為好友",
   "You blocked them": "你已封鎖",
@@ -1188,7 +1328,8 @@ const Map<String, String> localeZhHant = <String, String>{
   "Your Deployment Zone": "我方部署區",
   "Your Left Base": "我方左側基地",
   "Your Right Base": "我方右側基地",
-  "Your session will be kept with a secure cookie after login": "登入後會以安全 Cookie 維持 session",
+  "Your session will be kept with a secure cookie after login":
+      "登入後會以安全 Cookie 維持 session",
   "as a friend": "為好友",
   "event": "事件卡",
   "invites you to join room": "邀你加入房間",
@@ -1204,7 +1345,12 @@ const Map<String, String> localeZhHant = <String, String>{
 final Map<String, Map<String, String>> generatedLocaleCatalog =
     <String, Map<String, String>>{
       'en': Map<String, String>.unmodifiable(localeEn),
-      'ja': Map<String, String>.unmodifiable(<String, String>{...localeEn, ...localeJa}),
-      'zh-Hant': Map<String, String>.unmodifiable(<String, String>{...localeEn, ...localeZhHant}),
+      'ja': Map<String, String>.unmodifiable(<String, String>{
+        ...localeEn,
+        ...localeJa,
+      }),
+      'zh-Hant': Map<String, String>.unmodifiable(<String, String>{
+        ...localeEn,
+        ...localeZhHant,
+      }),
     };
-

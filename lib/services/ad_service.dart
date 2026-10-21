@@ -3,22 +3,18 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import '../config/app_configuration.dart';
+
 /// 廣告 Unit ID — 上線前請替換為 AdMob 後台的正式 ID
 class _AdUnitIds {
-  // ── Banner ──────────────────────────────────────────────
-  static const String _androidBanner = 'ca-app-pub-3940256099942544/6300978111';
-  static const String _iosBanner = 'ca-app-pub-3940256099942544/2934735716';
+  static String banner(AppConfiguration configuration) => Platform.isAndroid
+      ? configuration.androidBannerAdUnitId
+      : configuration.iosBannerAdUnitId;
 
-  // ── Interstitial ────────────────────────────────────────
-  static const String _androidInterstitial =
-      'ca-app-pub-3940256099942544/1033173712';
-  static const String _iosInterstitial =
-      'ca-app-pub-3940256099942544/4411468910';
-
-  static String get banner => Platform.isAndroid ? _androidBanner : _iosBanner;
-
-  static String get interstitial =>
-      Platform.isAndroid ? _androidInterstitial : _iosInterstitial;
+  static String interstitial(AppConfiguration configuration) =>
+      Platform.isAndroid
+      ? configuration.androidInterstitialAdUnitId
+      : configuration.iosInterstitialAdUnitId;
 }
 
 class AdService {
@@ -42,6 +38,7 @@ class AdService {
   static Future<BannerAd> loadBanner({
     AdSize size = AdSize.banner,
     void Function(Ad, LoadAdError)? onFailed,
+    AppConfiguration? configuration,
   }) {
     late final BannerAd ad;
     final future = Future<BannerAd>(() async {
@@ -50,7 +47,9 @@ class AdService {
     });
 
     ad = BannerAd(
-      adUnitId: _AdUnitIds.banner,
+      adUnitId: _AdUnitIds.banner(
+        configuration ?? AppConfiguration.environment,
+      ),
       size: size,
       request: const AdRequest(),
       listener: BannerAdListener(
@@ -67,9 +66,12 @@ class AdService {
   static void loadInterstitial({
     required void Function(InterstitialAd ad) onLoaded,
     void Function(LoadAdError)? onFailed,
+    AppConfiguration? configuration,
   }) {
     InterstitialAd.load(
-      adUnitId: _AdUnitIds.interstitial,
+      adUnitId: _AdUnitIds.interstitial(
+        configuration ?? AppConfiguration.environment,
+      ),
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: onLoaded,

@@ -5,9 +5,10 @@ import 'package:user_basic_system/user_basic_system.dart' as ubs;
 import '../../services/chat_service.dart';
 import '../../services/locale_provider.dart';
 import '../../services/notification_service.dart';
+import 'editable_dm_page.dart';
 
 /// Thin wrapper that supplies [ChatService], locale strings and
-/// [NotificationService] callbacks to the package's [DmPage].
+/// [NotificationService] callbacks to the local editable DM page.
 class DmPage extends StatefulWidget {
   const DmPage({
     super.key,
@@ -38,14 +39,13 @@ class _DmPageState extends State<DmPage> {
   @override
   Widget build(BuildContext context) {
     final t = context.watch<LocaleProvider>().translation;
-    return ubs.DmPage(
+    return EditableDmPage(
       service: widget.chatService,
       friendId: widget.friendId,
       friendName: widget.friendName,
       currentUserId: widget.currentUserId,
       strings: ubs.DmStrings.fromMap(t),
-      onActiveConversationChanged:
-          _notificationService.setActiveConversation,
+      onActiveConversationChanged: _notificationService.setActiveConversation,
     );
   }
 }

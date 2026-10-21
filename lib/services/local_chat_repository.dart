@@ -3,10 +3,11 @@ import 'dart:convert';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/chat_models.dart';
+import 'legacy_chat_store.dart';
 
 /// Local Hive storage for DM chat history.
 /// Each conversation has its own box named `chat_<low_id>_<high_id>`.
-class LocalChatRepository {
+class LocalChatRepository implements LegacyChatStore {
   static const String _boxPrefix = 'chat_';
 
   static String _boxName(int userIdA, int userIdB) {
@@ -20,6 +21,7 @@ class LocalChatRepository {
   }
 
   /// Persist a message. Uses `createdAt_senderId` as a sortable key to avoid duplicates.
+  @override
   Future<void> saveMessage(int selfId, ChatMessage msg) async {
     final box = await _openBox(
       selfId,
@@ -43,6 +45,7 @@ class LocalChatRepository {
   }
 
   /// Delete a message by its original createdAt + senderId key.
+  @override
   Future<void> deleteMessage(
     int selfId,
     int friendId,
@@ -55,6 +58,7 @@ class LocalChatRepository {
   }
 
   /// Load messages for a conversation, newest-last.
+  @override
   Future<List<ChatMessage>> getMessages(int selfId, int friendId) async {
     final box = await _openBox(selfId, friendId);
     final keys = box.keys.toList()..sort();
@@ -76,6 +80,7 @@ class LocalChatRepository {
   }
 
   /// Remove pending flag once message is ack'd (update in-place).
+  @override
   Future<void> markDelivered(
     int selfId,
     int friendId,
@@ -93,6 +98,7 @@ class LocalChatRepository {
   }
 
   /// Mark a message as recalled in local storage.
+  @override
   Future<void> markRecalled(int selfId, int friendId, String messageKey) async {
     final box = await _openBox(selfId, friendId);
     final raw = box.get(messageKey);
@@ -102,7 +108,24 @@ class LocalChatRepository {
     await box.put(messageKey, jsonEncode(map));
   }
 
+  /// Apply an edit from the transport-neutral messaging projection.
+  @override
+  Future<void> updateMessageText(
+    int selfId,
+    int friendId,
+    String messageKey,
+    String text,
+  ) async {
+    final box = await _openBox(selfId, friendId);
+    final raw = box.get(messageKey);
+    if (raw == null) return;
+    final map = jsonDecode(raw) as Map<String, dynamic>;
+    map['text'] = text;
+    await box.put(messageKey, jsonEncode(map));
+  }
+
   /// Read a single message by its messageKey. Returns null if not found.
+  @override
   Future<ChatMessage?> getMessage(
     int selfId,
     int friendId,
@@ -126,12 +149,14 @@ class LocalChatRepository {
   }
 
   /// Clear all locally cached messages for a conversation.
+  @override
   Future<void> clearMessages(int selfId, int friendId) async {
     final box = await _openBox(selfId, friendId);
     await box.clear();
   }
 
   /// Export all messages for the given conversations as a JSON-serialisable map.
+  @override
   /// Format: `{ "chat_<low>_<high>": { "<messageKey>": <rawJson> } }`
   Future<Map<String, Map<String, String>>> exportAll(
     int selfId,
@@ -148,6 +173,7 @@ class LocalChatRepository {
   }
 
   /// Import messages from an exported map, skipping already-existing keys.
+  @override
   Future<void> importAll(Map<String, dynamic> data) async {
     for (final entry in data.entries) {
       final boxName = entry.key;
@@ -161,6 +187,7 @@ class LocalChatRepository {
     }
   }
 
+  @override
   Future<void> closeAll() async {
     await Hive.close();
   }

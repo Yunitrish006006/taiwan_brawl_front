@@ -7,8 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/app_user.dart';
-import '../../models/royale_field_event_info.dart';
-import '../../models/royale_models.dart';
+import 'package:taiwan_brawl_game_mini_royale/taiwan_brawl_game_mini_royale.dart';
 import '../../services/admin_service.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
@@ -63,10 +62,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
     'job_delivery',
     'job_day_labor',
   ];
-  static const List<String> _collisionBehaviorOptions = [
-    'hold',
-    'reroute',
-  ];
+  static const List<String> _collisionBehaviorOptions = ['hold', 'reroute'];
   static const List<String> _energyCostTypeOptions = [
     'physical',
     'spirit',
@@ -171,7 +167,7 @@ class _CardManagementPageState extends State<CardManagementPage> {
   @override
   void initState() {
     super.initState();
-    _adminService = AdminService(ApiClient());
+    _adminService = context.read<AdminService>();
     _applyNewCardDefaults();
     _loadCards();
   }

@@ -1,18 +1,26 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/app_user.dart';
+import '../config/app_configuration.dart';
 import 'api_client.dart';
+import 'auth_remote_source.dart';
 import 'service_utils.dart';
 
 class AuthService extends ChangeNotifier {
-  AuthService(this._apiClient);
+  AuthService(
+    ApiClient apiClient, {
+    AuthRemoteSource? remoteSource,
+    AppConfiguration? configuration,
+  }) : _remoteSource = remoteSource ?? ServerAuthRemoteSource(apiClient),
+       _configuration = configuration ?? AppConfiguration.environment;
 
-  final ApiClient _apiClient;
+  final AuthRemoteSource _remoteSource;
+  final AppConfiguration _configuration;
   AppUser? _user;
   bool _hasInitialized = false;
 
   Future<void> updateLocale(String locale) async {
-    await _apiClient.putJson('/api/users/locale', {'locale': locale});
+    await _remoteSource.updateLocale(locale);
     await refreshMe(silent: true);
   }
 
@@ -24,7 +32,11 @@ class AuthService extends ChangeNotifier {
   bool get hasInitialized => _hasInitialized;
 
   AppUser _readUser(Map<String, dynamic> response) {
-    return jsonModel(response, 'user', AppUser.fromJson);
+    return jsonModel(
+      response,
+      'user',
+      (json) => AppUser.fromJson(json, configuration: _configuration),
+    );
   }
 
   Future<void> _writeAndRefresh(
@@ -41,7 +53,7 @@ class AuthService extends ChangeNotifier {
   Future<void> refreshMe({bool silent = false}) async {
     _setLoading(!silent);
     try {
-      final res = await _apiClient.getJson('/api/me');
+      final res = await _remoteSource.loadCurrentUser();
       _user = _readUser(res);
     } catch (_) {
       _user = null;
@@ -55,13 +67,11 @@ class AuthService extends ChangeNotifier {
   Future<void> verifyGoogleToken(String idToken) async {
     _setLoading(true);
     try {
-      final res = await _apiClient.postJson('/api/google-login', {
-        'id_token': idToken,
-      });
+      final res = await _remoteSource.verifyGoogleToken(idToken);
       _hasInitialized = true;
       _saveUser(res);
     } catch (_) {
-      ApiClient.clearMobileSession();
+      await _remoteSource.clearSession();
       _user = null;
       _hasInitialized = true;
       rethrow;
@@ -77,7 +87,7 @@ class AuthService extends ChangeNotifier {
     required String customAvatarUrl,
   }) async {
     await _writeAndRefresh(
-      () => _apiClient.putJson('/api/users/me', {
+      () => _remoteSource.updateProfile({
         'name': name,
         'bio': bio,
         'avatar_source': avatarSource,
@@ -92,7 +102,7 @@ class AuthService extends ChangeNotifier {
     String? fileName,
   }) async {
     await _writeAndRefresh(
-      () => _apiClient.postJson('/api/users/me/avatar-image', {
+      () => _remoteSource.uploadAvatarImage({
         'bytesBase64': bytesBase64,
         'contentType': contentType,
         'fileName': fileName,
@@ -101,25 +111,15 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> deleteAvatarImage() async {
-    await _writeAndRefresh(
-      () => _apiClient.deleteJson('/api/users/me/avatar-image'),
-    );
+    await _writeAndRefresh(() => _remoteSource.deleteAvatarImage());
   }
 
   Future<void> updateThemeMode(String themeMode) async {
-    await _writeAndRefresh(
-      () => _apiClient.putJson('/api/users/theme-mode', {
-        'theme_mode': themeMode,
-      }),
-    );
+    await _writeAndRefresh(() => _remoteSource.updateThemeMode(themeMode));
   }
 
   Future<void> updateFontSizeScale(double scale) async {
-    await _writeAndRefresh(
-      () => _apiClient.putJson('/api/users/ui-preferences', {
-        'font_size_scale': scale,
-      }),
-    );
+    await _writeAndRefresh(() => _remoteSource.updateUiPreferences(scale));
   }
 
   Future<void> updateLlmBotSettings({
@@ -128,7 +128,7 @@ class AuthService extends ChangeNotifier {
     String? apiKey,
   }) async {
     await _writeAndRefresh(
-      () => _apiClient.putJson('/api/users/llm-bot-settings', {
+      () => _remoteSource.updateLlmBotSettings({
         'base_url': baseUrl,
         'model': model,
         'api_key': apiKey,
@@ -138,11 +138,11 @@ class AuthService extends ChangeNotifier {
 
   Future<void> logout() async {
     try {
-      await _apiClient.postJson('/api/logout', {});
+      await _remoteSource.logout();
     } catch (_) {
       // Ignore API failures when logging out locally.
     }
-    ApiClient.clearMobileSession();
+    await _remoteSource.clearSession();
     _user = null;
     _hasInitialized = true;
     notifyListeners();

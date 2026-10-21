@@ -17,12 +17,15 @@ class SocialUser {
   final String? lastActiveAt;
   final bool isOnline;
 
-  factory SocialUser.fromJson(Map<String, dynamic> json) {
+  factory SocialUser.fromJson(Map<String, dynamic> json, {String? apiBaseUrl}) {
     return SocialUser(
       userId: (json['userId'] as num).toInt(),
       name: json['name'] as String? ?? 'Unknown',
       bio: json['bio'] as String? ?? '',
-      avatarUrl: resolveRemoteImageUrl(json['avatarUrl'] as String?),
+      avatarUrl: resolveRemoteImageUrl(
+        json['avatarUrl'] as String?,
+        apiBaseUrl: apiBaseUrl,
+      ),
       lastActiveAt: json['lastActiveAt'] as String?,
       isOnline: json['isOnline'] as bool? ?? false,
     );
@@ -40,11 +43,17 @@ class FriendRequestItem {
   final String createdAt;
   final SocialUser user;
 
-  factory FriendRequestItem.fromJson(Map<String, dynamic> json) {
+  factory FriendRequestItem.fromJson(
+    Map<String, dynamic> json, {
+    String? apiBaseUrl,
+  }) {
     return FriendRequestItem(
       id: (json['id'] as num).toInt(),
       createdAt: json['createdAt'] as String? ?? '',
-      user: SocialUser.fromJson(json['user'] as Map<String, dynamic>),
+      user: SocialUser.fromJson(
+        json['user'] as Map<String, dynamic>,
+        apiBaseUrl: apiBaseUrl,
+      ),
     );
   }
 }
@@ -55,19 +64,28 @@ class RoomInviteItem {
     required this.roomCode,
     required this.createdAt,
     required this.inviter,
+    this.gameId = 'game.mini-royale',
   });
 
   final int id;
+  final String gameId;
   final String roomCode;
   final String createdAt;
   final SocialUser inviter;
 
-  factory RoomInviteItem.fromJson(Map<String, dynamic> json) {
+  factory RoomInviteItem.fromJson(
+    Map<String, dynamic> json, {
+    String? apiBaseUrl,
+  }) {
     return RoomInviteItem(
       id: (json['id'] as num).toInt(),
+      gameId: json['gameId'] as String? ?? 'game.mini-royale',
       roomCode: json['roomCode'] as String? ?? '',
       createdAt: json['createdAt'] as String? ?? '',
-      inviter: SocialUser.fromJson(json['inviter'] as Map<String, dynamic>),
+      inviter: SocialUser.fromJson(
+        json['inviter'] as Map<String, dynamic>,
+        apiBaseUrl: apiBaseUrl,
+      ),
     );
   }
 }
@@ -87,26 +105,50 @@ class FriendsOverview {
   final List<SocialUser> blockedUsers;
   final List<RoomInviteItem> roomInvites;
 
-  factory FriendsOverview.fromJson(Map<String, dynamic> json) {
+  factory FriendsOverview.fromJson(
+    Map<String, dynamic> json, {
+    String? apiBaseUrl,
+  }) {
     return FriendsOverview(
       friends: (json['friends'] as List<dynamic>? ?? const [])
-          .map((item) => SocialUser.fromJson(item as Map<String, dynamic>))
+          .map(
+            (item) => SocialUser.fromJson(
+              item as Map<String, dynamic>,
+              apiBaseUrl: apiBaseUrl,
+            ),
+          )
           .toList(),
       incomingRequests: (json['incomingRequests'] as List<dynamic>? ?? const [])
           .map(
-            (item) => FriendRequestItem.fromJson(item as Map<String, dynamic>),
+            (item) => FriendRequestItem.fromJson(
+              item as Map<String, dynamic>,
+              apiBaseUrl: apiBaseUrl,
+            ),
           )
           .toList(),
       outgoingRequests: (json['outgoingRequests'] as List<dynamic>? ?? const [])
           .map(
-            (item) => FriendRequestItem.fromJson(item as Map<String, dynamic>),
+            (item) => FriendRequestItem.fromJson(
+              item as Map<String, dynamic>,
+              apiBaseUrl: apiBaseUrl,
+            ),
           )
           .toList(),
       blockedUsers: (json['blockedUsers'] as List<dynamic>? ?? const [])
-          .map((item) => SocialUser.fromJson(item as Map<String, dynamic>))
+          .map(
+            (item) => SocialUser.fromJson(
+              item as Map<String, dynamic>,
+              apiBaseUrl: apiBaseUrl,
+            ),
+          )
           .toList(),
       roomInvites: (json['roomInvites'] as List<dynamic>? ?? const [])
-          .map((item) => RoomInviteItem.fromJson(item as Map<String, dynamic>))
+          .map(
+            (item) => RoomInviteItem.fromJson(
+              item as Map<String, dynamic>,
+              apiBaseUrl: apiBaseUrl,
+            ),
+          )
           .toList(),
     );
   }
@@ -121,23 +163,35 @@ class FriendSearchResult {
   final SocialUser user;
   final String relationshipStatus;
 
-  factory FriendSearchResult.fromJson(Map<String, dynamic> json) {
+  factory FriendSearchResult.fromJson(
+    Map<String, dynamic> json, {
+    String? apiBaseUrl,
+  }) {
     return FriendSearchResult(
-      user: SocialUser.fromJson(json['user'] as Map<String, dynamic>),
+      user: SocialUser.fromJson(
+        json['user'] as Map<String, dynamic>,
+        apiBaseUrl: apiBaseUrl,
+      ),
       relationshipStatus: json['relationshipStatus'] as String? ?? 'none',
     );
   }
 }
 
 class RoomInviteActionResult {
-  const RoomInviteActionResult({required this.status, required this.roomCode});
+  const RoomInviteActionResult({
+    required this.status,
+    required this.roomCode,
+    this.gameId = 'game.mini-royale',
+  });
 
   final String status;
+  final String gameId;
   final String roomCode;
 
   factory RoomInviteActionResult.fromJson(Map<String, dynamic> json) {
     return RoomInviteActionResult(
       status: json['status'] as String? ?? '',
+      gameId: json['gameId'] as String? ?? 'game.mini-royale',
       roomCode: json['roomCode'] as String? ?? '',
     );
   }

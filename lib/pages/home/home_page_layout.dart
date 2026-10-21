@@ -655,9 +655,12 @@ extension _HomePageLayout on _HomePageState {
     );
   }
 
-  Widget _buildDeckBuilderCard(Map<String, String> t) {
+  Widget _buildCollectionCard(
+    GameModuleHomeCollectionEntry entry,
+    Map<String, String> t,
+  ) {
     return GestureDetector(
-      onTap: () => _openRoute('/royale-deck'),
+      onTap: () => _openRoute(entry.routeName),
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -680,7 +683,7 @@ extension _HomePageLayout on _HomePageState {
                 ),
               ),
               child: Icon(
-                Icons.style_outlined,
+                entry.icon,
                 color: Theme.of(
                   context,
                 ).colorScheme.onSurface.withValues(alpha: 0.6),
@@ -693,7 +696,7 @@ extension _HomePageLayout on _HomePageState {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    t.text('Mini Royale Deck Builder'),
+                    t.text(entry.titleKey),
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 15,
@@ -702,7 +705,7 @@ extension _HomePageLayout on _HomePageState {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    t.text('Build and manage your decks'),
+                    t.text(entry.descriptionKey),
                     style: TextStyle(
                       color: Theme.of(
                         context,
@@ -733,6 +736,17 @@ extension _HomePageLayout on _HomePageState {
   }) {
     final showInstallBanner =
         kIsWeb && !installBannerDismissed && _shouldShowInstallBanner();
+    final gameLibrary = context.watch<GameLibraryController>();
+    final gameEntries = homeEntriesForEnabledModules(
+      entries: gameModuleHomeEntries,
+      enabledModuleIds: gameLibrary.enabledModuleIds,
+      moduleIdOf: (entry) => entry.moduleId,
+    );
+    final collectionEntries = homeEntriesForEnabledModules(
+      entries: gameModuleHomeCollections,
+      enabledModuleIds: gameLibrary.enabledModuleIds,
+      moduleIdOf: (entry) => entry.moduleId,
+    );
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
       children: [
@@ -793,65 +807,70 @@ extension _HomePageLayout on _HomePageState {
         ),
         const SizedBox(height: 12),
 
-        // 區塊四：Mini Royale 主卡
-        _animatedSection(
-          begin: 0.2,
-          end: 0.65,
-          child: _buildGameModeCard(
-            title: t.text('Mini Royale Lobby Battle'),
-            subtitle: t.text(
-              'Join a lobby, build your strategy and fight to the top.',
+        for (var index = 0; index < gameEntries.length; index++) ...[
+          _animatedSection(
+            begin: 0.2,
+            end: 0.65,
+            child: _buildGameModeCard(
+              title: t.text(gameEntries[index].titleKey),
+              subtitle: t.text(gameEntries[index].descriptionKey),
+              tag: gameEntries[index].tag,
+              icon: gameEntries[index].icon,
+              accentColor: gameEntries[index].accentColor,
+              isPrimary: gameEntries[index].isPrimary,
+              onTap: () => _openRoute(gameEntries[index].routeName),
             ),
-            tag: 'MULTIPLAYER',
-            icon: Icons.sports_esports_outlined,
-            accentColor: PsnColors.playstationBlue,
-            isPrimary: true,
-            onTap: () => _openRoute('/royale-lobby'),
           ),
-        ),
-        const SizedBox(height: 12),
+          SizedBox(height: index == gameEntries.length - 1 ? 28 : 12),
+        ],
 
-        // 區塊五：射箭遊戲卡
-        _animatedSection(
-          begin: 0.3,
-          end: 0.75,
-          child: _buildGameModeCard(
-            title: t.text('Archery Game'),
-            subtitle: t.text(
-              'Test your precision in this single-player archery challenge.',
-            ),
-            tag: 'SOLO',
-            icon: Icons.architecture,
-            accentColor: const Color(0xFF34C759),
-            onTap: () => _openRoute('/archery'),
-          ),
-        ),
-        const SizedBox(height: 28),
-
-        // 區塊六：收藏標題 + 牌組建造器
-        _animatedSection(
-          begin: 0.45,
-          end: 0.9,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'COLLECTION',
-                style: TextStyle(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.35),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
-                ),
+        if (gameEntries.isEmpty) ...[
+          _animatedSection(
+            begin: 0.45,
+            end: 0.9,
+            child: _buildGameModeCard(
+              title: t.text('Choose games to play'),
+              subtitle: t.text(
+                'Enable games and download optional content in the game library.',
               ),
-              const SizedBox(height: 12),
-              _buildDeckBuilderCard(t),
-            ],
+              tag: 'GAME LIBRARY',
+              icon: Icons.apps,
+              accentColor: PsnColors.playstationBlue,
+              isPrimary: true,
+              onTap: () => _openRoute('/game-library'),
+            ),
           ),
-        ),
-        const SizedBox(height: 48),
+          const SizedBox(height: 28),
+        ],
+
+        if (collectionEntries.isNotEmpty) ...[
+          _animatedSection(
+            begin: 0.45,
+            end: 0.9,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'COLLECTION',
+                  style: TextStyle(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.35),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                for (final entry in collectionEntries) ...[
+                  _buildCollectionCard(entry, t),
+                  const SizedBox(height: 12),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 48),
+        ],
 
         // 區塊七：廣告 Banner（iOS / Android only）
         _animatedSection(
@@ -878,6 +897,11 @@ extension _HomePageLayout on _HomePageState {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildDrawerHeader(user),
+            _buildDrawerNavigationTile(
+              icon: Icons.sports_esports_outlined,
+              label: _t.text('Game Library'),
+              onTap: () => _openRoute('/game-library', closeDrawer: true),
+            ),
             _buildDrawerNavigationTile(
               icon: Icons.edit_outlined,
               label: _t.text('Edit Profile'),

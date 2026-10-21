@@ -31,7 +31,7 @@ class _RoleManagementPageState extends State<RoleManagementPage> {
   @override
   void initState() {
     super.initState();
-    _adminService = AdminService(ApiClient());
+    _adminService = context.read<AdminService>();
     _loadUsers();
   }
 

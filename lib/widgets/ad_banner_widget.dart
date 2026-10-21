@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:provider/provider.dart';
+
+import '../config/app_configuration.dart';
 
 /// 在 iOS / Android 顯示 AdMob Banner 廣告。
 /// Web 或其他平台回傳空白 widget，不載入任何廣告。
@@ -23,15 +26,18 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
   void initState() {
     super.initState();
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-      _loadAd();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadAd();
+      });
     }
   }
 
   void _loadAd() {
+    final configuration = Provider.of<AppConfiguration>(context, listen: false);
     final ad = BannerAd(
       adUnitId: Platform.isAndroid
-          ? 'ca-app-pub-7069919778314728/8321532705'
-          : 'ca-app-pub-7069919778314728/9690454693',
+          ? configuration.androidBannerAdUnitId
+          : configuration.iosBannerAdUnitId,
       size: widget.size,
       request: const AdRequest(),
       listener: BannerAdListener(

@@ -11,8 +11,8 @@ const Duration _friendsOverviewPollInterval = Duration(seconds: 3);
 
 class FriendsOverviewSyncService extends ChangeNotifier
     with WidgetsBindingObserver {
-  FriendsOverviewSyncService(ApiClient apiClient)
-    : _friendsService = FriendsService(apiClient) {
+  FriendsOverviewSyncService(FriendsService friendsService)
+    : _friendsService = friendsService {
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -54,10 +54,7 @@ class FriendsOverviewSyncService extends ChangeNotifier
     unawaited(refreshNow(silent: false));
   }
 
-  Future<void> refreshFor(
-    AuthService auth, {
-    bool silent = true,
-  }) async {
+  Future<void> refreshFor(AuthService auth, {bool silent = true}) async {
     syncAuth(auth);
     if (auth.user == null) {
       return;
