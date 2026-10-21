@@ -399,7 +399,17 @@ jobs:
           if [[ "$BUILD_TARGET" == "ios" && "$NO_CODESIGN" == "true" ]]; then
             flutter build ios --no-codesign
           elif [[ "$BUILD_TARGET" == "macos" && "$NO_CODESIGN" == "true" ]]; then
-            CODE_SIGNING_ALLOWED=NO flutter build macos --debug
+            flutter build macos --config-only
+            xcodebuild \
+              -workspace macos/Runner.xcworkspace \
+              -scheme Runner \
+              -configuration Debug \
+              -destination 'platform=macOS' \
+              -derivedDataPath build/macos/Build \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY='' \
+              build
           elif [[ "$BUILD_TARGET" == "android" ]]; then
             flutter build apk --debug
           elif [[ "$BUILD_TARGET" == "web" ]]; then
