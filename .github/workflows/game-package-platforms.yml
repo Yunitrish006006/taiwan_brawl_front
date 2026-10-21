@@ -345,6 +345,7 @@ jobs:
             no_codesign: true
           - os: macos-latest
             target: macos
+            no_codesign: true
           - os: windows-latest
             target: windows
           - os: ubuntu-latest
@@ -397,6 +398,8 @@ jobs:
         run: |
           if [[ "$BUILD_TARGET" == "ios" && "$NO_CODESIGN" == "true" ]]; then
             flutter build ios --no-codesign
+          elif [[ "$BUILD_TARGET" == "macos" && "$NO_CODESIGN" == "true" ]]; then
+            flutter build macos --no-codesign
           elif [[ "$BUILD_TARGET" == "android" ]]; then
             flutter build apk --debug
           elif [[ "$BUILD_TARGET" == "web" ]]; then
