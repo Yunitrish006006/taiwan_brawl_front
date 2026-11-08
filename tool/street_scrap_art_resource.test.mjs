@@ -43,6 +43,20 @@ const moduleSource = await readFile(
   'utf8',
 );
 
+function assertOptionalPresentation(registration, resourceId, hashName) {
+  // The shell consumes package-owned JSON; metadata is no longer duplicated in
+  // the shell registration. Check the exact resource block, not a later pack.
+  assert.match(registration, /StreetScrapGameManifest\(\)\.toJson\(\)/);
+  const block = moduleSource.match(new RegExp(
+    "\\{\\s*'resourceId':\\s*" + resourceId + ",([\\s\\S]*?)\\n\\s*\\}",
+  ))?.[1];
+  assert.ok(block, `Missing package resource ${resourceId}`);
+  assert.match(block, /'kind': 'presentation'/);
+  assert.match(block, new RegExp("'sha256':\\s*" + hashName + ','));
+  assert.match(block, /'affectsGameplay': false/);
+  assert.match(block, /'required': false/);
+}
+
 test('Street Scrap wood-board presentation resource is transparent and version-hashed', async () => {
   const bytes = await readFile(resourcePath);
   const sha256 = createHash('sha256').update(bytes).digest('hex');
@@ -130,8 +144,7 @@ test('mineral-pack art stays optional end-to-end and the built-in fallback remai
     readFile(new URL('packages/games/street_scrap/lib/src/street_scrap_progress_entry_page.dart', root), 'utf8'),
     readFile(new URL('packages/games/street_scrap/lib/src/street_scrap_item_sprite.dart', root), 'utf8'),
   ]);
-  assert.match(registration, /streetScrapMineralPackArtResourceId[\s\S]*?kind: GameResourceKind\.presentation/);
-  assert.match(registration, /streetScrapMineralPackArtSha256[\s\S]*?affectsGameplay: false[\s\S]*?required: false/);
+  assertOptionalPresentation(registration, 'streetScrapMineralPackArtResourceId', 'streetScrapMineralPackArtSha256');
   assert.match(registration, /validateStreetScrapArtBytes/);
   assert.match(routes, /if \(!mineralPackArtInstalled\) return null/);
   assert.match(entryPage, /validateStreetScrapArtBytes\(mineralPackArtBytes\)/);
@@ -148,8 +161,7 @@ test('wood-chip bundle art stays optional end-to-end and falls back offline', as
     readFile(new URL('packages/games/street_scrap/lib/src/street_scrap_progress_entry_page.dart', root), 'utf8'),
     readFile(new URL('packages/games/street_scrap/lib/src/street_scrap_item_sprite.dart', root), 'utf8'),
   ]);
-  assert.match(registration, /streetScrapWoodChipBundleArtResourceId[\s\S]*?kind: GameResourceKind\.presentation/);
-  assert.match(registration, /streetScrapWoodChipBundleArtSha256[\s\S]*?affectsGameplay: false[\s\S]*?required: false/);
+  assertOptionalPresentation(registration, 'streetScrapWoodChipBundleArtResourceId', 'streetScrapWoodChipBundleArtSha256');
   assert.match(routes, /if \(!woodChipBundleArtInstalled\) return null/);
   assert.match(entryPage, /validateStreetScrapArtBytes\(woodChipBundleArtBytes\)/);
   assert.match(entryPage, /on Object\s*\{\s*woodChipBundleArtBytes = null;/);
@@ -178,8 +190,7 @@ test('fishing scene art stays optional, versioned and keeps its offline fallback
     readFile(new URL('packages/games/street_scrap/lib/src/street_scrap_progress_entry_page.dart', root), 'utf8'),
     readFile(new URL('packages/games/street_scrap/lib/src/street_scrap_fishing_panel.dart', root), 'utf8'),
   ]);
-  assert.match(registration, /streetScrapFishingSceneArtResourceId[\s\S]*?kind: GameResourceKind\.presentation/);
-  assert.match(registration, /streetScrapFishingSceneArtSha256[\s\S]*?affectsGameplay: false[\s\S]*?required: false/);
+  assertOptionalPresentation(registration, 'streetScrapFishingSceneArtResourceId', 'streetScrapFishingSceneArtSha256');
   assert.match(routes, /if \(!fishingSceneArtInstalled\) return null/);
   assert.match(entryPage, /validateStreetScrapFishingSceneArtBytes\(fishingSceneArtBytes\)/);
   assert.match(entryPage, /on Object\s*\{\s*fishingSceneArtBytes = null;/);
@@ -195,8 +206,7 @@ test('tool atlas is registered as an optional presentation pack with safe fallba
     readFile(new URL('packages/games/street_scrap/lib/src/street_scrap_progress_entry_page.dart', root), 'utf8'),
     readFile(new URL('packages/games/street_scrap/lib/src/street_scrap_item_sprite.dart', root), 'utf8'),
   ]);
-  assert.match(registration, /streetScrapToolAtlasResourceId[\s\S]*?kind: GameResourceKind\.presentation/);
-  assert.match(registration, /streetScrapToolAtlasSha256[\s\S]*?affectsGameplay: false[\s\S]*?required: false/);
+  assertOptionalPresentation(registration, 'streetScrapToolAtlasResourceId', 'streetScrapToolAtlasSha256');
   assert.match(registration, /streetScrapToolAtlasResourceId[\s\S]*?validateStreetScrapToolAtlasBytes/);
   assert.match(routes, /if \(!toolAtlasInstalled\) return null/);
   assert.match(entryPage, /validateStreetScrapToolAtlasBytes\(toolAtlasBytes\)/);
@@ -231,8 +241,7 @@ test('protagonist art is a versioned optional pack with a lightweight shell fall
     readFile(new URL('packages/games/street_scrap/lib/src/street_scrap_protagonist_sprite.dart', root), 'utf8'),
     readFile(new URL('packages/games/street_scrap/pubspec.yaml', root), 'utf8'),
   ]);
-  assert.match(registration, /streetScrapProtagonistArtResourceId[\s\S]*?kind: GameResourceKind\.presentation/);
-  assert.match(registration, /streetScrapProtagonistArtSha256[\s\S]*?affectsGameplay: false[\s\S]*?required: false/);
+  assertOptionalPresentation(registration, 'streetScrapProtagonistArtResourceId', 'streetScrapProtagonistArtSha256');
   assert.match(registration, /validateStreetScrapProtagonistArtBytes/);
   assert.match(routes, /protagonistArtInstalled/);
   assert.match(routes, /if \(!protagonistArtInstalled\) return null/);

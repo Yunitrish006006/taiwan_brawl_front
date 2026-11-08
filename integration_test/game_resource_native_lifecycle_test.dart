@@ -31,7 +31,7 @@ class _IntegrationSignatureVerifier implements GameResourceSignatureVerifier {
       signature == 'integration-test-signature';
 }
 
-GameModuleManifest _manifest(Uint8List payload, String version) {
+GameModuleManifest nativeLifecycleManifest(Uint8List payload, String version) {
   const moduleId = 'game.archery';
   const resourceId = 'game.archery.rules';
   return GameModuleManifest(
@@ -48,6 +48,7 @@ GameModuleManifest _manifest(Uint8List payload, String version) {
         kind: GameResourceKind.gameplayData,
         sha256: sha256.convert(payload).toString(),
         affectsGameplay: true,
+        payloadSchemaVersion: 1,
         downloadUrl: 'https://assets.example.test/archery/$version.json',
         byteLength: payload.length,
         signature: 'integration-test-signature',
@@ -113,8 +114,8 @@ void main() {
       const resourceId = 'game.archery.rules';
       final versionOne = Uint8List.fromList([0, 10, 127, 128, 255]);
       final versionTwo = Uint8List.fromList([9, 8, 7, 6, 5, 4]);
-      final manifestOne = _manifest(versionOne, '1.0.0');
-      final manifestTwo = _manifest(versionTwo, '2.0.0');
+      final manifestOne = nativeLifecycleManifest(versionOne, '1.0.0');
+      final manifestTwo = nativeLifecycleManifest(versionTwo, '2.0.0');
       final library = HiveGameLibraryStore(boxName: libraryBox);
       final content = HiveGameResourceContentStore(
         contentBoxName: contentBox,
