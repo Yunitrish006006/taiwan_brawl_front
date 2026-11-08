@@ -52,6 +52,9 @@ class MessagingCoreService {
   final MessageRepository repository;
   final MessagingStorageStatus storageStatus;
 
+  bool get canDurablyRecordConflicts =>
+      storageStatus.isDurable && repository.store is MessageConflictStore;
+
   Stream<MessageProjection> get changes => repository.changes;
 
   /// Builds the shared command boundary for one actor and conversation.
@@ -77,6 +80,7 @@ class MessagingCoreService {
     EventAuthenticator? authenticator,
     FutureOr<void> Function(MessageEvent event)? onRemoteEvent,
     bool Function(MessageEvent event)? eventFilter,
+    Duration? retryInterval,
   }) {
     return MessageSyncEngine(
       repository: repository,
@@ -84,18 +88,22 @@ class MessagingCoreService {
       authenticator: authenticator,
       onRemoteEvent: onRemoteEvent,
       eventFilter: eventFilter,
+      retryInterval: retryInterval,
     );
   }
 
   List<MessageProjection> conversation(String conversationId) =>
       repository.projectionsFor(conversationId);
 
-  Future<void> acceptRemote(
+  Future<bool> acceptRemote(
     MessageEvent event, {
     EventAuthenticator? authenticator,
-  }) async {
-    await repository.acceptRemote(event, authenticator: authenticator);
-  }
+  }) => repository.acceptRemote(event, authenticator: authenticator);
+
+  Future<bool> acceptRemoteBatch(
+    Iterable<MessageEvent> events, {
+    EventAuthenticator? authenticator,
+  }) => repository.acceptRemoteBatch(events, authenticator: authenticator);
 
   Future<void> dispose() => repository.dispose();
 }

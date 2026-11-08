@@ -5,6 +5,37 @@ import 'package:provider/provider.dart';
 
 import '../../services/auth_service.dart';
 
+/// A first frame for the asynchronous composition-root bootstrap.
+///
+/// `main()` initializes local storage and preview/auth services before the
+/// routed app exists. Rendering this shell immediately avoids a white window
+/// during cold start; the fully configured app replaces it when ready.
+class BootstrapLoadingApp extends StatelessWidget {
+  const BootstrapLoadingApp({super.key, this.title = 'Taiwan Brawl'});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: title,
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(title),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
 

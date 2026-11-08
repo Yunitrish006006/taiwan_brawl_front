@@ -2,26 +2,36 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:cryptography/cryptography.dart' hide Hmac;
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
-/// Device identity backed by the same secure credential boundary as the local
-/// message encryption key. It is intentionally independent from an account id.
-///
-/// HMAC is used here as a local signing adapter. The server must not treat this
-/// as a replacement for account authentication or public-key identity until a
-/// key distribution protocol is defined.
+/// Device identity backed by the secure credential boundary and independent
+/// from an account id. New event signatures use Ed25519; legacy HMAC material
+/// is retained only to verify existing peers during the migration window.
 class SecureDeviceIdentity implements DeviceIdentity {
-  SecureDeviceIdentity._({required this.deviceId, required List<int> secret})
-    : _secret = List<int>.unmodifiable(secret);
+  SecureDeviceIdentity._({
+    required this.deviceId,
+    required Ed25519 algorithm,
+    SimpleKeyPair? signingKeyPair,
+    SimplePublicKey? publicKey,
+    List<int>? legacySecret,
+  }) : _algorithm = algorithm,
+       _signingKeyPair = signingKeyPair,
+       _publicKey = publicKey,
+       _legacySecret = legacySecret;
 
-  final List<int> _secret;
+  final Ed25519 _algorithm;
+  final SimpleKeyPair? _signingKeyPair;
+  final SimplePublicKey? _publicKey;
+  final List<int>? _legacySecret;
 
-  /// Material for an explicit, user-approved out-of-band trust invitation.
-  ///
-  /// This is intentionally not part of [DeviceIdentity]. Callers should only
-  /// expose it through a local QR/copy flow after the user chooses to pair a
-  /// device; it must never be sent as a chat event or server message.
-  String get trustedMaterial => base64UrlEncode(_secret);
+  /// Public signing key for an explicit, fingerprint-confirmed trust flow.
+  /// The private seed is never included in this material.
+  String get publicKeyMaterial {
+    final key = _publicKey;
+    if (key == null) throw StateError('Device public key is unavailable');
+    return base64UrlEncode(key.bytes);
+  }
 
   @override
   final String deviceId;
@@ -31,7 +41,8 @@ class SecureDeviceIdentity implements DeviceIdentity {
     String keyPrefix = 'taiwan_brawl.device-identity.',
   }) async {
     final idKey = '${keyPrefix}id';
-    final secretKey = '${keyPrefix}secret';
+    final seedKey = '${keyPrefix}ed25519.seed';
+    final legacySecretKey = '${keyPrefix}secret';
     final storedId = await credentials.read(idKey);
     final deviceId = storedId?.isNotEmpty == true
         ? storedId!
@@ -40,49 +51,100 @@ class SecureDeviceIdentity implements DeviceIdentity {
       await credentials.write(idKey, deviceId);
     }
 
-    final storedSecret = await credentials.read(secretKey);
-    List<int>? secret;
-    if (storedSecret != null) {
+    List<int>? legacySecret;
+    final storedLegacySecret = await credentials.read(legacySecretKey);
+    if (storedLegacySecret != null) {
       try {
-        final decoded = base64Url.decode(storedSecret);
-        if (decoded.length == 32) secret = decoded;
+        final decoded = base64Url.decode(storedLegacySecret);
+        if (decoded.length == 32) {
+          legacySecret = List<int>.unmodifiable(decoded);
+        }
       } on FormatException {
-        // Replace malformed or truncated key material below.
+        // Keep malformed legacy material out of the active identity.
       }
     }
-    secret ??= List<int>.generate(32, (_) => Random.secure().nextInt(256));
-    if (storedSecret == null ||
-        secret.length == 32 && storedSecret != base64UrlEncode(secret)) {
-      await credentials.write(secretKey, base64UrlEncode(secret));
+
+    List<int> seed;
+    final storedSeed = await credentials.read(seedKey);
+    List<int>? decodedSeed;
+    try {
+      decodedSeed = storedSeed == null ? null : base64Url.decode(storedSeed);
+    } on FormatException {
+      decodedSeed = null;
+    }
+    if (decodedSeed != null && decodedSeed.length == 32) {
+      seed = decodedSeed;
+    } else {
+      seed = List<int>.generate(32, (_) => Random.secure().nextInt(256));
+    }
+    final encodedSeed = base64UrlEncode(seed);
+    if (storedSeed != encodedSeed) {
+      await credentials.write(seedKey, encodedSeed);
     }
 
-    return SecureDeviceIdentity._(deviceId: deviceId, secret: secret);
+    final algorithm = Ed25519();
+    final keyPair = await algorithm.newKeyPairFromSeed(seed);
+    final publicKey = await keyPair.extractPublicKey();
+    return SecureDeviceIdentity._(
+      deviceId: deviceId,
+      algorithm: algorithm,
+      signingKeyPair: keyPair,
+      publicKey: publicKey,
+      legacySecret: legacySecret,
+    );
   }
 
-  /// Rehydrates a peer identity from explicitly trusted out-of-band material.
-  ///
-  /// This is intentionally separate from [restore]. It must only be called
-  /// after the user or another authenticated channel has approved the
-  /// material; it is not an automatic key-exchange protocol.
+  /// Creates a verifier from explicit trust material. `ed25519:` material is
+  /// public-only; unprefixed base64 is accepted solely for v1 HMAC migration.
   static Future<SecureDeviceIdentity> fromTrustedMaterial({
     required String deviceId,
-    required String encodedSecret,
+    required String encodedMaterial,
   }) async {
     final normalizedId = deviceId.trim();
     if (normalizedId.isEmpty) {
       throw const FormatException('Trusted device id is required');
     }
-    final secret = base64Url.decode(encodedSecret.trim());
-    if (secret.length != 32) {
-      throw const FormatException('Trusted device secret must be 32 bytes');
+    final material = encodedMaterial.trim();
+    if (material.startsWith('ed25519:')) {
+      final bytes = _decodeKey(material.substring('ed25519:'.length));
+      if (bytes.length != 32) {
+        throw const FormatException(
+          'Trusted Ed25519 public key must be 32 bytes',
+        );
+      }
+      return SecureDeviceIdentity._(
+        deviceId: normalizedId,
+        algorithm: Ed25519(),
+        publicKey: SimplePublicKey(bytes, type: KeyPairType.ed25519),
+      );
     }
-    return SecureDeviceIdentity._(deviceId: normalizedId, secret: secret);
+
+    final legacySecret = _decodeKey(
+      material.startsWith('hmac-sha256:')
+          ? material.substring('hmac-sha256:'.length)
+          : material,
+    );
+    if (legacySecret.length != 32) {
+      throw const FormatException('Trusted legacy HMAC key must be 32 bytes');
+    }
+    return SecureDeviceIdentity._(
+      deviceId: normalizedId,
+      algorithm: Ed25519(),
+      legacySecret: List<int>.unmodifiable(legacySecret),
+    );
   }
 
   @override
   Future<String> sign(String payload) async {
-    final digest = Hmac(sha256, _secret).convert(utf8.encode(payload));
-    return base64UrlEncode(digest.bytes);
+    final keyPair = _signingKeyPair;
+    if (keyPair == null) {
+      throw StateError('A trusted peer public key cannot sign messages');
+    }
+    final signature = await _algorithm.sign(
+      utf8.encode(payload),
+      keyPair: keyPair,
+    );
+    return 'ed25519:${base64UrlEncode(signature.bytes)}';
   }
 
   @override
@@ -92,8 +154,36 @@ class SecureDeviceIdentity implements DeviceIdentity {
     String candidateDeviceId,
   ) async {
     if (candidateDeviceId != deviceId) return false;
-    final expected = await sign(payload);
+    if (signature.startsWith('ed25519:')) {
+      final publicKey = _publicKey;
+      if (publicKey == null) return false;
+      try {
+        final signatureBytes = _decodeKey(
+          signature.substring('ed25519:'.length),
+        );
+        return await _algorithm.verify(
+          utf8.encode(payload),
+          signature: Signature(signatureBytes, publicKey: publicKey),
+        );
+      } on FormatException {
+        return false;
+      }
+    }
+
+    final legacySecret = _legacySecret;
+    if (legacySecret == null) return false;
+    final expected = base64UrlEncode(
+      Hmac(sha256, legacySecret).convert(utf8.encode(payload)).bytes,
+    );
     return _constantTimeEquals(expected, signature);
+  }
+
+  static List<int> _decodeKey(String encoded) {
+    try {
+      return base64Url.decode(base64Url.normalize(encoded));
+    } on FormatException {
+      throw const FormatException('Trusted signing key encoding is invalid');
+    }
   }
 
   static bool _constantTimeEquals(String left, String right) {

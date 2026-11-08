@@ -1,0 +1,24 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/couple_widget_card"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/couple_widget_rose" android:clipToOutline="true">
+    <ImageView android:layout_width="104dp" android:layout_height="104dp"
+        android:layout_gravity="top|end" android:layout_marginTop="-24dp" android:layout_marginEnd="-16dp"
+        android:background="@drawable/couple_widget_orbit" android:importantForAccessibility="no" />
+    <TextView android:id="@+id/couple_widget_heart"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="top|end" android:layout_marginTop="14dp" android:layout_marginEnd="18dp"
+        android:text="♡" android:textSize="20sp" android:alpha="0.45" android:visibility="gone"
+        android:importantForAccessibility="no" />
+    <TextView android:id="@+id/couple_widget_partner"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_gravity="top" android:layout_marginTop="12dp"
+        android:gravity="center" android:paddingStart="20dp" android:paddingEnd="20dp"
+        android:maxLines="1" android:ellipsize="end" android:textSize="12sp" android:textColor="#57263D"
+        android:importantForAccessibility="no" />
+    <TextView android:id="@+id/couple_widget_text"
+        android:layout_width="match_parent" android:layout_height="match_parent"
+        android:gravity="center" android:padding="16dp" android:maxLines="2"
+        android:fontFamily="sans-serif-medium" android:letterSpacing="0.015"
+        android:textColor="#57263D" android:textSize="28sp" android:text="@string/couple_widget_signed_out" />
+</FrameLayout>

@@ -250,6 +250,19 @@ class GameResourceInstaller {
       await contentStore.activateSet(moduleId, nextActiveSet);
       activated = true;
       for (final resource in resources) {
+        final activePayload = await contentStore.readActive(
+          moduleId,
+          resource.resourceId,
+        );
+        if (activePayload == null ||
+            sha256.convert(activePayload).toString().toLowerCase() !=
+                resource.sha256.toLowerCase()) {
+          throw StateError(
+            'Activated resource ${resource.resourceId} is not readable from the local cache.',
+          );
+        }
+      }
+      for (final resource in resources) {
         await _record(
           moduleId,
           resource,

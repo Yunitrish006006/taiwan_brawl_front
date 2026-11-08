@@ -35,6 +35,12 @@
 </head>
 <body>
   <script src="display_context.js" defer></script>
+  <script src="street_scrap_writer_lock.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('app-shell-sw.js').catch(() => {});
+    }
+  </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

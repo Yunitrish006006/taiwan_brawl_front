@@ -14,8 +14,8 @@ class InMemoryMessageTransport implements MessageTransport {
   bool _connected = false;
 
   static (InMemoryMessageTransport, InMemoryMessageTransport) pair() {
-    final leftToRight = StreamController<MessageEvent>();
-    final rightToLeft = StreamController<MessageEvent>();
+    final leftToRight = StreamController<MessageEvent>.broadcast();
+    final rightToLeft = StreamController<MessageEvent>.broadcast();
     final left = InMemoryMessageTransport._(rightToLeft);
     final right = InMemoryMessageTransport._(leftToRight);
     left._outgoing = leftToRight;

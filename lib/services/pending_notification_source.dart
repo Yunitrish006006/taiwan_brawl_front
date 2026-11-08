@@ -1,4 +1,7 @@
+import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
+
 import 'api_client.dart';
+import 'server_message_transport.dart';
 
 /// Returns the pending-row ids that were durably handled by the consumer.
 typedef PendingNotificationHandler =
@@ -6,6 +9,16 @@ typedef PendingNotificationHandler =
 
 /// Application-facing source for background DM notifications.
 abstract interface class PendingNotificationSource {
+  /// Converts a source-specific pending row into a transport-neutral event.
+  ///
+  /// Implementations own any wire-format parsing. Sources without event rows
+  /// can return null and leave legacy notification handling to the consumer.
+  MessageEvent? eventFromPendingRow(
+    Map<String, dynamic> row, {
+    required int selfId,
+    required int friendId,
+  });
+
   Future<void> poll({
     required int selfId,
     required int? activeConversationUserId,
@@ -24,6 +37,17 @@ class ServerPendingNotificationSource implements PendingNotificationSource {
 
   final ApiClient _apiClient;
   bool _disposed = false;
+
+  @override
+  MessageEvent? eventFromPendingRow(
+    Map<String, dynamic> row, {
+    required int selfId,
+    required int friendId,
+  }) => ServerMessageTransport.eventFromPendingRow(
+    row,
+    selfId: selfId,
+    friendId: friendId,
+  );
 
   @override
   Future<void> poll({

@@ -1,0 +1,1666 @@
+{
+  "schemaVersion": 1,
+  "gameId": "game.street-scrap",
+  "packId": "game.street-scrap.content.chapter-5",
+  "packVersion": "0.1.24",
+  "contentScope": "chapter5",
+  "rulesetVersion": 1,
+  "saveSchemaVersion": 1,
+  "status": "compiled-design-content-not-runtime-ready",
+  "optionalResource": true,
+  "compatibility": {
+    "shellApiRange": ">=1.0.0 <2.0.0",
+    "minimumShellVersion": null,
+    "note": "Bind minimum shell version to the production owner package before publishing a resource catalog."
+  },
+  "chapters": [
+    5
+  ],
+  "quality": {
+    "range": [
+      0,
+      100
+    ],
+    "tiers": [
+      {
+        "id": "poor",
+        "min": 0,
+        "max": 39,
+        "label": "粗劣"
+      },
+      {
+        "id": "ordinary",
+        "min": 40,
+        "max": 69,
+        "label": "普通"
+      },
+      {
+        "id": "good",
+        "min": 70,
+        "max": 89,
+        "label": "良好"
+      },
+      {
+        "id": "excellent",
+        "min": 90,
+        "max": 100,
+        "label": "優良"
+      }
+    ],
+    "sourceSection": "docs/third-game-design-plan.md section 11.3"
+  },
+  "itemDefinitions": [
+    {
+      "id": "water.distilled",
+      "name": "蒸餾水",
+      "phase": 5,
+      "location": "content",
+      "footprint": null
+    },
+    {
+      "id": "water.mineral",
+      "name": "礦泉水",
+      "phase": 5,
+      "location": "content",
+      "footprint": null
+    },
+    {
+      "id": "material.mineral_pack",
+      "name": "礦物包",
+      "phase": 5,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "seasoning.blend",
+      "name": "綜合香料",
+      "phase": 5,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "fuel.efficient_pack",
+      "name": "節能燃料包",
+      "phase": 5,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "bag.weatherproof",
+      "name": "耐候收納袋",
+      "phase": 5,
+      "location": "equipment",
+      "footprint": null
+    },
+    {
+      "id": "storage.reinforced_chest",
+      "name": "加固箱櫃",
+      "phase": 5,
+      "location": "grid",
+      "footprint": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "tool.kit",
+      "name": "維修工具組",
+      "phase": 5,
+      "location": "grid",
+      "footprint": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "tool.rod_advanced",
+      "name": "改良釣竿",
+      "phase": 5,
+      "location": "grid",
+      "baseDurability": 40,
+      "footprint": [
+        1,
+        3
+      ]
+    },
+    {
+      "id": "tool.cook_kit",
+      "name": "外出料理組",
+      "phase": 5,
+      "location": "grid",
+      "footprint": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "tool.condenser",
+      "name": "冷凝器",
+      "phase": 5,
+      "location": "grid",
+      "footprint": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "structure.shelter",
+      "name": "可折雨棚",
+      "phase": 5,
+      "location": "grid",
+      "footprint": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "meal.shared",
+      "name": "共享餐",
+      "phase": 5,
+      "location": "content",
+      "footprint": null
+    }
+  ],
+  "recipes": [
+    {
+      "id": "ss.recipe.distill_water",
+      "phase": 5,
+      "station": "kitchen",
+      "operation": {
+        "id": "heat",
+        "durationSeconds": 15,
+        "instructions": "15 秒，接管及控火；三段熱控檢查點；保留水質數值，低礦物特性用於精密清潔",
+        "manualCheckpoints": [
+          {
+            "prompt": "起火後先控制哪個火力區段？",
+            "options": [
+              "依提示維持穩定加熱",
+              "使用過低火力",
+              "任意拉到最大火力"
+            ],
+            "correctOption": 0
+          },
+          {
+            "prompt": "中段如何維持水溫？",
+            "options": [
+              "忽略提示持續升溫",
+              "關火後直接完成",
+              "把滑桿對準本步提示區"
+            ],
+            "correctOption": 2
+          },
+          {
+            "prompt": "完成煮沸前確認什麼？",
+            "options": [
+              "只看水的品質數字",
+              "不檢查煮沸旗標",
+              "三段控火都符合提示"
+            ],
+            "correctOption": 2
+          }
+        ]
+      },
+      "inputGroups": [
+        [
+          {
+            "item": "container.clean",
+            "quantity": 1
+          },
+          {
+            "item": "fuel.dry",
+            "quantity": 2
+          }
+        ]
+      ],
+      "reusableTools": [
+        "tool.condenser"
+      ],
+      "outputs": [],
+      "stateEffect": {
+        "type": "transformContainerContent",
+        "containerItemId": "container.clean",
+        "fromContentItemId": "water.filtered",
+        "toContentItemId": "water.distilled",
+        "successCleanliness": "utility",
+        "successRequiresBoiling": false,
+        "preserveContainerContentQuality": true
+      },
+      "quality": {
+        "primaryInputs": [
+          "container.clean"
+        ],
+        "loss": 0,
+        "mode": "weighted-primary",
+        "masteryRevision": 1
+      },
+      "traitResolution": {
+        "inherit": [],
+        "polarity": {},
+        "success": {},
+        "precise": {},
+        "failure": {}
+      },
+      "qualityTraitEffects": [
+        {
+          "inputItemId": "fuel.dry",
+          "traitId": "smoky",
+          "polarity": "negative",
+          "modifier": -3
+        }
+      ],
+      "identity": {
+        "retainedInputIds": []
+      },
+      "failure": {
+        "trigger": "operationFailed",
+        "mode": "explicitOutcome",
+        "outcome": "失手保留原瓶過濾水、燃料全耗；冷凝器保留；非主線必要",
+        "sourceSection": "12.3"
+      },
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 0,
+        "consumeSelectedInputs": true
+      }
+    },
+    {
+      "id": "ss.recipe.shared_meal",
+      "phase": 5,
+      "station": "kitchen",
+      "operation": {
+        "id": "cook",
+        "durationSeconds": 15,
+        "instructions": "15 秒，依序備料；開水作為容器內容消耗，原瓶／罐留在棋盤並變空；魚肉可用清理食材 2 替代",
+        "manualCheckpoints": [
+          {
+            "prompt": "備料時先處理哪一項？",
+            "options": [
+              "先把燃料加入冷鍋",
+              "略過食材檢查",
+              "依序完成食材準備"
+            ],
+            "correctOption": 2
+          },
+          {
+            "prompt": "火力應如何維持？",
+            "options": [
+              "全程最大火",
+              "按料理提示維持穩定小火",
+              "熄火後才加入食材"
+            ],
+            "correctOption": 1
+          },
+          {
+            "prompt": "完成料理後如何收尾？",
+            "options": [
+              "確認熟度並完成出餐",
+              "保留未煮食材當作成品",
+              "丟棄原容器並生成新瓶"
+            ],
+            "correctOption": 0
+          }
+        ]
+      },
+      "inputGroups": [
+        [
+          {
+            "item": "food.cleaned",
+            "quantity": 2
+          },
+          {
+            "item": "fish.meat",
+            "quantity": 1
+          },
+          {
+            "item": "container.clean",
+            "quantity": 1
+          },
+          {
+            "item": "fuel.dry",
+            "quantity": 2
+          }
+        ],
+        [
+          {
+            "item": "food.cleaned",
+            "quantity": 2
+          },
+          {
+            "item": "fish.meat",
+            "quantity": 1
+          },
+          {
+            "item": "container.clean_jar",
+            "quantity": 1
+          },
+          {
+            "item": "fuel.dry",
+            "quantity": 2
+          }
+        ],
+        [
+          {
+            "item": "food.cleaned",
+            "quantity": 4
+          },
+          {
+            "item": "container.clean",
+            "quantity": 1
+          },
+          {
+            "item": "fuel.dry",
+            "quantity": 2
+          }
+        ],
+        [
+          {
+            "item": "food.cleaned",
+            "quantity": 4
+          },
+          {
+            "item": "container.clean_jar",
+            "quantity": 1
+          },
+          {
+            "item": "fuel.dry",
+            "quantity": 2
+          }
+        ]
+      ],
+      "reusableTools": [],
+      "outputs": [
+        {
+          "item": "meal.shared",
+          "quantity": 1
+        }
+      ],
+      "stateEffect": {
+        "type": "transformContainers",
+        "containers": [
+          {
+            "containerItemId": "container.clean",
+            "optional": true,
+            "requiredContentItemId": "water.boiled",
+            "successContentItemId": null,
+            "failureContentItemId": null,
+            "successCleanliness": "utility",
+            "failureCleanliness": "utility"
+          },
+          {
+            "containerItemId": "container.clean_jar",
+            "optional": true,
+            "requiredContentItemId": "water.boiled",
+            "successContentItemId": null,
+            "failureContentItemId": null,
+            "successCleanliness": "utility",
+            "failureCleanliness": "utility"
+          }
+        ]
+      },
+      "quality": {
+        "primaryInputs": [
+          "food.cleaned",
+          "fish.meat"
+        ],
+        "loss": 0,
+        "mode": "weighted-primary",
+        "masteryRevision": 1
+      },
+      "traitResolution": {
+        "inherit": [],
+        "polarity": {},
+        "success": {},
+        "precise": {},
+        "failure": {}
+      },
+      "qualityTraitEffects": [
+        {
+          "inputItemId": "food.cleaned",
+          "traitId": "rich_ingredient",
+          "polarity": "positive",
+          "modifier": 3
+        },
+        {
+          "inputItemId": "food.cleaned",
+          "traitId": "rough_cut",
+          "polarity": "negative",
+          "modifier": -3
+        },
+        {
+          "inputItemId": "fish.meat",
+          "traitId": "rich_ingredient",
+          "polarity": "positive",
+          "modifier": 3
+        },
+        {
+          "inputItemId": "fish.meat",
+          "traitId": "rough_cut",
+          "polarity": "negative",
+          "modifier": -3
+        },
+        {
+          "inputItemId": "fuel.dry",
+          "traitId": "smoky",
+          "polarity": "negative",
+          "modifier": -3
+        }
+      ],
+      "identity": {
+        "retainedInputIds": []
+      },
+      "failure": {
+        "trigger": "operationFailed",
+        "mode": "reducedQualityOutput",
+        "outcome": "沿用章節17.3通則：產出主物品，品質−10；按配方扣除已確認消耗的輸入與輔料。",
+        "sourceSection": "12.4"
+      },
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      }
+    },
+    {
+      "id": "ss.recipe.toolkit",
+      "phase": 5,
+      "station": "workbench",
+      "operation": {
+        "id": "assemble",
+        "durationSeconds": 10,
+        "instructions": "裝入工具袋；`tool.kit`，2×2，保留內含工具身份，使用時只磨耗所用工具",
+        "manualCheckpoints": []
+      },
+      "inputGroups": [
+        [
+          {
+            "item": "tool.pliers",
+            "quantity": 1
+          },
+          {
+            "item": "tool.awl",
+            "quantity": 1
+          },
+          {
+            "item": "paper.packaging",
+            "quantity": 1
+          }
+        ]
+      ],
+      "reusableTools": [],
+      "outputs": [
+        {
+          "item": "tool.kit",
+          "quantity": 1
+        }
+      ],
+      "quality": {
+        "primaryInputs": [
+          "tool.pliers"
+        ],
+        "loss": 0,
+        "mode": "preserve-primary",
+        "masteryRevision": 1
+      },
+      "traitResolution": {
+        "inherit": [],
+        "polarity": {},
+        "success": {},
+        "precise": {},
+        "failure": {}
+      },
+      "qualityTraitEffects": [],
+      "identity": {
+        "retainedInputIds": [
+          "tool.pliers",
+          "tool.awl"
+        ]
+      },
+      "failure": {
+        "trigger": "operationFailed",
+        "mode": "noPenalty",
+        "outcome": "確認式操作不進入失誤分支。",
+        "sourceSection": "13.2"
+      }
+    },
+    {
+      "id": "ss.recipe.advanced_rod",
+      "phase": 5,
+      "station": "workbench",
+      "operation": {
+        "id": "assemble",
+        "durationSeconds": 10,
+        "instructions": "`tool.rod_advanced`，1×3，收線容錯 +20%，不與原竿 +10% 疊加",
+        "manualCheckpoints": []
+      },
+      "inputGroups": [
+        [
+          {
+            "item": "tool.rod_repaired",
+            "quantity": 1
+          },
+          {
+            "item": "plastic.float_part",
+            "quantity": 1
+          },
+          {
+            "item": "line.fishing",
+            "quantity": 2
+          }
+        ]
+      ],
+      "reusableTools": [],
+      "outputs": [
+        {
+          "item": "tool.rod_advanced",
+          "quantity": 1
+        }
+      ],
+      "quality": {
+        "primaryInputs": [
+          "tool.rod_repaired"
+        ],
+        "loss": 0,
+        "mode": "preserve-primary",
+        "masteryRevision": 1
+      },
+      "traitResolution": {
+        "inherit": [],
+        "polarity": {},
+        "success": {},
+        "precise": {},
+        "failure": {}
+      },
+      "qualityTraitEffects": [],
+      "identity": {
+        "retainedInputIds": [
+          "tool.rod_repaired"
+        ]
+      },
+      "failure": {
+        "trigger": "operationFailed",
+        "mode": "reducedQualityOutput",
+        "outcome": "沿用章節17.3通則：產出主物品，品質−10；按配方扣除已確認消耗的輸入與輔料。",
+        "sourceSection": "13.2"
+      }
+    },
+    {
+      "id": "ss.recipe.shelter",
+      "phase": 5,
+      "station": "workbench",
+      "operation": {
+        "id": "align",
+        "durationSeconds": 10,
+        "instructions": "`structure.shelter`，2×2；新街區住處目標，放置佔家具位 1",
+        "manualCheckpoints": [
+          {
+            "prompt": "先校準哪一處？",
+            "options": [
+              "只看材料顏色",
+              "把兩端交叉",
+              "兩端標記對齊"
+            ],
+            "correctOption": 2
+          },
+          {
+            "prompt": "接縫或直角如何確認？",
+            "options": [
+              "任意角度都可",
+              "偏差在提示容差內",
+              "不看校準標記"
+            ],
+            "correctOption": 1
+          },
+          {
+            "prompt": "完成定位前最後檢查什麼？",
+            "options": [
+              "接合位置與影子輪廓一致",
+              "增加表外材料",
+              "先移除仍需保留的零件"
+            ],
+            "correctOption": 0
+          }
+        ]
+      },
+      "inputGroups": [
+        [
+          {
+            "item": "structure.tarp",
+            "quantity": 1
+          },
+          {
+            "item": "wood.frame",
+            "quantity": 1
+          },
+          {
+            "item": "plastic.seal",
+            "quantity": 2
+          }
+        ]
+      ],
+      "reusableTools": [],
+      "outputs": [
+        {
+          "item": "structure.shelter",
+          "quantity": 1
+        }
+      ],
+      "quality": {
+        "primaryInputs": [
+          "structure.tarp",
+          "wood.frame"
+        ],
+        "loss": 0,
+        "mode": "weighted-primary",
+        "masteryRevision": 1
+      },
+      "traitResolution": {
+        "inherit": [
+          {
+            "inputItemId": "structure.tarp",
+            "map": {
+              "joint_reinforced": "joint_reinforced"
+            }
+          },
+          {
+            "inputItemId": "wood.frame",
+            "map": {
+              "joint_reinforced": "joint_reinforced"
+            }
+          }
+        ],
+        "polarity": {
+          "joint_reinforced": "positive"
+        },
+        "success": {},
+        "precise": {},
+        "failure": {}
+      },
+      "qualityTraitEffects": [
+        {
+          "inputItemId": "wood.frame",
+          "traitId": "damp",
+          "polarity": "negative",
+          "modifier": -3
+        }
+      ],
+      "identity": {
+        "retainedInputIds": []
+      },
+      "failure": {
+        "trigger": "operationFailed",
+        "mode": "reducedQualityOutput",
+        "outcome": "沿用章節17.3通則：產出主物品，品質−10；按配方扣除已確認消耗的輸入與輔料。",
+        "sourceSection": "13.2"
+      },
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      }
+    },
+    {
+      "id": "ss.recipe.cook_kit",
+      "phase": 5,
+      "station": "workbench",
+      "operation": {
+        "id": "assemble",
+        "durationSeconds": 10,
+        "instructions": "`tool.cook_kit`，2×3；包裝型委託，首版不增加野外烹煮系統",
+        "manualCheckpoints": []
+      },
+      "inputGroups": [
+        [
+          {
+            "item": "tool.pot",
+            "quantity": 1
+          },
+          {
+            "item": "tool.stove",
+            "quantity": 1
+          },
+          {
+            "item": "paper.packaging",
+            "quantity": 2
+          }
+        ]
+      ],
+      "reusableTools": [],
+      "outputs": [],
+      "stateEffect": {
+        "type": "packObjects",
+        "retainedInputIds": [
+          "tool.pot",
+          "tool.stove"
+        ],
+        "toItemId": "tool.cook_kit",
+        "packingRuleId": "tool.pot"
+      },
+      "quality": {
+        "primaryInputs": [
+          "tool.pot"
+        ],
+        "loss": 0,
+        "mode": "preserve-primary",
+        "masteryRevision": 1
+      },
+      "traitResolution": {
+        "inherit": [],
+        "polarity": {},
+        "success": {},
+        "precise": {},
+        "failure": {}
+      },
+      "qualityTraitEffects": [],
+      "identity": {
+        "retainedInputIds": [
+          "tool.pot",
+          "tool.stove"
+        ]
+      },
+      "failure": {
+        "trigger": "operationFailed",
+        "mode": "noPenalty",
+        "outcome": "確認式操作不進入失誤分支。",
+        "sourceSection": "13.2"
+      }
+    },
+    {
+      "id": "ss.recipe.reinforced_chest",
+      "phase": 5,
+      "station": "workbench",
+      "operation": {
+        "id": "align",
+        "durationSeconds": 10,
+        "instructions": "容量 20、家具位 1；已放置箱先指定內容搬移位置，滿箱不能作輸入",
+        "manualCheckpoints": [
+          {
+            "prompt": "加固前要先對齊哪裡？",
+            "options": [
+              "木板邊緣與箱角標記",
+              "箱子外側顏色",
+              "先敲入所有釘件"
+            ],
+            "correctOption": 0
+          },
+          {
+            "prompt": "兩塊加固板如何固定？",
+            "options": [
+              "只靠膠料黏住",
+              "重疊遮住箱蓋",
+              "沿接縫定位並鎖上釘件"
+            ],
+            "correctOption": 2
+          },
+          {
+            "prompt": "完成後要檢查什麼？",
+            "options": [
+              "只看外觀顏色",
+              "容量可以任意增加",
+              "四角穩固且箱蓋能開合"
+            ],
+            "correctOption": 2
+          }
+        ]
+      },
+      "inputGroups": [
+        [
+          {
+            "item": "storage.wooden_crate",
+            "quantity": 1
+          },
+          {
+            "item": "wood.board",
+            "quantity": 2
+          },
+          {
+            "item": "metal.fastener",
+            "quantity": 2
+          }
+        ]
+      ],
+      "reusableTools": [],
+      "outputs": [],
+      "stateEffect": {
+        "type": "transformObject",
+        "fromItemId": "storage.wooden_crate",
+        "toItemId": "storage.reinforced_chest",
+        "requireEmptyContainer": true
+      },
+      "quality": {
+        "primaryInputs": [
+          "storage.wooden_crate"
+        ],
+        "loss": 0,
+        "mode": "preserve-primary",
+        "masteryRevision": 2
+      },
+      "traitResolution": {
+        "inherit": [],
+        "polarity": {},
+        "success": {},
+        "precise": {},
+        "failure": {}
+      },
+      "qualityTraitEffects": [],
+      "identity": {
+        "retainedInputIds": [
+          "storage.wooden_crate"
+        ]
+      },
+      "failure": {
+        "trigger": "operationFailed",
+        "mode": "reducedQualityOutput",
+        "outcome": "沿用章節17.3通則：產出主物品，品質−10；按配方扣除已確認消耗的輸入與輔料。",
+        "sourceSection": "13.2"
+      },
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      }
+    },
+    {
+      "id": "ss.recipe.weather_bag",
+      "phase": 5,
+      "station": "workbench",
+      "operation": {
+        "id": "sew",
+        "durationSeconds": 10,
+        "instructions": "`bag.weatherproof`，背包 6×4，保留原座標；前置修補背包，一次性",
+        "manualCheckpoints": [
+          {
+            "prompt": "第 1 針應穿過哪裡？",
+            "options": [
+              "孔外任意位置",
+              "第 1 個標示孔中心",
+              "跳到最後一孔"
+            ],
+            "correctOption": 1
+          },
+          {
+            "prompt": "第 2 針如何接續？",
+            "options": [
+              "依序穿過第 2 個標示孔",
+              "反向跳過標示孔",
+              "穿過材料邊緣"
+            ],
+            "correctOption": 0
+          },
+          {
+            "prompt": "收線前最後一針放在哪裡？",
+            "options": [
+              "第 1 孔重複穿刺",
+              "孔外任意位置",
+              "第 3 個標示孔中心"
+            ],
+            "correctOption": 2
+          }
+        ]
+      },
+      "inputGroups": [
+        [
+          {
+            "item": "cloth.waterproof",
+            "quantity": 2
+          },
+          {
+            "item": "wood.board",
+            "quantity": 1
+          },
+          {
+            "item": "rope.coarse",
+            "quantity": 2
+          },
+          {
+            "item": "cloth.thread_spool",
+            "quantity": 1
+          }
+        ]
+      ],
+      "reusableTools": [
+        "bag.reinforced"
+      ],
+      "outputs": [
+        {
+          "item": "bag.weatherproof",
+          "quantity": 1
+        }
+      ],
+      "quality": {
+        "primaryInputs": [
+          "cloth.waterproof"
+        ],
+        "loss": 0,
+        "mode": "weighted-primary",
+        "masteryRevision": 1
+      },
+      "traitResolution": {
+        "inherit": [],
+        "polarity": {},
+        "success": {},
+        "precise": {},
+        "failure": {}
+      },
+      "qualityTraitEffects": [
+        {
+          "inputItemId": "cloth.waterproof",
+          "traitId": "sealed",
+          "polarity": "positive",
+          "modifier": 3
+        }
+      ],
+      "identity": {
+        "retainedInputIds": []
+      },
+      "failure": {
+        "trigger": "operationFailed",
+        "mode": "reducedQualityOutput",
+        "outcome": "沿用章節17.3通則：產出主物品，品質−10；按配方扣除已確認消耗的輸入與輔料。",
+        "sourceSection": "13.2"
+      },
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      }
+    },
+    {
+      "id": "ss.recipe.condenser",
+      "phase": 5,
+      "station": "workbench",
+      "operation": {
+        "id": "assemble",
+        "durationSeconds": 10,
+        "instructions": "2×2，罐成為裝置的一部分；保留工具不產額外空罐",
+        "manualCheckpoints": []
+      },
+      "inputGroups": [
+        [
+          {
+            "item": "metal.sheet",
+            "quantity": 2
+          },
+          {
+            "item": "plastic.seal",
+            "quantity": 2
+          },
+          {
+            "item": "container.clean_jar",
+            "quantity": 1
+          }
+        ]
+      ],
+      "reusableTools": [],
+      "outputs": [
+        {
+          "item": "tool.condenser",
+          "quantity": 1
+        }
+      ],
+      "quality": {
+        "primaryInputs": [
+          "metal.sheet"
+        ],
+        "loss": 0,
+        "mode": "weighted-primary",
+        "masteryRevision": 1
+      },
+      "traitResolution": {
+        "inherit": [],
+        "polarity": {},
+        "success": {},
+        "precise": {},
+        "failure": {}
+      },
+      "qualityTraitEffects": [
+        {
+          "inputItemId": "metal.sheet",
+          "traitId": "smooth_metal",
+          "polarity": "positive",
+          "modifier": 3
+        },
+        {
+          "inputItemId": "metal.sheet",
+          "traitId": "rusted",
+          "polarity": "negative",
+          "modifier": -3
+        },
+        {
+          "inputItemId": "plastic.seal",
+          "traitId": "sealed",
+          "polarity": "positive",
+          "modifier": 3
+        }
+      ],
+      "identity": {
+        "retainedInputIds": [
+          "container.clean_jar"
+        ]
+      },
+      "failure": {
+        "trigger": "operationFailed",
+        "mode": "reducedQualityOutput",
+        "outcome": "沿用章節17.3通則：產出主物品，品質−10；按配方扣除已確認消耗的輸入與輔料。",
+        "sourceSection": "13.2"
+      }
+    },
+    {
+      "id": "ss.recipe.blend_seasoning",
+      "phase": 5,
+      "station": "kitchen",
+      "operation": {
+        "id": "mix",
+        "durationSeconds": 10,
+        "instructions": "`seasoning.blend`，1×1；可替代調味包，品質加分仍為 +3，不重複疊加",
+        "manualCheckpoints": [
+          {
+            "prompt": "第 1 次配比調整如何選？",
+            "options": [
+              "任意選最小值",
+              "加入未列材料",
+              "選提示標示的滑桿區段"
+            ],
+            "correctOption": 2
+          },
+          {
+            "prompt": "第 2 次調整以什麼為準？",
+            "options": [
+              "隱藏配方猜測",
+              "提示的比例／濃稠度目標",
+              "把所有材料一次加倍"
+            ],
+            "correctOption": 1
+          },
+          {
+            "prompt": "混合完成何時停止？",
+            "options": [
+              "無限攪拌到耗盡工具",
+              "達到提示目標區段",
+              "忽略目標再補材料"
+            ],
+            "correctOption": 1
+          }
+        ]
+      },
+      "inputGroups": [
+        [
+          {
+            "item": "seasoning.packet",
+            "quantity": 2
+          },
+          {
+            "item": "seasoning.salt",
+            "quantity": 1
+          }
+        ]
+      ],
+      "reusableTools": [],
+      "outputs": [
+        {
+          "item": "seasoning.blend",
+          "quantity": 1
+        }
+      ],
+      "quality": {
+        "primaryInputs": [
+          "seasoning.packet"
+        ],
+        "loss": 0,
+        "mode": "weighted-primary",
+        "masteryRevision": 1
+      },
+      "traitResolution": {
+        "inherit": [],
+        "polarity": {},
+        "success": {},
+        "precise": {},
+        "failure": {}
+      },
+      "qualityTraitEffects": [],
+      "identity": {
+        "retainedInputIds": []
+      },
+      "failure": {
+        "trigger": "operationFailed",
+        "mode": "reducedQualityOutput",
+        "outcome": "沿用章節17.3通則：產出主物品，品質−10；按配方扣除已確認消耗的輸入與輔料。",
+        "sourceSection": "13.2"
+      },
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      }
+    },
+    {
+      "id": "ss.recipe.fuel_pack",
+      "phase": 5,
+      "station": "workbench",
+      "operation": {
+        "id": "mix",
+        "durationSeconds": 10,
+        "instructions": "`fuel.efficient_pack`，1×2，提供 3 燃料單位；製作不增加總能量，只省空間",
+        "manualCheckpoints": [
+          {
+            "prompt": "第 1 次配比調整如何選？",
+            "options": [
+              "選提示標示的滑桿區段",
+              "任意選最小值",
+              "加入未列材料"
+            ],
+            "correctOption": 0
+          },
+          {
+            "prompt": "第 2 次調整以什麼為準？",
+            "options": [
+              "隱藏配方猜測",
+              "提示的比例／濃稠度目標",
+              "把所有材料一次加倍"
+            ],
+            "correctOption": 1
+          },
+          {
+            "prompt": "混合完成何時停止？",
+            "options": [
+              "無限攪拌到耗盡工具",
+              "忽略目標再補材料",
+              "達到提示目標區段"
+            ],
+            "correctOption": 2
+          }
+        ]
+      },
+      "inputGroups": [
+        [
+          {
+            "item": "fuel.dry",
+            "quantity": 2
+          },
+          {
+            "item": "fuel.oilcloth",
+            "quantity": 1
+          }
+        ]
+      ],
+      "reusableTools": [],
+      "outputs": [
+        {
+          "item": "fuel.efficient_pack",
+          "quantity": 1
+        }
+      ],
+      "quality": {
+        "primaryInputs": [
+          "fuel.dry",
+          "fuel.oilcloth"
+        ],
+        "loss": 0,
+        "mode": "weighted-primary",
+        "masteryRevision": 1
+      },
+      "traitResolution": {
+        "inherit": [],
+        "polarity": {},
+        "success": {},
+        "precise": {},
+        "failure": {}
+      },
+      "qualityTraitEffects": [],
+      "identity": {
+        "retainedInputIds": []
+      },
+      "failure": {
+        "trigger": "operationFailed",
+        "mode": "reducedQualityOutput",
+        "outcome": "沿用章節17.3通則：產出主物品，品質−10；按配方扣除已確認消耗的輸入與輔料。",
+        "sourceSection": "13.2"
+      },
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      }
+    }
+  ],
+  "packing": [
+    {
+      "input": "tool.pot",
+      "inputItems": [
+        "tool.pot",
+        "tool.stove"
+      ],
+      "output": "tool.cook_kit",
+      "count": 2,
+      "manualUnpack": true
+    }
+  ],
+  "renewableSupplies": [
+    {
+      "item": "material.mineral_pack",
+      "phase": 5,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "water.mineral",
+      "phase": 5,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    }
+  ],
+  "tutorialSeeds": [],
+  "scavenging": {
+    "version": 4,
+    "nodeCount": 3,
+    "investigationsPerNode": 1,
+    "movementCost": 1,
+    "investigationCost": 2,
+    "fixedWrongQuantity": 1,
+    "scrapQualities": [
+      30,
+      55
+    ],
+    "intactQualities": [
+      55,
+      55,
+      55,
+      55,
+      55,
+      80,
+      80,
+      80,
+      80,
+      95
+    ],
+    "surpriseWeights": {
+      "commonScraps": 50,
+      "intactBase": 25,
+      "containers": 15,
+      "optionalSpecial": 10
+    },
+    "surprisePools": {
+      "commonScraps": [],
+      "intactBase": [],
+      "containers": [],
+      "optionalSpecial": [
+        "material.mineral_pack",
+        "water.mineral"
+      ]
+    },
+    "surpriseTraitPools": {
+      "positive": [
+        {
+          "prefix": "cloth.",
+          "id": "intact_fibre",
+          "minimumQuality": 70
+        }
+      ],
+      "negative": [
+        {
+          "prefix": "cloth.",
+          "id": "frayed"
+        },
+        {
+          "prefix": "wood.",
+          "id": "cracked"
+        },
+        {
+          "prefix": "wood.",
+          "id": "damp"
+        },
+        {
+          "prefix": "paper.",
+          "id": "damp"
+        },
+        {
+          "prefix": "metal.",
+          "id": "rusted"
+        },
+        {
+          "prefix": "plastic.",
+          "id": "brittle"
+        }
+      ],
+      "chancePercent": 20
+    },
+    "itemLabels": {},
+    "fixedLocations": [
+      {
+        "id": "old_street_exchange",
+        "nodeIndex": 0,
+        "name": "舊街互助交換點",
+        "phase": 5,
+        "options": [
+          {
+            "item": "wood.board",
+            "quantity": 2,
+            "qualityType": "intact",
+            "label": "木板"
+          },
+          {
+            "item": "wood.chip",
+            "quantity": 2,
+            "label": "碎木片"
+          },
+          {
+            "item": "wood.driftwood",
+            "quantity": 2,
+            "qualityType": "intact",
+            "label": "漂木"
+          },
+          {
+            "item": "material.mineral_pack",
+            "quantity": 1,
+            "label": "礦物包"
+          }
+        ]
+      },
+      {
+        "id": "sorting_shed_chapter5",
+        "nodeIndex": 1,
+        "name": "新街分類棚",
+        "phase": 5,
+        "options": [
+          {
+            "item": "plastic.scrap",
+            "quantity": 3,
+            "label": "塑料碎片"
+          },
+          {
+            "item": "adhesive.residue",
+            "quantity": 2,
+            "label": "標籤殘膠"
+          }
+        ]
+      }
+    ],
+    "phaseSurprisePools": {
+      "0": {
+        "commonScraps": [],
+        "intactBase": [],
+        "containers": [],
+        "optionalSpecial": []
+      },
+      "1": {
+        "commonScraps": [],
+        "intactBase": [],
+        "containers": [],
+        "optionalSpecial": []
+      },
+      "2": {
+        "commonScraps": [],
+        "intactBase": [],
+        "containers": [],
+        "optionalSpecial": []
+      },
+      "3": {
+        "commonScraps": [],
+        "intactBase": [],
+        "containers": [],
+        "optionalSpecial": []
+      },
+      "4": {
+        "commonScraps": [],
+        "intactBase": [],
+        "containers": [],
+        "optionalSpecial": []
+      },
+      "5": {
+        "commonScraps": [],
+        "intactBase": [],
+        "containers": [],
+        "optionalSpecial": [
+          "material.mineral_pack",
+          "water.mineral"
+        ]
+      }
+    }
+  },
+  "fishing": {
+    "version": 1,
+    "castCost": 3,
+    "signalsPerCast": 3,
+    "successSignals": 2,
+    "perfectSignals": 3,
+    "signalHoldMilliseconds": 2000,
+    "basePromptWidthPercent": 30,
+    "preciseQualityBonus": 8,
+    "guaranteeAfterFailures": 2,
+    "freeNaturalBait": true,
+    "loanerRodAvailable": true,
+    "spots": [],
+    "failureRewards": [
+      "wood.driftwood",
+      "cloth.thread_end"
+    ]
+  },
+  "toolRepairs": [
+    {
+      "id": "repair.rod_advanced",
+      "tool": "tool.rod_advanced",
+      "phase": 5,
+      "restoreUses": 10,
+      "materialOptions": [
+        [
+          "toolpart.rig"
+        ]
+      ]
+    },
+    {
+      "id": "repair.precision.crowbar",
+      "tool": "tool.crowbar",
+      "phase": 5,
+      "restoreUses": 10,
+      "materialOptions": [
+        [
+          "content:water.distilled",
+          "cloth.edge_scrap"
+        ]
+      ]
+    },
+    {
+      "id": "repair.precision.pliers",
+      "tool": "tool.pliers",
+      "phase": 5,
+      "restoreUses": 10,
+      "materialOptions": [
+        [
+          "content:water.distilled",
+          "cloth.edge_scrap"
+        ]
+      ]
+    },
+    {
+      "id": "repair.precision.awl",
+      "tool": "tool.awl",
+      "phase": 5,
+      "restoreUses": 10,
+      "materialOptions": [
+        [
+          "content:water.distilled",
+          "cloth.edge_scrap"
+        ]
+      ]
+    }
+  ],
+  "orders": [
+    {
+      "id": "ss.order.advanced_search",
+      "phase": 5,
+      "acceptedItems": [
+        "wood.board",
+        "wood.chip",
+        "wood.driftwood"
+      ],
+      "requirementGroups": [
+        [
+          {
+            "item": "wood.board",
+            "quantity": 2
+          }
+        ],
+        [
+          {
+            "item": "wood.chip",
+            "quantity": 2
+          }
+        ],
+        [
+          {
+            "item": "wood.driftwood",
+            "quantity": 2
+          }
+        ]
+      ],
+      "rejectedItems": [],
+      "quantity": 1,
+      "reward": {
+        "currency": "exchangeTickets",
+        "quantity": 4
+      },
+      "countsTowardCycle": false,
+      "returnContainer": false,
+      "requiresAcceptance": true,
+      "requiredSource": "fixed:old_street_exchange",
+      "completionGroupId": "q5.01"
+    },
+    {
+      "id": "ss.order.advanced_recycle",
+      "phase": 5,
+      "acceptedItems": [
+        "cloth.thread_spool",
+        "adhesive.recycled"
+      ],
+      "requirementGroups": [
+        [
+          {
+            "item": "cloth.thread_spool",
+            "quantity": 1
+          },
+          {
+            "item": "adhesive.recycled",
+            "quantity": 1
+          }
+        ]
+      ],
+      "rejectedItems": [],
+      "quantity": 1,
+      "reward": {
+        "currency": "exchangeTickets",
+        "quantity": 5
+      },
+      "countsTowardCycle": false,
+      "returnContainer": false,
+      "requiresAcceptance": true,
+      "requiredRecipes": [
+        "ss.recipe.unpick_cloth",
+        "ss.recipe.recycle_glue"
+      ],
+      "completionGroupId": "q5.01"
+    },
+    {
+      "id": "ss.order.advanced_fish",
+      "phase": 5,
+      "acceptedItems": [
+        "fish.pack"
+      ],
+      "rejectedItems": [],
+      "quantity": 1,
+      "reward": {
+        "currency": "exchangeTickets",
+        "quantity": 5
+      },
+      "countsTowardCycle": false,
+      "returnContainer": false,
+      "completionGroupId": "q5.01"
+    },
+    {
+      "id": "ss.order.advanced_workbench",
+      "phase": 5,
+      "acceptedItems": [
+        "tool.awl"
+      ],
+      "rejectedItems": [],
+      "quantity": 1,
+      "reward": {
+        "currency": "exchangeTickets",
+        "quantity": 5
+      },
+      "countsTowardCycle": false,
+      "returnContainer": false,
+      "completionGroupId": "q5.01"
+    },
+    {
+      "id": "ss.order.advanced_cooking",
+      "phase": 5,
+      "acceptedItems": [
+        "meal.shared"
+      ],
+      "rejectedItems": [
+        "meal.failed"
+      ],
+      "quantity": 1,
+      "reward": {
+        "currency": "exchangeTickets",
+        "quantity": 6
+      },
+      "countsTowardCycle": false,
+      "returnContainer": true,
+      "returnedContainerCleanliness": "soiled",
+      "completionGroupId": "q5.01"
+    }
+  ],
+  "reliefPolicy": {
+    "intervalSeconds": 86400,
+    "initialClaims": 1,
+    "visibleLimit": 7,
+    "recoveryAmount": 40,
+    "chapterTransitionSupply": 80,
+    "offlineCatchUp": true,
+    "clockPolicy": "utc-high-water"
+  },
+  "limits": {
+    "staminaMax": 60,
+    "regenSeconds": 300,
+    "startingBackpack": [
+      4,
+      4
+    ],
+    "board": [
+      6,
+      6
+    ]
+  },
+  "declaredTerminalUses": {
+    "water.distilled": "精密保養：1份加布邊料1，恢復金屬工具10次使用量；空瓶保留。",
+    "water.mineral": "湯品替代開水，1比1，品質+3；普通水仍可完成主線。",
+    "material.mineral_pack": "ss.order.wall：礦物包1與泥料2。",
+    "material.mud": "ss.order.wall，或3份交分類回收。",
+    "fish.pack": "ss.order.advanced_fish；也可拆回魚肉2，包材不返還。",
+    "seasoning.blend": "替代料理可選調味包1，品質+3，不與其他調味疊加。",
+    "fuel.efficient_pack": "替代所有乾燥燃料槽，共3個燃料單位，餘額存於原物件。",
+    "bag.weatherproof": "裝備背包6×4，升級一次，不額外占背包格。",
+    "storage.reinforced_chest": "地盤放置容量20，家具位1。",
+    "tool.kit": "存放並使用原鉗與錐，子物件不重複占格、不洗耐久。",
+    "tool.rod_advanced": "釣魚容錯乘1.2，單次扣1耐久。",
+    "tool.cook_kit": "可選炊具交換單，交1套得10券；收藏記錄首次取得。",
+    "structure.shelter": "階段5穩定住所任務；地盤家具位1。",
+    "meal.shared": "自用恢復基礎45乘品質，或ss.order.advanced_cooking交付。"
+  },
+  "sourceMap": {
+    "itemDictionary": "taiwan_brawl_front/packages/games/street_scrap/design/street-scrap-design.json",
+    "recipeTable": "docs/third-game-design-plan.md sections 11.4, 12.3, 12.4, 13.1, 13.2",
+    "recipePolicy": "taiwan_brawl_front/packages/games/street_scrap/design/street-scrap-recipe-policy.json"
+  }
+}

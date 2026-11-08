@@ -1,0 +1,2 @@
+// Inherit version values only. Do not link Runner's Flutter/CocoaPods frameworks.
+#include "../Flutter/Generated.xcconfig"

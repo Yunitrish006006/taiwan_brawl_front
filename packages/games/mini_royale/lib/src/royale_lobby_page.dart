@@ -14,6 +14,8 @@ class MiniRoyaleLobbyPage extends StatefulWidget {
     this.service,
     this.onOpenRoom,
     this.errorMessage,
+    this.requiresGameUpdate,
+    this.onOpenGameLibrary,
     this.llmBotConfigured = false,
   });
 
@@ -23,6 +25,8 @@ class MiniRoyaleLobbyPage extends StatefulWidget {
   final MiniRoyaleService? service;
   final Future<void> Function(String roomCode)? onOpenRoom;
   final String Function(Object error)? errorMessage;
+  final bool Function(Object error)? requiresGameUpdate;
+  final VoidCallback? onOpenGameLibrary;
   final bool llmBotConfigured;
 
   @override
@@ -117,7 +121,18 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
         return;
       }
       final message = widget.errorMessage?.call(e) ?? e.toString();
-      _showSnackBar('${t.text('Action failed')}: $message');
+      final updateRequired = widget.requiresGameUpdate?.call(e) ?? false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${t.text('Action failed')}: $message'),
+          action: updateRequired && widget.onOpenGameLibrary != null
+              ? SnackBarAction(
+                  label: t.text('Open Game Library'),
+                  onPressed: widget.onOpenGameLibrary!,
+                )
+              : null,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() {

@@ -59,11 +59,39 @@ class GameLibraryController extends ChangeNotifier {
           'Catalog references unknown game code: ${remote.moduleId}',
         );
       }
-      final remoteResourceIds = remote.resources
+      final bundledResourcesById = {
+        for (final resource in bundled.resources) resource.resourceId: resource,
+      };
+      final resolvedRemoteResources = remote.resources
+          .map((resource) {
+            final local = bundledResourcesById[resource.resourceId];
+            if (local == null ||
+                (resource.displayNameKey != null &&
+                    resource.descriptionKey != null)) {
+              return resource;
+            }
+            return GameResourceManifest.fromJson({
+              ...resource.toJson(),
+              if ((resource.displayNameKey ?? local.displayNameKey) != null)
+                'displayNameKey':
+                    resource.displayNameKey ?? local.displayNameKey,
+              if ((resource.descriptionKey ?? local.descriptionKey) != null)
+                'descriptionKey':
+                    resource.descriptionKey ?? local.descriptionKey,
+            });
+          })
+          .toList(growable: false);
+      final remoteResourceIds = resolvedRemoteResources
           .map((resource) => resource.resourceId)
           .toSet();
-      for (final resource in remote.resources) {
+      for (final resource in resolvedRemoteResources) {
         final declaredSchema = resource.payloadSchemaVersion;
+        if (resource.downloadUrl != null && declaredSchema == null) {
+          throw FormatException(
+            'Downloadable resource ${resource.resourceId} in '
+            '${bundled.moduleId} is missing its payload schema version.',
+          );
+        }
         if (declaredSchema != null &&
             bundled.supportedResourceSchemas[resource.resourceId] !=
                 declaredSchema) {
@@ -117,7 +145,7 @@ class GameLibraryController extends ChangeNotifier {
         platforms: bundled.platforms,
         multiplayer: bundled.multiplayer,
         supportedResourceSchemas: bundled.supportedResourceSchemas,
-        resources: [...remote.resources, ...retainedLocalResources],
+        resources: [...resolvedRemoteResources, ...retainedLocalResources],
       );
     }
     _catalog = GameModuleCatalog(bundledById.values);

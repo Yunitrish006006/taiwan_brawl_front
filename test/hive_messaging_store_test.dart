@@ -53,6 +53,71 @@ void main() {
     await Hive.deleteBoxFromDisk(boxName);
   });
 
+  test('restores friend-scoped relay cursors after Hive reopens', () async {
+    const cursorBoxName = 'messaging_store_cursor_restart_test';
+    final store = HiveMessageEventStore(
+      encryptionKey: key,
+      boxName: cursorBoxName,
+    );
+    await store.saveSyncCursor('dm:1:2', '17');
+    await store.saveSyncCursor('dm:1:3', '9');
+
+    await Hive.close();
+    Hive.init(directory.path);
+
+    final restored = HiveMessageEventStore(
+      encryptionKey: key,
+      boxName: cursorBoxName,
+    );
+    expect(await restored.loadSyncCursor('dm:1:2'), '17');
+    expect(await restored.loadSyncCursor('dm:1:3'), '9');
+    expect(await restored.loadSyncCursor('dm:2:1'), isNull);
+    await Hive.deleteBoxFromDisk(cursorBoxName);
+  });
+
+  test('replays and clears a durable multi-event inbox batch', () async {
+    const batchBoxName = 'messaging_store_batch_inbox_test';
+    final store = HiveMessageEventStore(
+      encryptionKey: key,
+      boxName: batchBoxName,
+    );
+    final created = MessageEvent(
+      eventId: 'batch-created',
+      messageId: 'batch-message',
+      conversationId: 'batch-conversation',
+      actorId: 'alice',
+      type: MessageEventType.created,
+      revision: 0,
+      createdAt: DateTime.utc(2026, 10, 20),
+      body: 'before batch recovery',
+    );
+    final edited = MessageEvent(
+      eventId: 'batch-edited',
+      messageId: 'batch-message',
+      conversationId: 'batch-conversation',
+      actorId: 'alice',
+      type: MessageEventType.edited,
+      revision: 1,
+      createdAt: DateTime.utc(2026, 10, 20, 1),
+      body: 'after batch recovery',
+    );
+    await store.appendInboxBatch([created, edited]);
+
+    final restored = await MessageRepository.restore(store);
+
+    expect(
+      restored.projectionFor(created.messageId)?.visibleBody,
+      'after batch recovery',
+    );
+    expect((await store.loadAll()).map((event) => event.eventId), [
+      'batch-created',
+      'batch-edited',
+    ]);
+    expect((await store.loadInboxBatches()).map((batch) => batch.id), isEmpty);
+    await restored.dispose();
+    await Hive.deleteBoxFromDisk(batchBoxName);
+  });
+
   test('recovers an outbox-only event after an interrupted write', () async {
     const recoveryBoxName = 'messaging_store_outbox_recovery_test';
     final box = await Hive.openBox<String>(
@@ -151,6 +216,12 @@ void main() {
           '"conversationId":"1:2","actorId":"alice","type":"created",'
           '"revision":0,"createdAt":123}',
     );
+    await box.put(
+      'inbox-batch:corrupt',
+      '{"events":[{"eventId":"bad-batch","messageId":"bad-batch",'
+          '"conversationId":"1:2","actorId":"alice",'
+          '"type":"created","revision":0,"createdAt":123}]}',
+    );
 
     final store = HiveMessageEventStore(
       encryptionKey: key,
@@ -159,16 +230,18 @@ void main() {
     final restored = await MessageRepository.restore(store);
 
     expect(restored.events, isEmpty);
-    expect(restored.conflicts, hasLength(3));
+    expect(restored.conflicts, hasLength(4));
     expect(
       restored.conflicts.map((conflict) => conflict.eventId),
       containsAll([
         'corrupt:event:corrupt',
         'corrupt:outbox:corrupt',
         'corrupt:inbox:corrupt',
+        'corrupt:inbox-batch:corrupt',
       ]),
     );
     expect(box.containsKey('inbox:corrupt'), isFalse);
+    expect(box.containsKey('inbox-batch:corrupt'), isFalse);
     await restored.dispose();
     await Hive.deleteBoxFromDisk(corruptBoxName);
   });

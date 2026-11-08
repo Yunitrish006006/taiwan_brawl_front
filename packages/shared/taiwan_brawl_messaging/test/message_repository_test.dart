@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:test/test.dart';
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
@@ -19,6 +21,24 @@ void main() {
 
     expect(repository.pendingOutbox, [created]);
     expect(repository.projectionFor('m1')?.visibleBody, 'hello');
+    await repository.dispose();
+  });
+
+  test('retains an outbox event when durable acknowledgement fails', () async {
+    final store = _MemoryStore([])..failNextAcknowledge = true;
+    final repository = MessageRepository(store: store);
+    final transport = _RecordingTransport();
+    await repository.addLocal(created);
+
+    await expectLater(repository.flush(transport), throwsStateError);
+    expect(transport.sent.map((event) => event.eventId), ['e1']);
+    expect(repository.pendingOutbox.map((event) => event.eventId), ['e1']);
+    expect(store.pending.map((event) => event.eventId), ['e1']);
+
+    await repository.flush(transport);
+    expect(transport.sent.map((event) => event.eventId), ['e1', 'e1']);
+    expect(repository.pendingOutbox, isEmpty);
+    expect(store.pending, isEmpty);
     await repository.dispose();
   });
 
@@ -93,6 +113,200 @@ void main() {
   });
 
   test(
+    'an existing event ID cannot be reused for a different payload',
+    () async {
+      final store = _MemoryStore([]);
+      final repository = MessageRepository(store: store);
+      expect(await repository.acceptRemote(created), isTrue);
+
+      final reusedId = MessageEvent(
+        eventId: created.eventId,
+        messageId: created.messageId,
+        conversationId: created.conversationId,
+        actorId: created.actorId,
+        type: created.type,
+        revision: created.revision,
+        createdAt: created.createdAt,
+        body: 'different payload',
+      );
+
+      expect(await repository.acceptRemote(reusedId), isFalse);
+      expect(repository.projectionFor('m1')?.visibleBody, 'hello');
+      expect(repository.events, [created]);
+      expect(repository.conflicts.single.eventId, created.eventId);
+      expect(repository.conflicts.single.reason, contains('different payload'));
+      expect(store.conflicts, hasLength(1));
+      expect(await repository.acceptRemote(created), isTrue);
+      expect(repository.conflicts, hasLength(1));
+      await repository.dispose();
+    },
+  );
+
+  test(
+    'remote batch conflicts are recorded before any batch event is applied',
+    () async {
+      final store = _MemoryStore([created]);
+      final repository = MessageRepository(
+        initialEvents: [created],
+        store: store,
+      );
+      final independentMessage = MessageEvent(
+        eventId: 'independent-created',
+        messageId: 'independent-message',
+        conversationId: 'c1',
+        actorId: 'alice',
+        type: MessageEventType.created,
+        revision: 0,
+        createdAt: DateTime.utc(2026, 10, 20, 2),
+        body: 'would otherwise be accepted',
+      );
+      final reusedId = MessageEvent(
+        eventId: created.eventId,
+        messageId: created.messageId,
+        conversationId: created.conversationId,
+        actorId: created.actorId,
+        type: created.type,
+        revision: created.revision,
+        createdAt: created.createdAt,
+        body: 'conflicting payload',
+      );
+
+      expect(
+        await repository.acceptRemoteBatch([independentMessage, reusedId]),
+        isFalse,
+      );
+      expect(repository.events, [created]);
+      expect(repository.projectionFor('independent-message'), isNull);
+      expect(repository.projectionFor(created.messageId)?.visibleBody, 'hello');
+      expect(repository.conflicts.single.eventId, created.eventId);
+      expect(store.events, [created]);
+      expect(store.conflicts, hasLength(1));
+      expect(store.inboxBatches, isEmpty);
+      await repository.dispose();
+    },
+  );
+
+  test(
+    'replays a write-ahead batch after an event-store append failure',
+    () async {
+      final store = _MemoryStore([])..failEventId = 'e2';
+      final repository = MessageRepository(store: store);
+      final edited = MessageEvent(
+        eventId: 'e2',
+        messageId: created.messageId,
+        conversationId: created.conversationId,
+        actorId: created.actorId,
+        type: MessageEventType.edited,
+        revision: 1,
+        createdAt: DateTime.utc(2026, 10, 20, 2),
+        body: 'replayed batch',
+      );
+
+      final observed = <MessageProjection>[];
+      final subscription = repository.changes.listen(observed.add);
+      await expectLater(
+        repository.acceptRemoteBatch([created, edited]),
+        throwsA(isA<StateError>()),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(repository.events, isEmpty);
+      expect(repository.projectionFor(created.messageId), isNull);
+      expect(observed, isEmpty);
+      expect(store.events, [created]);
+      expect(store.inboxBatches, hasLength(1));
+      await subscription.cancel();
+      await repository.dispose();
+
+      final restored = await MessageRepository.restore(store);
+
+      expect(
+        restored.projectionFor(created.messageId)?.visibleBody,
+        'replayed batch',
+      );
+      expect(store.events.map((event) => event.eventId), ['e1', 'e2']);
+      expect(store.inboxBatches, isEmpty);
+      expect(store.inbox, isEmpty);
+      await restored.dispose();
+    },
+  );
+
+  test(
+    'batch projections become visible only after every event is durable',
+    () async {
+      final store = _MemoryStore([]);
+      final repository = MessageRepository(store: store);
+      final edited = MessageEvent(
+        eventId: 'batch-edit',
+        messageId: created.messageId,
+        conversationId: created.conversationId,
+        actorId: created.actorId,
+        type: MessageEventType.edited,
+        revision: 1,
+        createdAt: DateTime.utc(2026, 10, 20, 2),
+        body: 'batch completed',
+      );
+      final observed = <MessageProjection>[];
+      final subscription = repository.changes.listen(observed.add);
+
+      expect(await repository.acceptRemoteBatch([created, edited]), isTrue);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        repository.projectionFor(created.messageId)?.visibleBody,
+        'batch completed',
+      );
+      expect(observed, hasLength(1));
+      expect(observed.single.visibleBody, 'batch completed');
+      expect(store.events.map((event) => event.eventId), ['e1', 'batch-edit']);
+      await subscription.cancel();
+      await repository.dispose();
+    },
+  );
+
+  test(
+    'local ingestion waits while a remote batch is being validated',
+    () async {
+      final store = _MemoryStore([])
+        ..batchAppendStarted = Completer<void>()
+        ..batchAppendRelease = Completer<void>();
+      final repository = MessageRepository(store: store);
+      final edited = MessageEvent(
+        eventId: 'batch-edit',
+        messageId: created.messageId,
+        conversationId: created.conversationId,
+        actorId: created.actorId,
+        type: MessageEventType.edited,
+        revision: 1,
+        createdAt: DateTime.utc(2026, 10, 20, 2),
+        body: 'batch completed first',
+      );
+      final batch = repository.acceptRemoteBatch([created, edited]);
+      await store.batchAppendStarted!.future;
+      final competingLocalCreate = repository.addLocal(
+        MessageEvent(
+          eventId: 'local-create',
+          messageId: created.messageId,
+          conversationId: created.conversationId,
+          actorId: created.actorId,
+          type: MessageEventType.created,
+          revision: 0,
+          createdAt: DateTime.utc(2026, 10, 20, 3),
+          body: 'competing local message',
+        ),
+      );
+
+      store.batchAppendRelease!.complete();
+      expect(await batch, isTrue);
+      await expectLater(competingLocalCreate, throwsA(isA<FormatException>()));
+      expect(
+        repository.projectionFor(created.messageId)?.visibleBody,
+        'batch completed first',
+      );
+      await repository.dispose();
+    },
+  );
+
+  test(
     'durable inbox survives a receive failure and replays on restore',
     () async {
       final store = _MemoryStore([]);
@@ -119,6 +333,86 @@ void main() {
       await restored.dispose();
     },
   );
+
+  test('deduplicates repeated durable outbox rows by event ID', () async {
+    final store = _MemoryStore([], [created, created]);
+
+    final restored = await MessageRepository.restore(store);
+    final transport = _RecordingTransport();
+    await restored.flush(transport);
+
+    expect(restored.pendingOutbox, isEmpty);
+    expect(transport.sent, [created]);
+    await restored.dispose();
+  });
+
+  test(
+    'repairs a mismatched pending duplicate from the durable event row',
+    () async {
+      final altered = MessageEvent(
+        eventId: created.eventId,
+        messageId: created.messageId,
+        conversationId: created.conversationId,
+        actorId: created.actorId,
+        type: created.type,
+        revision: created.revision,
+        createdAt: created.createdAt,
+        body: 'altered outbox copy',
+      );
+      final store = _MemoryStore([created], [altered]);
+
+      final restored = await MessageRepository.restore(store);
+
+      expect(restored.projectionFor('m1')?.visibleBody, 'hello');
+      expect(restored.pendingOutbox, [created]);
+      expect(store.events, [created]);
+      expect(store.pending, [created]);
+      expect(restored.conflicts.single.eventId, created.eventId);
+      expect(restored.conflicts.single.reason, contains('durable event row'));
+
+      final transport = _RecordingTransport();
+      await restored.flush(transport);
+      expect(transport.sent, [created]);
+      await restored.dispose();
+    },
+  );
+
+  test('retries outbox repair after a durable repair write fails', () async {
+    final altered = MessageEvent(
+      eventId: created.eventId,
+      messageId: created.messageId,
+      conversationId: created.conversationId,
+      actorId: created.actorId,
+      type: created.type,
+      revision: created.revision,
+      createdAt: created.createdAt,
+      body: 'altered outbox copy',
+    );
+    final store = _MemoryStore([created], [altered])..failNextAppend = true;
+
+    await expectLater(MessageRepository.restore(store), throwsStateError);
+    expect(store.pending, [altered]);
+    expect(store.conflicts.single.reason, contains('durable event row'));
+
+    final restored = await MessageRepository.restore(store);
+    expect(restored.pendingOutbox, [created]);
+    expect(store.pending, [created]);
+    expect(restored.conflicts.single.reason, contains('durable event row'));
+    await restored.dispose();
+  });
+
+  test('repairs a pending signature from the durable event row', () async {
+    final signed = created.withSignature('authoritative-signature');
+    final staleSignature = created.withSignature('stale-signature');
+    final store = _MemoryStore([signed], [staleSignature]);
+
+    final restored = await MessageRepository.restore(store);
+
+    expect(restored.pendingOutbox, [signed]);
+    expect(store.pending, [signed]);
+    expect(restored.conflicts, isEmpty);
+    await restored.dispose();
+  });
 
   test(
     'inbox replay applies the same fail-closed authenticator gate',
@@ -359,7 +653,11 @@ class _RecordingTransport implements MessageTransport {
 }
 
 class _MemoryStore
-    implements MessageEventStore, MessageConflictStore, MessageInboxStore {
+    implements
+        MessageEventStore,
+        MessageConflictStore,
+        MessageInboxStore,
+        MessageBatchInboxStore {
   _MemoryStore(this.events, [List<MessageEvent>? pending])
     : pending = pending ?? <MessageEvent>[];
 
@@ -367,9 +665,20 @@ class _MemoryStore
   final List<MessageEvent> pending;
   final conflicts = <MessageConflict>[];
   final inbox = <MessageEvent>[];
+  final inboxBatches = <String, List<MessageEvent>>{};
+  String? failEventId;
+  var _failedAppend = false;
+  var failNextAcknowledge = false;
+  var failNextAppend = false;
+  Completer<void>? batchAppendStarted;
+  Completer<void>? batchAppendRelease;
 
   @override
   Future<void> acknowledgeOutbox(String eventId) async {
+    if (failNextAcknowledge) {
+      failNextAcknowledge = false;
+      throw StateError('injected outbox acknowledgement failure');
+    }
     pending.removeWhere((event) => event.eventId == eventId);
   }
 
@@ -389,12 +698,41 @@ class _MemoryStore
   }
 
   @override
-  Future<void> append(MessageEvent event, {required bool pendingOutbox}) async {
-    if (!events.any((candidate) => candidate.eventId == event.eventId)) {
-      events.add(event);
+  Future<String> appendInboxBatch(List<MessageEvent> batch) async {
+    if (batchAppendStarted case final started?) {
+      if (!started.isCompleted) started.complete();
     }
-    if (pendingOutbox &&
-        !pending.any((candidate) => candidate.eventId == event.eventId)) {
+    if (batchAppendRelease case final release?) await release.future;
+    final id = 'batch-${inboxBatches.length}';
+    inboxBatches[id] = List.of(batch);
+    return id;
+  }
+
+  @override
+  Future<List<MessageEventBatch>> loadInboxBatches() async => [
+    for (final entry in inboxBatches.entries)
+      MessageEventBatch(id: entry.key, events: entry.value),
+  ];
+
+  @override
+  Future<void> removeInboxBatch(String batchId) async {
+    inboxBatches.remove(batchId);
+  }
+
+  @override
+  Future<void> append(MessageEvent event, {required bool pendingOutbox}) async {
+    if (failNextAppend) {
+      failNextAppend = false;
+      throw StateError('injected event-store append failure');
+    }
+    if (!_failedAppend && event.eventId == failEventId) {
+      _failedAppend = true;
+      throw StateError('injected event-store failure');
+    }
+    events.removeWhere((candidate) => candidate.eventId == event.eventId);
+    events.add(event);
+    if (pendingOutbox) {
+      pending.removeWhere((candidate) => candidate.eventId == event.eventId);
       pending.add(event);
     }
   }

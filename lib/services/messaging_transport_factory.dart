@@ -1,6 +1,7 @@
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
 import 'api_client.dart';
+import 'dm_peer_role.dart';
 import 'fallback_message_transport.dart';
 import 'p2p_message_transport.dart';
 import 'server_message_transport.dart';
@@ -27,20 +28,24 @@ P2PSignalingFactory _hostedSignalingFactory(ApiClient apiClient) {
 class MessagingTransportFactory {
   MessagingTransportFactory(
     this._apiClient, {
-    this.p2pEnabled = false,
+    this.p2pEnabled = true,
     P2PSignalingFactory? signalingFactory,
     this.syncCursorStoreFactory,
     this.p2pIceConfiguration = P2PMessageTransport.defaultIceConfiguration,
+    this.deviceId,
+    this.relayEncryptionReady = false,
   }) : _signalingFactory =
            signalingFactory ?? _hostedSignalingFactory(_apiClient);
 
   /// Selects exactly one deterministic offerer for a peer pair.
   static bool isCaller({required int selfId, required int friendId}) {
-    return selfId < friendId;
+    return isDirectMessageCaller(selfId: selfId, friendId: friendId);
   }
 
   final ApiClient _apiClient;
   final bool p2pEnabled;
+  final String? deviceId;
+  final bool relayEncryptionReady;
   final MessageSyncCursorStoreFactory? syncCursorStoreFactory;
   final Map<String, dynamic> p2pIceConfiguration;
   final P2PSignalingFactory _signalingFactory;
@@ -54,6 +59,8 @@ class MessagingTransportFactory {
       apiClient: _apiClient,
       selfId: selfId,
       friendId: friendId,
+      deviceId: deviceId,
+      relayEncryptionReady: relayEncryptionReady,
       syncCursorStore: syncCursorStoreFactory?.call(
         selfId: selfId,
         friendId: friendId,
@@ -76,13 +83,12 @@ class MessagingTransportFactory {
     required int friendId,
     required PeerSignalingChannel signalingService,
     required bool isCaller,
-    required Map<String, dynamic> iceConfiguration,
   }) {
     return P2PMessageTransport(
       friendId: friendId,
       signalingService: signalingService,
       isCaller: isCaller,
-      iceConfiguration: iceConfiguration,
+      iceConfiguration: p2pIceConfiguration,
     );
   }
 }

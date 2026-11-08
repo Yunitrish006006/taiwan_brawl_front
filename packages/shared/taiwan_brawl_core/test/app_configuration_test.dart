@@ -2,6 +2,10 @@ import 'package:test/test.dart';
 import 'package:taiwan_brawl_core/taiwan_brawl_core.dart';
 
 void main() {
+  test('P2P is the default DM transport and remains deployment-overridable', () {
+    expect(AppConfiguration.environment.p2pChatEnabled, isTrue);
+  });
+
   test('keeps runtime configuration separate from credentials', () {
     const configuration = AppConfiguration(
       apiBaseUrl: 'https://example.test',

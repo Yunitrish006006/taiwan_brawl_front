@@ -1,0 +1,7 @@
+"widget.name" = "交際日数";
+"widget.description" = "オフラインでも前回確認済みの日付から日数を計算します。";
+"widget.days" = "%ld 日目";
+"widget.unbound" = "パートナー未連携";
+"widget.signedOut" = "ログインしてください";
+
+"widget.partnerLine" = "%@ と付き合って";

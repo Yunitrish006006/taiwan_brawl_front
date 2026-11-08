@@ -1,0 +1,7 @@
+<resources>
+    <string name="couple_days_spike_name">Couple days — sample</string>
+    <string name="couple_days_spike_count">Day %1$d</string>
+    <string name="couple_days_spike_placeholder">Day 1</string>
+    <color name="couple_days_spike_background">#FFF3F6</color>
+    <color name="couple_days_spike_foreground">#451526</color>
+</resources>

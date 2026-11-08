@@ -1,13 +1,59 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:taiwan_brawl/config/app_configuration.dart';
 import 'package:taiwan_brawl/services/api_client.dart';
+import 'package:taiwan_brawl/services/remote_source_exception.dart';
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
 void main() {
+  test(
+    'uncached read-only client cannot erase a new login after delayed 401',
+    () async {
+      final credentials = _MemoryCredentials()
+        ..values['taiwan_brawl.session_id'] = 'old-session';
+      final oldResponse = Completer<http.Response>();
+      final sent = Completer<void>();
+      final seen = <String?>[];
+      final client = ApiClient(
+        credentials: credentials,
+        cacheSession: false,
+        clearSessionOnUnauthorized: false,
+        client: MockClient((request) {
+          seen.add(request.headers['authorization']);
+          if (seen.length == 1) {
+            sent.complete();
+            return oldResponse.future;
+          }
+          return Future.value(http.Response('{"ok":true}', 200));
+        }),
+      );
+      final old = client.getJson('/api/couples/overview');
+      await sent.future;
+      credentials.values['taiwan_brawl.session_id'] = 'new-session';
+      await client.getJson('/api/couples/overview');
+      oldResponse.complete(http.Response('{"error":"unauthorized"}', 401));
+      await expectLater(old, throwsA(isA<ApiException>()));
+      expect(seen, ['Bearer old-session', 'Bearer new-session']);
+      expect(credentials.values['taiwan_brawl.session_id'], 'new-session');
+    },
+  );
+  test('ApiException implements the provider-neutral remote failure port', () {
+    final error = ApiException(
+      'unsupported event route',
+      statusCode: 404,
+      responseBody: const {'error': 'not found'},
+    );
+
+    expect(error, isA<RemoteSourceException>());
+    expect(error.message, 'unsupported event route');
+    expect(error.statusCode, 404);
+    expect(error.responseBody, {'error': 'not found'});
+  });
+
   test(
     'persists mobile session tokens through the shared credential port',
     () async {

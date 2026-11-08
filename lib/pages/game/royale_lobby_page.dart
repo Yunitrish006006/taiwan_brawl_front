@@ -6,28 +6,36 @@ import 'package:taiwan_brawl_game_mini_royale/royale_lobby_page.dart';
 
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
+import '../../services/locale_provider.dart';
 import '../../services/royale_service.dart';
 import '../../game_modules/mini_royale/arena_host_scope.dart';
 import 'package:taiwan_brawl_game_mini_royale/mini_royale_arena_page.dart'
     deferred as royale_arena_lib;
 
-String miniRoyaleLobbyErrorMessage(Object error) {
+String miniRoyaleLobbyErrorMessage(
+  Object error, {
+  String incompatibleMessage =
+      'This game version is incompatible with the room. Update the game and try again.',
+}) {
   final String? message;
-  final Map<String, dynamic>? responseBody;
   if (error is MiniRoyaleServiceException) {
     message = error.message;
-    responseBody = error.responseBody;
   } else if (error is ApiException) {
     message = error.message;
-    responseBody = error.responseBody;
   } else {
     return error.toString();
   }
   if (message == 'GAME_VERSION_INCOMPATIBLE') {
-    final detail = responseBody?['detail'];
-    if (detail is String && detail.isNotEmpty) return detail;
+    return incompatibleMessage;
   }
   return message;
+}
+
+bool miniRoyaleLobbyRequiresGameUpdate(Object error) {
+  if (error is MiniRoyaleServiceException) {
+    return error.message == 'GAME_VERSION_INCOMPATIBLE';
+  }
+  return error is ApiException && error.message == 'GAME_VERSION_INCOMPATIBLE';
 }
 
 /// Shell adapter: supplies account capability and keeps arena navigation in
@@ -56,7 +64,16 @@ class RoyaleLobbyPage extends StatelessWidget {
       initialHeroName: initialHeroName,
       service: service,
       llmBotConfigured: llmBotConfigured,
-      errorMessage: miniRoyaleLobbyErrorMessage,
+      errorMessage: (error) => miniRoyaleLobbyErrorMessage(
+        error,
+        incompatibleMessage: context.read<LocaleProvider>().translation.text(
+          'This game version is incompatible with the room. Update the game and try again.',
+        ),
+      ),
+      requiresGameUpdate: miniRoyaleLobbyRequiresGameUpdate,
+      onOpenGameLibrary: () {
+        Navigator.of(context).pushNamed('/game-library');
+      },
       onOpenRoom: (roomCode) async {
         await royale_arena_lib.loadLibrary();
         if (!context.mounted) return;

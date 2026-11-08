@@ -248,6 +248,7 @@ void main() {
             sha256:
                 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
             affectsGameplay: true,
+            payloadSchemaVersion: 1,
             downloadUrl: 'https://example.test/archery/rules',
             byteLength: 8,
             signature: 'payload-signature',
@@ -389,6 +390,7 @@ void main() {
             'packageVersion': '0.1.0',
             'minimumShellVersion': '0.132.0',
             'dataSchemaVersion': 1,
+            'platforms': ['web'],
             'resources': <Object>[],
           },
         ],
@@ -413,6 +415,31 @@ void main() {
       final snapshot = await source.fetchSnapshot();
       expect(snapshot.issuedAt, now.subtract(const Duration(minutes: 1)));
       expect(snapshot.expiresAt, now.add(const Duration(minutes: 10)));
+
+      final undeclaredModule = Map<String, dynamic>.from(
+        (payload['modules'] as List).single as Map,
+      )..remove('platforms');
+      final undeclaredModuleCatalog = await _signedEnvelope(
+        payload: {
+          ...payload,
+          'modules': [undeclaredModule],
+        },
+        issuedAt: now.subtract(const Duration(minutes: 1)),
+        expiresAt: now.add(const Duration(minutes: 10)),
+      );
+      await expectLater(
+        _source(
+          undeclaredModuleCatalog.envelope,
+          trustedKeys: {
+            'catalog-test-key': GameCatalogTrustKey(
+              publisher: 'taiwan-brawl',
+              publicKey: undeclaredModuleCatalog.publicKey,
+            ),
+          },
+          now: now,
+        ).fetch(),
+        throwsFormatException,
+      );
 
       final tampered = Map<String, dynamic>.from(signed.envelope)
         ..['payload'] = {
@@ -503,9 +530,10 @@ void main() {
           "packageVersion":"0.1.0","minimumShellVersion":"0.132.0",
           "dataSchemaVersion":1,"platforms":["web","android"],
           "dependencies":[],
-          "resources":[{"resourceId":"game.archery.map.default",
+          "resources":[{"resourceId":"game.archery.rules",
             "version":"1.0.0","kind":"gameplayData",
             "sha256":"${'a' * 64}","affectsGameplay":true,
+            "payloadSchemaVersion":1,
             "dependencies":[],"platforms":["web"],
             "downloadUrl":"https://example.test/game-resources/archery/map/1.0.0",
             "byteLength":10,"signature":"signature","signingKeyId":"release-1"}]
@@ -562,6 +590,35 @@ void main() {
         GamePlatform.web,
       ]);
       expect(controller.catalog['game.mini-royale']!.resources, isEmpty);
+
+      final moduleWithoutResourcePlatforms = Map<String, dynamic>.from(
+        (payload['modules'] as List).single as Map,
+      );
+      final resourceWithoutPlatforms = Map<String, dynamic>.from(
+        (moduleWithoutResourcePlatforms['resources'] as List).single as Map,
+      )..remove('platforms');
+      moduleWithoutResourcePlatforms['resources'] = [resourceWithoutPlatforms];
+      final undeclaredResourceCatalog = await _signedEnvelope(
+        payload: {
+          ...payload,
+          'modules': [moduleWithoutResourcePlatforms],
+        },
+        issuedAt: now.subtract(const Duration(minutes: 1)),
+        expiresAt: now.add(const Duration(minutes: 10)),
+      );
+      await expectLater(
+        _source(
+          undeclaredResourceCatalog.envelope,
+          trustedKeys: {
+            'catalog-test-key': GameCatalogTrustKey(
+              publisher: 'taiwan-brawl',
+              publicKey: undeclaredResourceCatalog.publicKey,
+            ),
+          },
+          now: now,
+        ).fetch(),
+        throwsFormatException,
+      );
     },
   );
 
@@ -585,6 +642,7 @@ void main() {
             sha256:
                 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
             affectsGameplay: true,
+            payloadSchemaVersion: 1,
             downloadUrl:
                 'https://example.test/game-resources/archery/rules/1.0.0',
             byteLength: 8,

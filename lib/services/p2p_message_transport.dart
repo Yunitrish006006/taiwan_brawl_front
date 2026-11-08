@@ -3,25 +3,20 @@ import 'dart:async';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
+import 'connection_aware_message_transport.dart';
+import 'p2p_connection_status.dart';
 import 'webrtc_message_transport.dart';
 
 typedef PeerConnectionFactory =
     Future<RTCPeerConnection> Function(Map<String, dynamic> configuration);
 
-typedef P2PMessageTransportFactory =
-    P2PMessageTransport Function({
-      required int friendId,
-      required PeerSignalingChannel signalingService,
-      required bool isCaller,
-      required Map<String, dynamic> iceConfiguration,
-    });
-
 /// Owns the WebRTC peer-connection lifecycle while exposing the shared
-/// transport contract used by [MessageSyncEngine].
+/// transport contract used by [MessageSyncEngine] through ChatService.
 ///
 /// This keeps signaling and ICE details out of message commands and lets the
 /// same transport be selected by either the legacy P2P facade or ChatService.
-class P2PMessageTransport implements MessageTransport {
+class P2PMessageTransport
+    implements NegotiatingMessageTransport, ConnectionAwareMessageTransport {
   P2PMessageTransport({
     required this.friendId,
     required this.signalingService,
@@ -38,8 +33,12 @@ class P2PMessageTransport implements MessageTransport {
 
   final StreamController<MessageEvent> _events =
       StreamController<MessageEvent>.broadcast();
+  final StreamController<bool> _connectionStates =
+      StreamController<bool>.broadcast();
   StreamSubscription<Map<String, dynamic>>? _signalSub;
   StreamSubscription<MessageEvent>? _channelSub;
+  StreamSubscription<bool>? _channelStateSub;
+  Future<void> _signalTail = Future<void>.value();
   RTCPeerConnection? _peerConnection;
   WebRtcMessageTransport? _channelTransport;
   Completer<RTCDataChannel>? _channelCompleter;
@@ -47,14 +46,24 @@ class P2PMessageTransport implements MessageTransport {
   Timer? _offerRetryTimer;
   RTCSessionDescription? _localOffer;
   final List<Map<String, dynamic>> _localIceCandidates = [];
+  final List<Map<String, dynamic>> _pendingRemoteIceCandidates = [];
   String? _remoteOfferSdp;
+  bool _remoteDescriptionSet = false;
+  bool _prepared = false;
   bool _connected = false;
   bool _disposed = false;
 
   @override
   Stream<MessageEvent> get events => _events.stream;
 
-  bool get isConnected => _connected;
+  @override
+  Stream<bool> get connectionStateChanges => _connectionStates.stream;
+
+  @override
+  bool get isTransportConnected =>
+      _connected && (_channelTransport?.isTransportConnected ?? false);
+
+  bool get isConnected => isTransportConnected;
 
   @override
   Future<void> connect() async {
@@ -68,18 +77,7 @@ class P2PMessageTransport implements MessageTransport {
           'Timed out waiting for the P2P data channel',
         ),
       );
-      final transport = WebRtcMessageTransport(channel);
-      _channelTransport = transport;
-      _channelSub = transport.events.listen(
-        _events.add,
-        onError: _events.addError,
-      );
-      await transport.connect().timeout(
-        const Duration(seconds: 15),
-        onTimeout: () =>
-            throw TimeoutException('Timed out opening the P2P data channel'),
-      );
-      _connected = true;
+      await _attachDataChannel(channel);
       _offerRetryTimer?.cancel();
       _offerRetryTimer = null;
     } catch (_) {
@@ -94,9 +92,10 @@ class P2PMessageTransport implements MessageTransport {
   /// This is the explicit phase needed by serverless/manual signaling: the
   /// caller can prepare, export its offer/ICE bundle, import the answer, and
   /// only then call [connect] (or let the service complete the negotiation).
+  @override
   Future<void> prepare() async {
     if (_disposed) throw StateError('P2P message transport is disposed');
-    if (_connected || _channelTransport != null) return;
+    if (_connected || _channelTransport != null || _prepared) return;
     if (_preparing != null) return _preparing!;
 
     final preparation = _prepare();
@@ -118,9 +117,21 @@ class P2PMessageTransport implements MessageTransport {
   }
 
   Future<void> _prepareConnection() async {
-    if (_connected || _channelTransport != null) return;
+    if (_connected || _channelTransport != null || _prepared) return;
 
     _peerConnection = await peerConnectionFactory(iceConfiguration);
+    _peerConnection!.onConnectionState = (state) {
+      final peerConnected =
+          state == RTCPeerConnectionState.RTCPeerConnectionStateConnected;
+      final channelConnected =
+          _channelTransport?.isTransportConnected ?? false;
+      _setConnected(
+        isP2PPathReady(
+          peerConnected: peerConnected,
+          dataChannelOpen: channelConnected,
+        ),
+      );
+    };
     _channelCompleter = Completer<RTCDataChannel>();
     _peerConnection!.onIceCandidate = (candidate) {
       final payload = <String, dynamic>{
@@ -133,7 +144,7 @@ class P2PMessageTransport implements MessageTransport {
     _peerConnection!.onDataChannel = (channel) {
       _completeChannel(channel);
     };
-    _signalSub = signalingService.signalStream.listen(_handleSignal);
+    _signalSub = signalingService.signalStream.listen(_enqueueSignal);
 
     // Install the listener before connecting so an eager offer/ICE message is
     // not lost during the signaling handshake.
@@ -153,6 +164,7 @@ class P2PMessageTransport implements MessageTransport {
         if (!_connected) _sendOffer();
       });
     }
+    _prepared = true;
   }
 
   @override
@@ -167,16 +179,21 @@ class P2PMessageTransport implements MessageTransport {
   @override
   Future<void> disconnect() async {
     if (_disposed) return;
-    _connected = false;
+    _setConnected(false);
     _offerRetryTimer?.cancel();
     _offerRetryTimer = null;
+    _prepared = false;
     _localOffer = null;
     _localIceCandidates.clear();
+    _pendingRemoteIceCandidates.clear();
     _remoteOfferSdp = null;
+    _remoteDescriptionSet = false;
     await _signalSub?.cancel();
     _signalSub = null;
     await _channelSub?.cancel();
     _channelSub = null;
+    await _channelStateSub?.cancel();
+    _channelStateSub = null;
     await _channelTransport?.dispose();
     _channelTransport = null;
     await _peerConnection?.close();
@@ -191,7 +208,14 @@ class P2PMessageTransport implements MessageTransport {
     await disconnect();
     _disposed = true;
     await _events.close();
+    await _connectionStates.close();
     signalingService.dispose();
+  }
+
+  void _setConnected(bool connected) {
+    if (_connected == connected) return;
+    _connected = connected;
+    if (!_connectionStates.isClosed) _connectionStates.add(connected);
   }
 
   void _completeChannel(RTCDataChannel channel) {
@@ -211,7 +235,7 @@ class P2PMessageTransport implements MessageTransport {
   }
 
   Future<void> _handleSignal(Map<String, dynamic> payload) async {
-    final peerConnection = _peerConnection;
+    var peerConnection = _peerConnection;
     final type = payload['type'] as String?;
     if (peerConnection == null || type == null) return;
 
@@ -219,30 +243,108 @@ class P2PMessageTransport implements MessageTransport {
       case 'offer':
         final sdp = payload['sdp'] as String?;
         if (sdp == null || sdp == _remoteOfferSdp) return;
+        final isNewPeerSession = _remoteOfferSdp != null;
+        if (isNewPeerSession) {
+          // A new SDP from the same peer means the offerer rebuilt its peer
+          // connection. Rebuild our side too so the new DataChannel is bound
+          // to the long-lived message event stream.
+          await disconnect();
+          await prepare();
+          peerConnection = _peerConnection;
+          if (peerConnection == null) return;
+        }
         _remoteOfferSdp = sdp;
         await peerConnection.setRemoteDescription(
           RTCSessionDescription(sdp, 'offer'),
         );
+        await _acceptRemoteDescription(peerConnection);
         final answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
         signalingService.send(friendId, {'type': 'answer', 'sdp': answer.sdp});
+        if (isNewPeerSession) {
+          final channel = await _channelCompleter!.future.timeout(
+            const Duration(seconds: 15),
+            onTimeout: () => throw TimeoutException(
+              'Timed out waiting for the replacement P2P data channel',
+            ),
+          );
+          await _attachDataChannel(channel);
+        }
       case 'answer':
         await peerConnection.setRemoteDescription(
           RTCSessionDescription(payload['sdp'] as String, 'answer'),
         );
+        await _acceptRemoteDescription(peerConnection);
       case 'ice_candidate':
         final raw = payload['candidate'];
         if (raw is Map) {
-          await peerConnection.addCandidate(
-            RTCIceCandidate(
-              raw['candidate'] as String?,
-              raw['sdpMid'] as String?,
-              raw['sdpMLineIndex'] as int?,
-            ),
-          );
+          final candidate = Map<String, dynamic>.from(raw);
+          if (!_remoteDescriptionSet) {
+            _pendingRemoteIceCandidates.add(candidate);
+          } else {
+            await _addRemoteIceCandidate(peerConnection, candidate);
+          }
         }
     }
   }
+
+  void _enqueueSignal(Map<String, dynamic> payload) {
+    final operation = _signalTail.then((_) => _handleSignal(payload));
+    _signalTail = operation.catchError((Object _) {
+      // A failed negotiation step must surface as a lost P2P route so the
+      // player can retry or choose relay; it must not become an unhandled
+      // asynchronous stream error.
+      _setConnected(false);
+    });
+  }
+
+  Future<void> _attachDataChannel(RTCDataChannel channel) async {
+    await _channelSub?.cancel();
+    _channelSub = null;
+    await _channelStateSub?.cancel();
+    _channelStateSub = null;
+    await _channelTransport?.dispose();
+
+    final transport = WebRtcMessageTransport(channel);
+    _channelTransport = transport;
+    _channelStateSub = transport.connectionStateChanges.listen((connected) {
+      _setConnected(connected);
+    });
+    _channelSub = transport.events.listen(
+      _events.add,
+      onError: _events.addError,
+    );
+    await transport.connect().timeout(
+      const Duration(seconds: 15),
+      onTimeout: () =>
+          throw TimeoutException('Timed out opening the P2P data channel'),
+    );
+    _setConnected(true);
+  }
+
+  Future<void> _acceptRemoteDescription(
+    RTCPeerConnection peerConnection,
+  ) async {
+    _remoteDescriptionSet = true;
+    final candidates = List<Map<String, dynamic>>.from(
+      _pendingRemoteIceCandidates,
+    );
+    _pendingRemoteIceCandidates.clear();
+    for (final candidate in candidates) {
+      await _addRemoteIceCandidate(peerConnection, candidate);
+    }
+  }
+
+  Future<void> _addRemoteIceCandidate(
+    RTCPeerConnection peerConnection,
+    Map<String, dynamic> raw,
+  ) => peerConnection.addCandidate(
+    RTCIceCandidate(
+      raw['candidate'] as String?,
+      raw['sdpMid'] as String?,
+      raw['sdpMLineIndex'] as int?,
+    ),
+  );
 
   static const Map<String, dynamic> defaultIceConfiguration = {
     'iceServers': [

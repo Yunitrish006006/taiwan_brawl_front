@@ -37,6 +37,10 @@ abstract interface class DeviceIdentityDirectory {
 /// Durable event storage boundary. A Flutter adapter may implement this with
 /// an encrypted SQLite/Hive store; a server adapter may implement it with D1,
 /// Postgres, or another database. The domain package does not choose one.
+///
+/// [append] upserts the main event row by [MessageEvent.eventId]. When
+/// [pendingOutbox] is true, it also upserts the pending outbox row by that ID;
+/// writing with `false` must not remove an already-pending outbox row.
 abstract interface class MessageEventStore {
   Future<List<MessageEvent>> loadAll();
 
@@ -71,9 +75,31 @@ abstract interface class MessageInboxStore {
   Future<void> removeInbox(String eventId);
 }
 
+/// A durable write-ahead record for a multi-event remote ingestion operation.
+class MessageEventBatch {
+  MessageEventBatch({required this.id, required List<MessageEvent> events})
+    : events = List.unmodifiable(events);
+
+  final String id;
+  final List<MessageEvent> events;
+}
+
+/// Optional atomic-record inbox for remote batches that must be replayable as
+/// one validated unit after a process or storage failure.
+abstract interface class MessageBatchInboxStore {
+  /// Persists all events in one durable record and returns its opaque ID.
+  Future<String> appendInboxBatch(List<MessageEvent> events);
+
+  Future<List<MessageEventBatch>> loadInboxBatches();
+
+  Future<void> removeInboxBatch(String batchId);
+}
+
 /// Optional durable boundary for conflicts discovered while restoring or
 /// receiving events. Existing event stores remain source-compatible when they
-/// do not implement this capability.
+/// do not implement this capability. Implementations must make repeated writes
+/// for the same event ID idempotent so a write whose result is uncertain can
+/// be safely retried before a relay receipt is acknowledged.
 abstract interface class MessageConflictStore {
   Future<List<MessageConflict>> loadConflicts();
 

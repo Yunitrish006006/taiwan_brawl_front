@@ -1,56 +1,77 @@
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
-import 'api_client.dart';
 import 'chat_service.dart';
+import 'direct_message_session.dart';
+import 'legacy_chat_delivery_adapter.dart';
+import 'legacy_chat_history_adapter.dart';
 import 'legacy_chat_remote_source.dart';
+import 'legacy_chat_sync_snapshot_adapter.dart';
 import 'legacy_chat_store.dart';
 import 'messaging_core_service.dart';
-import 'p2p_message_transport.dart';
 
 /// Composition-root factory for the legacy-compatible chat application API.
 ///
 /// Pages receive a ready application service and do not assemble storage,
 /// identity, signaling, or transport adapters themselves.
-class ChatServiceFactory {
+class ChatServiceFactory implements DirectMessageSessionFactory {
   ChatServiceFactory({
-    required ApiClient apiClient,
     required this.messagingCore,
-    this.localRepository,
-    this.remoteSource,
+    required this.legacyDeliveryStore,
+    required this.legacyHistoryStore,
+    required this.legacySnapshotStore,
+    required this.legacyDeliveryRemoteSource,
+    required this.legacyHistoryRemoteSource,
+    required this.legacySnapshotRemoteSource,
+    required this.transportFactory,
     this.authenticator,
     this.remoteAuthenticator,
+    this.p2pAuthenticator,
     this.deviceId,
-    this.transportFactory,
-    this.manualSignaling,
+    this.manualSignalingFactory,
     this.manualTransportFactory,
-    this.p2pIceConfiguration = P2PMessageTransport.defaultIceConfiguration,
-  }) : _apiClient = apiClient;
+  });
 
-  final ApiClient _apiClient;
   final MessagingCoreService messagingCore;
-  final LegacyChatStore? localRepository;
-  final LegacyChatRemoteSource? remoteSource;
+  final LegacyChatDeliveryStore legacyDeliveryStore;
+  final LegacyChatHistoryStore legacyHistoryStore;
+  final LegacyChatSnapshotStore legacySnapshotStore;
+  final LegacyChatDeliveryRemoteSource legacyDeliveryRemoteSource;
+  final LegacyChatHistoryRemoteSource legacyHistoryRemoteSource;
+  final LegacyChatSnapshotRemoteSource legacySnapshotRemoteSource;
   final EventAuthenticator? authenticator;
   final EventAuthenticator? remoteAuthenticator;
+  final EventAuthenticator? p2pAuthenticator;
   final String? deviceId;
-  final ChatMessageTransportFactory? transportFactory;
-  final PeerSignalingChannel? manualSignaling;
-  final P2PMessageTransportFactory? manualTransportFactory;
-  final Map<String, dynamic> p2pIceConfiguration;
+  final DirectMessageTransportFactory transportFactory;
+  final PeerSignalingChannel Function()? manualSignalingFactory;
+  final ManualP2PTransportFactory? manualTransportFactory;
 
+  @override
   ChatService create() {
     return ChatService(
-      _apiClient,
       messagingCore: messagingCore,
-      localRepository: localRepository,
-      remoteSource: remoteSource,
+      legacyDelivery: LegacyChatDeliveryAdapter(
+        localRepository: legacyDeliveryStore,
+        remoteSource: legacyDeliveryRemoteSource,
+      ),
+      legacyHistory: LegacyChatHistoryAdapter(
+        messagingCore: messagingCore,
+        localRepository: legacyHistoryStore,
+        remoteSource: legacyHistoryRemoteSource,
+        remoteAuthenticator: remoteAuthenticator,
+      ),
+      legacySyncSnapshots: LegacyChatSyncSnapshotAdapter(
+        messagingCore: messagingCore,
+        localRepository: legacySnapshotStore,
+        remoteSource: legacySnapshotRemoteSource,
+      ),
       authenticator: authenticator,
       remoteAuthenticator: remoteAuthenticator,
+      p2pAuthenticator: p2pAuthenticator,
       deviceId: deviceId,
       transportFactory: transportFactory,
-      manualSignaling: manualSignaling,
+      manualSignaling: manualSignalingFactory?.call(),
       manualTransportFactory: manualTransportFactory,
-      p2pIceConfiguration: p2pIceConfiguration,
     );
   }
 }

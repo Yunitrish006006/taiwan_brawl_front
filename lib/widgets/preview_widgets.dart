@@ -147,35 +147,40 @@ class _PreviewP2pDemoState extends State<PreviewP2pDemo> {
     if (!context.read<AppConfiguration>().previewMode) {
       return const SizedBox.shrink();
     }
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'P2P 雙 peer 本地示範',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 6),
-            const Text('使用共享的 InMemoryMessageTransport，模擬兩個沒有伺服器的裝置同步事件。'),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Chip(label: Text(_ready ? '兩端已連線' : '初始化中')),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: _ready ? _send : null,
-                  icon: const Icon(Icons.sync),
-                  label: const Text('送出測試事件'),
-                ),
+    return SizedBox(
+      width: double.infinity,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'P2P 雙 peer 本地示範',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 6),
+              const Text('使用共享的 InMemoryMessageTransport，模擬兩個沒有伺服器的裝置同步事件。'),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Chip(label: Text(_ready ? '兩端已連線' : '初始化中')),
+                  FilledButton.icon(
+                    onPressed: _ready ? _send : null,
+                    icon: const Icon(Icons.sync),
+                    label: const Text('送出測試事件'),
+                  ),
+                ],
+              ),
+              if (_lastMessage != null) ...[
+                const SizedBox(height: 8),
+                Text('右側 peer 收到：$_lastMessage'),
               ],
-            ),
-            if (_lastMessage != null) ...[
-              const SizedBox(height: 8),
-              Text('右側 peer 收到：$_lastMessage'),
             ],
-          ],
+          ),
         ),
       ),
     );

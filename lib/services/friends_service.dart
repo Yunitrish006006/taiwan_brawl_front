@@ -1,15 +1,13 @@
 import '../models/friends_models.dart';
 import '../config/app_configuration.dart';
-import 'api_client.dart';
 import 'friends_remote_source.dart';
 import 'service_utils.dart';
 
 class FriendsService {
-  FriendsService(
-    ApiClient apiClient, {
-    FriendsRemoteSource? remoteSource,
+  FriendsService({
+    required FriendsRemoteSource remoteSource,
     AppConfiguration? configuration,
-  }) : _remoteSource = remoteSource ?? ServerFriendsRemoteSource(apiClient),
+  }) : _remoteSource = remoteSource,
        _apiBaseUrl = (configuration ?? AppConfiguration.environment).apiBaseUrl;
 
   final FriendsRemoteSource _remoteSource;

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -27,12 +28,19 @@ class GameLibraryPage extends StatelessWidget {
                 : () async {
                     try {
                       await resourceService.refreshCatalog();
-                    } on Object catch (error) {
+                    } on Object catch (error, stackTrace) {
+                      _logGameLibraryFailure(
+                        'refresh-catalog',
+                        error,
+                        stackTrace,
+                      );
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              '${t.text('Catalog unavailable')}: $error',
+                              t.text(
+                                'Could not refresh the game catalog. Check your connection and try again.',
+                              ),
                             ),
                           ),
                         );
@@ -70,12 +78,19 @@ class GameLibraryPage extends StatelessWidget {
                             : () async {
                                 try {
                                   await resourceService.refreshCatalog();
-                                } on Object catch (error) {
+                                } on Object catch (error, stackTrace) {
+                                  _logGameLibraryFailure(
+                                    'refresh-catalog',
+                                    error,
+                                    stackTrace,
+                                  );
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          '${t.text('Catalog unavailable')}: $error',
+                                          t.text(
+                                            'Could not refresh the game catalog. Check your connection and try again.',
+                                          ),
                                         ),
                                       ),
                                     );
@@ -133,10 +148,21 @@ class GameLibraryPage extends StatelessWidget {
                     if (enabled && !supported) return;
                     try {
                       await library.setModuleEnabled(module.moduleId, enabled);
-                    } on Object catch (error) {
+                    } on Object catch (error, stackTrace) {
+                      _logGameLibraryFailure(
+                        'toggle-module:${module.moduleId}',
+                        error,
+                        stackTrace,
+                      );
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(error.toString())),
+                          SnackBar(
+                            content: Text(
+                              t.text(
+                                'Could not update the game library. Please try again.',
+                              ),
+                            ),
+                          ),
                         );
                       }
                     }
@@ -150,7 +176,9 @@ class GameLibraryPage extends StatelessWidget {
             ListTile(
               dense: true,
               leading: const Icon(Icons.download_for_offline_outlined),
-              title: Text(resource.resourceId),
+              title: Text(
+                t.text(resource.displayNameKey ?? resource.resourceId),
+              ),
               subtitle: _resourceSubtitle(
                 library,
                 module.moduleId,
@@ -163,6 +191,7 @@ class GameLibraryPage extends StatelessWidget {
                 resourceService,
                 module.moduleId,
                 resource,
+                t,
               ),
             ),
         ],
@@ -177,16 +206,39 @@ class GameLibraryPage extends StatelessWidget {
     Map<String, String> t,
   ) {
     final record = library.resourceRecord(moduleId, resource.resourceId);
+    final description = resource.descriptionKey == null
+        ? null
+        : t.text(resource.descriptionKey!);
+    final kindLabel = switch (resource.kind) {
+      GameResourceKind.gameplayData => t.text('Gameplay content'),
+      GameResourceKind.presentation => t.text('Visual assets'),
+      GameResourceKind.localization => t.text('Language pack'),
+    };
+    final impactLabel = t.text(
+      resource.affectsGameplay ? 'Affects gameplay' : 'Visuals only',
+    );
+    final metadata = <String>[
+      kindLabel,
+      'v${resource.version}',
+      impactLabel,
+      '${t.text('Package size')}: ${_formatPackageSize(resource.byteLength, t)}',
+    ];
+    final isInstalled = record?.status == GameResourceInstallStatus.installed;
     if (library.isResourceUpdateAvailable(moduleId, resource)) {
-      return Text(
-        '${resource.kind.name} · ${t.text('Update available')} · '
-        '${record!.version} → ${resource.version}',
+      metadata.add(
+        '${t.text('Update available')}: ${record!.version} → ${resource.version}',
+      );
+    } else if (record != null) {
+      metadata.add(t.text('resource.status.${record.status.name}'));
+    } else {
+      metadata.add(t.text('Not installed'));
+    }
+    if (!isInstalled && resource.downloadUrl == null) {
+      metadata.add(
+        t.text('Download unavailable: signed package not published'),
       );
     }
-    return Text(
-      '${resource.kind.name} · v${resource.version} · '
-      '${record?.status.name ?? t.text('Not installed')}',
-    );
+    return Text([?description, metadata.join(' · ')].join('\n'));
   }
 
   Widget? _resourceAction(
@@ -195,6 +247,7 @@ class GameLibraryPage extends StatelessWidget {
     GameResourceLibraryService? service,
     String moduleId,
     GameResourceManifest resource,
+    Map<String, String> t,
   ) {
     final record = library.resourceRecord(moduleId, resource.resourceId);
     final installed = record?.status == GameResourceInstallStatus.installed;
@@ -217,6 +270,8 @@ class GameLibraryPage extends StatelessWidget {
                 : () => _runResourceAction(
                     context,
                     () => service.install(moduleId, resource.resourceId),
+                    t: t,
+                    operationLabel: '$moduleId/${resource.resourceId}',
                   ),
             icon: const Icon(Icons.system_update_alt),
           ),
@@ -225,6 +280,8 @@ class GameLibraryPage extends StatelessWidget {
             onPressed: () => _runResourceAction(
               context,
               () => service.remove(moduleId, resource.resourceId),
+              t: t,
+              operationLabel: '$moduleId/${resource.resourceId}',
             ),
             icon: const Icon(Icons.delete_outline),
           ),
@@ -236,27 +293,22 @@ class GameLibraryPage extends StatelessWidget {
           ? 'Remove download'
           : removing
           ? 'Retry resource removal'
+          : resource.downloadUrl == null
+          ? 'Download unavailable: signed package not published'
           : 'Download resource',
       onPressed:
           installed ||
               removing ||
               (resource.downloadUrl != null &&
                   library.canInstallRemoteResources)
-          ? () async {
-              try {
-                if (installed || removing) {
-                  await service.remove(moduleId, resource.resourceId);
-                } else {
-                  await service.install(moduleId, resource.resourceId);
-                }
-              } on Object catch (error) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Resource action failed: $error')),
-                  );
-                }
-              }
-            }
+          ? () => _runResourceAction(
+              context,
+              () => installed || removing
+                  ? service.remove(moduleId, resource.resourceId)
+                  : service.install(moduleId, resource.resourceId),
+              t: t,
+              operationLabel: '$moduleId/${resource.resourceId}',
+            )
           : null,
       icon: Icon(installed || removing ? Icons.delete_outline : Icons.download),
     );
@@ -264,16 +316,59 @@ class GameLibraryPage extends StatelessWidget {
 
   Future<void> _runResourceAction(
     BuildContext context,
-    Future<void> Function() action,
-  ) async {
+    Future<void> Function() action, {
+    required Map<String, String> t,
+    String? operationLabel,
+  }) async {
     try {
       await action();
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
+      _logGameLibraryFailure(
+        'resource:${operationLabel ?? 'unknown'}',
+        error,
+        stackTrace,
+      );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Resource action failed: $error')),
+          SnackBar(
+            content: Text(
+              t.text(
+                'Resource action failed. Reload the app, refresh the game catalog, then try again.',
+              ),
+            ),
+          ),
         );
       }
     }
   }
+}
+
+void _logGameLibraryFailure(
+  String operation,
+  Object error,
+  StackTrace stackTrace,
+) {
+  if (!kDebugMode) return;
+  debugPrint('Game library operation failed ($operation): $error\n$stackTrace');
+}
+
+String _formatPackageSize(int? byteLength, Map<String, String> t) {
+  if (byteLength == null || byteLength < 0) {
+    return t.text('Not specified');
+  }
+  if (byteLength < 1000) return '$byteLength B';
+
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  var size = byteLength / 1000;
+  var unitIndex = 0;
+  while (size >= 1000 && unitIndex < units.length - 1) {
+    size /= 1000;
+    unitIndex++;
+  }
+  final precision = size < 10 ? 1 : 0;
+  final formatted = size.toStringAsFixed(precision);
+  final trimmed = formatted.endsWith('.0')
+      ? formatted.substring(0, formatted.length - 2)
+      : formatted;
+  return '$trimmed ${units[unitIndex]}';
 }

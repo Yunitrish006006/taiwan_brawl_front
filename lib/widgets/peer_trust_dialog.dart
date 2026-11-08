@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
+import '../services/locale_provider.dart';
 import '../services/peer_trust_service.dart';
 import '../services/secure_device_identity.dart';
 
@@ -23,8 +25,25 @@ class _PeerTrustDialogState extends State<PeerTrustDialog> {
   late final TextEditingController _invitationController;
   String? _localInvitation;
   PeerTrustInvitation? _peerInvitation;
+  String _fingerprintConfirmation = '';
   String? _error;
   bool _trusted = false;
+
+  Map<String, String> get _t => context.read<LocaleProvider>().translation;
+
+  String _normalizeFingerprint(String value) {
+    final normalized = value.replaceAll(RegExp(r'[\s:-]'), '');
+    if (!RegExp(r'^[0-9a-fA-F]*$').hasMatch(normalized)) return '';
+    return normalized.toLowerCase();
+  }
+
+  bool get _fingerprintMatches {
+    final invitation = _peerInvitation;
+    final confirmation = _normalizeFingerprint(_fingerprintConfirmation);
+    return invitation != null &&
+        confirmation.isNotEmpty &&
+        confirmation == invitation.fingerprint.toLowerCase();
+  }
 
   @override
   void initState() {
@@ -51,6 +70,7 @@ class _PeerTrustDialogState extends State<PeerTrustDialog> {
       if (_peerInvitation != null || _error != null) {
         setState(() {
           _peerInvitation = null;
+          _fingerprintConfirmation = '';
           _error = null;
         });
       }
@@ -61,6 +81,7 @@ class _PeerTrustDialogState extends State<PeerTrustDialog> {
       if (!mounted) return;
       setState(() {
         _peerInvitation = invitation;
+        _fingerprintConfirmation = '';
         _error = null;
         _trusted = false;
       });
@@ -68,6 +89,7 @@ class _PeerTrustDialogState extends State<PeerTrustDialog> {
       if (!mounted) return;
       setState(() {
         _peerInvitation = null;
+        _fingerprintConfirmation = '';
         _error = error.toString();
         _trusted = false;
       });
@@ -80,7 +102,7 @@ class _PeerTrustDialogState extends State<PeerTrustDialog> {
     try {
       await widget.trustService.trustInvitation(
         _invitationController.text.trim(),
-        confirmedFingerprint: invitation.fingerprint,
+        confirmedFingerprint: _normalizeFingerprint(_fingerprintConfirmation),
       );
       if (!mounted) return;
       setState(() => _trusted = true);
@@ -92,20 +114,24 @@ class _PeerTrustDialogState extends State<PeerTrustDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = _t;
     return AlertDialog(
-      title: const Text('Peer identity trust'),
+      title: Text(t.text('Peer identity trust')),
       content: SizedBox(
         width: 560,
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Compare the fingerprint with your friend through an independent channel before confirming trust.',
+              Text(
+                t.text(
+                  'Use the fingerprint your friend gave you through a separate channel. Enter it exactly to continue.',
+                ),
               ),
               if (_localInvitation != null) ...[
                 const SizedBox(height: 16),
-                const Text('Your trust invitation'),
+                Text(t.text('Your Ed25519 public-key invitation')),
+                Text(t.text('Contains no private signing key.')),
                 SelectableText(_localInvitation!),
                 Align(
                   alignment: Alignment.centerRight,
@@ -114,29 +140,68 @@ class _PeerTrustDialogState extends State<PeerTrustDialog> {
                       ClipboardData(text: _localInvitation!),
                     ),
                     icon: const Icon(Icons.copy),
-                    label: const Text('Copy invitation'),
+                    label: Text(t.text('Copy invitation')),
                   ),
                 ),
               ],
               const SizedBox(height: 8),
               TextField(
+                key: const ValueKey('peer-trust-invitation'),
                 controller: _invitationController,
                 minLines: 3,
                 maxLines: 8,
-                decoration: const InputDecoration(
-                  labelText: 'Peer trust invitation',
+                decoration: InputDecoration(
+                  labelText: t.text('Peer trust invitation'),
                   border: OutlineInputBorder(),
                 ),
               ),
               if (_peerInvitation != null) ...[
                 const SizedBox(height: 12),
-                Text('Device: ${_peerInvitation!.deviceId}'),
-                SelectableText('Fingerprint: ${_peerInvitation!.fingerprint}'),
+                Text('${t.text('Device')}: ${_peerInvitation!.deviceId}'),
+                Text(
+                  _peerInvitation!.algorithm == 'ed25519'
+                      ? t.text('Ed25519 public key')
+                      : t.text(
+                          'Legacy shared secret — import only through a private channel.',
+                        ),
+                ),
+                SelectableText(
+                  '${t.text('Fingerprint')}: ${_peerInvitation!.fingerprint}',
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  key: const ValueKey('peer-fingerprint-confirmation'),
+                  onChanged: (value) => setState(() {
+                    _fingerprintConfirmation = value;
+                  }),
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  decoration: InputDecoration(
+                    labelText: t.text(
+                      'Fingerprint confirmed through separate channel',
+                    ),
+                    hintText: t.text(
+                      'Enter the fingerprint you compared with your friend',
+                    ),
+                    border: const OutlineInputBorder(),
+                    errorText:
+                        _fingerprintConfirmation.isNotEmpty &&
+                            !_fingerprintMatches
+                        ? t.text(
+                            'This fingerprint does not match the invitation.',
+                          )
+                        : null,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 FilledButton.icon(
-                  onPressed: _trusted ? null : _confirmTrust,
+                  onPressed: _trusted || !_fingerprintMatches
+                      ? null
+                      : _confirmTrust,
                   icon: Icon(_trusted ? Icons.verified : Icons.shield),
-                  label: Text(_trusted ? 'Trusted' : 'Confirm and trust'),
+                  label: Text(
+                    _trusted ? t.text('Trusted') : t.text('Confirm and trust'),
+                  ),
                 ),
               ],
               if (_error != null) ...[
@@ -150,7 +215,7 @@ class _PeerTrustDialogState extends State<PeerTrustDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Close'),
+          child: Text(t.text('Close')),
         ),
       ],
     );

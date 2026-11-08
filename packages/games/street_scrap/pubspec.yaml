@@ -1,0 +1,24 @@
+name: taiwan_brawl_game_street_scrap
+description: Street Scrap standalone game module and versioned content contract.
+publish_to: 'none'
+version: 0.1.14
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  audioplayers: ^6.8.1
+  crypto: ^3.0.7
+  file_picker: ^10.3.2
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  assets:
+    - assets/audio/
+    - assets/fallback/

@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'message_event.dart';
+import 'message_transport.dart';
+
 enum PeerSignalType { offer, answer, iceCandidate, close }
 
 /// Negotiation data only. A signaling adapter must not carry message bodies.
@@ -148,7 +151,10 @@ class ManualPeerSignaling implements PeerSignalingChannel {
   @override
   void send(int peerId, Map<String, dynamic> payload) {
     if (_disposed) return;
-    _outgoing.add(PeerNegotiationBundle.validateSignal(payload));
+    final signal = PeerNegotiationBundle.validateSignal(payload);
+    final encoded = jsonEncode(signal);
+    if (_outgoing.any((queued) => jsonEncode(queued) == encoded)) return;
+    _outgoing.add(signal);
   }
 
   List<Map<String, dynamic>> takeOutgoingSignals() {
@@ -175,6 +181,36 @@ class ManualPeerSignaling implements PeerSignalingChannel {
     ).encode();
   }
 
+  /// Exports negotiation data signed by the local device identity.
+  ///
+  /// The signature covers the exact encoded bundle, including its session,
+  /// sender device, SDP, and ICE candidates. Recipients must verify it against
+  /// their explicit peer trust directory before importing any signal.
+  Future<String> exportSignedBundle({
+    required String sessionId,
+    required String senderDeviceId,
+    required EventAuthenticator authenticator,
+  }) async {
+    // Keep queued signals intact if signing fails. New signals arriving while
+    // the signer is running are appended after this snapshot and remain queued.
+    final signals = List<Map<String, dynamic>>.unmodifiable(_outgoing);
+    final bundle = PeerNegotiationBundle(
+      sessionId: sessionId,
+      senderDeviceId: senderDeviceId,
+      signals: signals,
+    ).encode();
+    final parsed = PeerNegotiationBundle.decode(bundle);
+    final signature = await authenticator.sign(_signatureEvent(bundle, parsed));
+    final snapshotStillQueued =
+        _outgoing.length >= signals.length &&
+        List<bool>.generate(
+          signals.length,
+          (index) => identical(_outgoing[index], signals[index]),
+        ).every((matches) => matches);
+    if (snapshotStillQueued) _outgoing.removeRange(0, signals.length);
+    return jsonEncode({'version': 2, 'bundle': bundle, 'signature': signature});
+  }
+
   void importBundle(
     String encoded, {
     String? expectedSessionId,
@@ -189,6 +225,61 @@ class ManualPeerSignaling implements PeerSignalingChannel {
       throw const FormatException('Negotiation bundle sender does not match');
     }
     acceptSignals(bundle.signals);
+  }
+
+  /// Verifies the signing device against the configured trust directory before
+  /// accepting any offer, answer, or ICE candidate from a bundle.
+  Future<void> importSignedBundle(
+    String encoded, {
+    required EventAuthenticator authenticator,
+    String? expectedSessionId,
+    String? expectedSenderDeviceId,
+  }) async {
+    final decoded = jsonDecode(encoded);
+    if (decoded is! Map ||
+        decoded['version'] != 2 ||
+        decoded['bundle'] is! String ||
+        decoded['signature'] is! String) {
+      throw const FormatException('Signed negotiation bundle is invalid');
+    }
+    final rawBundle = decoded['bundle'] as String;
+    final bundle = PeerNegotiationBundle.decode(rawBundle);
+    if (expectedSessionId != null && bundle.sessionId != expectedSessionId) {
+      throw const FormatException('Negotiation bundle session does not match');
+    }
+    if (expectedSenderDeviceId != null &&
+        bundle.senderDeviceId != expectedSenderDeviceId) {
+      throw const FormatException('Negotiation bundle sender does not match');
+    }
+    final event = _signatureEvent(
+      rawBundle,
+      bundle,
+    ).withSignature(decoded['signature'] as String);
+    if (!await authenticator.verify(event)) {
+      throw const FormatException(
+        'Negotiation bundle signature is invalid or untrusted',
+      );
+    }
+    acceptSignals(bundle.signals);
+  }
+
+  static MessageEvent _signatureEvent(
+    String rawBundle,
+    PeerNegotiationBundle bundle,
+  ) {
+    final eventId =
+        'manual-negotiation:' + bundle.sessionId + ':' + bundle.senderDeviceId;
+    return MessageEvent(
+      eventId: eventId,
+      messageId: eventId,
+      conversationId: bundle.sessionId,
+      actorId: bundle.senderDeviceId,
+      deviceId: bundle.senderDeviceId,
+      type: MessageEventType.created,
+      revision: 0,
+      createdAt: DateTime.utc(2000),
+      body: rawBundle,
+    );
   }
 
   @override

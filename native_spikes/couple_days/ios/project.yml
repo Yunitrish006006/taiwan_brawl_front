@@ -1,0 +1,41 @@
+name: CoupleDaysSpike
+options:
+  deploymentTarget:
+    iOS: '26.0'
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    CODE_SIGN_ENTITLEMENTS: Spike.entitlements
+targets:
+  CoupleDaysSpike:
+    type: application
+    platform: iOS
+    sources: [Host, Shared]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yunitrish.taiwanbrawl.coupledays.spike
+    info:
+      path: Generated/Host-Info.plist
+      properties:
+        CFBundleDisplayName: Couple days sample
+        UILaunchScreen: {}
+        CFBundleURLTypes:
+          - CFBundleURLSchemes: [coupledays-spike]
+    dependencies:
+      - target: CoupleDaysSpikeWidget
+        embed: true
+  CoupleDaysSpikeWidget:
+    type: app-extension
+    platform: iOS
+    sources: [Widget, Shared]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yunitrish.taiwanbrawl.coupledays.spike.widget
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+    info:
+      path: Generated/Widget-Info.plist
+      properties:
+        CFBundleDisplayName: Couple days sample
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension

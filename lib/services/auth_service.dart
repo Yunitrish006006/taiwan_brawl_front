@@ -2,22 +2,34 @@ import 'package:flutter/foundation.dart';
 
 import '../models/app_user.dart';
 import '../config/app_configuration.dart';
-import 'api_client.dart';
 import 'auth_remote_source.dart';
 import 'service_utils.dart';
+import 'remote_source_exception.dart';
+
+enum AuthIdentityState { unresolved, authenticated, signedOut }
 
 class AuthService extends ChangeNotifier {
-  AuthService(
-    ApiClient apiClient, {
-    AuthRemoteSource? remoteSource,
+  AuthService({
+    required AuthRemoteSource remoteSource,
     AppConfiguration? configuration,
-  }) : _remoteSource = remoteSource ?? ServerAuthRemoteSource(apiClient),
+  }) : _remoteSource = remoteSource,
        _configuration = configuration ?? AppConfiguration.environment;
 
   final AuthRemoteSource _remoteSource;
   final AppConfiguration _configuration;
   AppUser? _user;
   bool _hasInitialized = false;
+  int _identityEpoch = 0;
+  int _identityReadSequence = 0;
+  Future<void> _sessionQueue = Future.value();
+  Future<void> _serializeSession(Future<void> Function() action) {
+    final operation = _sessionQueue.then((_) => action());
+    _sessionQueue = operation.catchError((Object _) {});
+    return operation;
+  }
+
+  AuthIdentityState _identityState = AuthIdentityState.unresolved;
+  AuthIdentityState get identityState => _identityState;
 
   Future<void> updateLocale(String locale) async {
     await _remoteSource.updateLocale(locale);
@@ -25,6 +37,8 @@ class AuthService extends ChangeNotifier {
   }
 
   bool _isLoading = false;
+  bool _isSigningIn = false;
+  bool get isSigningIn => _isSigningIn;
 
   AppUser? get user => _user;
   bool get isLoading => _isLoading;
@@ -51,33 +65,63 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> refreshMe({bool silent = false}) async {
+    final epoch = _identityEpoch, sequence = ++_identityReadSequence;
     _setLoading(!silent);
-    try {
-      final res = await _remoteSource.loadCurrentUser();
-      _user = _readUser(res);
-    } catch (_) {
-      _user = null;
-    } finally {
-      _hasInitialized = true;
-      _setLoading(false);
-      notifyListeners();
-    }
+    await _serializeSession(() async {
+      if (epoch != _identityEpoch || sequence != _identityReadSequence) return;
+      try {
+        final res = await _remoteSource.loadCurrentUser();
+        if (epoch != _identityEpoch || sequence != _identityReadSequence) {
+          return;
+        }
+        _user = _readUser(res);
+        _identityState = AuthIdentityState.authenticated;
+      } catch (error) {
+        if (epoch != _identityEpoch || sequence != _identityReadSequence) {
+          return;
+        }
+        _user = null;
+        _identityState =
+            error is RemoteSourceException && error.statusCode == 401
+            ? AuthIdentityState.signedOut
+            : AuthIdentityState.unresolved;
+      } finally {
+        if (epoch == _identityEpoch && sequence == _identityReadSequence) {
+          _hasInitialized = true;
+          _setLoading(false);
+          notifyListeners();
+        }
+      }
+    });
   }
 
   Future<void> verifyGoogleToken(String idToken) async {
+    final epoch = ++_identityEpoch;
+    _isSigningIn = true;
     _setLoading(true);
-    try {
-      final res = await _remoteSource.verifyGoogleToken(idToken);
-      _hasInitialized = true;
-      _saveUser(res);
-    } catch (_) {
-      await _remoteSource.clearSession();
-      _user = null;
-      _hasInitialized = true;
-      rethrow;
-    } finally {
-      _setLoading(false);
-    }
+    await _serializeSession(() async {
+      if (epoch != _identityEpoch) return;
+      try {
+        final res = await _remoteSource.verifyGoogleToken(idToken);
+        if (epoch != _identityEpoch) return;
+        _hasInitialized = true;
+        _saveUser(res);
+      } catch (_) {
+        if (epoch == _identityEpoch) {
+          _user = null;
+          _identityState = AuthIdentityState.signedOut;
+          _hasInitialized = true;
+          notifyListeners();
+          await _remoteSource.clearSession();
+        }
+        rethrow;
+      } finally {
+        if (epoch == _identityEpoch) {
+          _isSigningIn = false;
+          _setLoading(false);
+        }
+      }
+    });
   }
 
   Future<void> updateProfile({
@@ -137,19 +181,25 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    try {
-      await _remoteSource.logout();
-    } catch (_) {
-      // Ignore API failures when logging out locally.
-    }
-    await _remoteSource.clearSession();
+    ++_identityEpoch;
+    _isSigningIn = false;
     _user = null;
+    _identityState = AuthIdentityState.signedOut;
     _hasInitialized = true;
-    notifyListeners();
+    _setLoading(false);
+    await _serializeSession(() async {
+      try {
+        await _remoteSource.logout();
+      } catch (_) {
+        // Ignore API failures when logging out locally.
+      }
+      await _remoteSource.clearSession();
+    });
   }
 
   void _saveUser(Map<String, dynamic> response) {
     _user = _readUser(response);
+    _identityState = AuthIdentityState.authenticated;
     notifyListeners();
   }
 

@@ -1,8 +1,11 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
+import 'package:taiwan_brawl_game_street_scrap/street_scrap_progress.dart'
+    as street_scrap;
 
 import 'constants/app_constants.dart';
 import 'constants/app_theme_catalog.dart';
@@ -10,6 +13,7 @@ import 'constants/locale_catalog.dart';
 import 'config/app_configuration.dart';
 import 'game_modules/bundled_game_catalog.dart';
 import 'game_modules/game_resource_migrations.dart';
+import 'game_modules/street_scrap_hive_progress_store.dart';
 import 'game_modules/mini_royale_game_contract.dart';
 import 'game_modules/mini_royale_platform_adapters.dart';
 import 'game_modules/game_module_routes.dart';
@@ -22,6 +26,8 @@ import 'pages/home/home_page.dart';
 import 'pages/profile/profile_page.dart' deferred as profile_page;
 import 'package:taiwan_brawl_game_mini_royale/taiwan_brawl_game_mini_royale.dart'
     as mini_royale;
+import 'package:taiwan_brawl_game_street_scrap/street_scrap_localizations.dart'
+    as street_scrap_i18n;
 import 'pages/game/game_library_page.dart';
 import 'services/ad_service.dart';
 import 'services/admin_service.dart';
@@ -30,16 +36,29 @@ import 'services/api_client.dart';
 import 'services/auth_service.dart';
 import 'services/auth_remote_source.dart';
 import 'services/chat_service_factory.dart';
+import 'services/direct_message_session.dart';
 import 'services/friends_overview_sync_service.dart';
 import 'services/friends_service.dart';
 import 'services/friends_remote_source.dart';
+import 'services/couples_remote_source.dart';
+import 'services/couples_service.dart';
+import 'services/couples_cache.dart';
+import 'services/couples_connectivity.dart';
+import 'services/couple_widget_bridge.dart';
+import 'services/couple_widget_controller.dart';
+import 'widgets/couple_widget_open_listener.dart';
+import 'pages/social/couple_widget_gate_page.dart';
+import 'pages/social/offline_couple_counter_page.dart';
+import 'services/offline_couple_counter_service.dart';
 import 'services/game_library_controller.dart';
 import 'services/game_library_store.dart';
+import 'services/game_catalog_trust_config.dart';
 import 'services/game_resource_catalog_source.dart';
 import 'services/game_resource_content_store.dart';
 import 'services/game_resource_installer.dart';
 import 'services/game_resource_library_service.dart';
 import 'services/legacy_chat_remote_source.dart';
+import 'services/legacy_pending_message_adapter.dart';
 import 'services/legacy_installation_store.dart';
 import 'services/local_chat_repository.dart';
 import 'services/locale_provider.dart';
@@ -49,11 +68,13 @@ import 'services/messaging_transport_factory.dart';
 import 'services/notification_service.dart';
 import 'services/notification_remote_source.dart';
 import 'services/pending_notification_source.dart';
+import 'services/push_provider.dart';
 import 'services/llm_bot_service.dart';
 import 'services/llm_bot_remote_source.dart';
 import 'services/platform_credential_store.dart';
 import 'services/peer_trust_service.dart';
 import 'services/preview_runtime.dart';
+import 'services/preview_game_resource_http_client.dart';
 import 'services/royale_service.dart';
 import 'services/royale_remote_source.dart';
 import 'services/storage_runtime.dart';
@@ -109,12 +130,13 @@ class _DeferredWidgetState extends State<_DeferredWidget> {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  runApp(const BootstrapLoadingApp());
   const configuration = AppConfiguration.environment;
   if (configuration.previewMode) {
     final preview = await PreviewRuntime.create(configuration);
     final catalogSource = GameResourceCatalogSource(
       preview.apiClient,
-      trustedKeys: _trustedGameCatalogKeys(),
+      trustedKeys: configuredGameCatalogTrustKeys(),
     );
     final gameLibrary = GameLibraryController(
       catalog: bundledGameCatalog,
@@ -122,7 +144,23 @@ Future<void> main() async {
       cachedCatalogVerifier: catalogSource.verifyCachedEnvelope,
     );
     await gameLibrary.initialize();
-    _runPreviewApp(configuration, preview, gameLibrary);
+    final resourceLibrary = _createGameResourceLibraryService(
+      gameLibrary,
+      preview.apiClient,
+      previewMode: true,
+    );
+    // The bundled catalog intentionally has no download authority. Populate
+    // the verified local-preview catalog before showing the library so its
+    // optional packs are immediately installable without a hidden refresh
+    // step. Preserve offline startup and any previously installed resources.
+    try {
+      await resourceLibrary.refreshCatalog();
+    } on Object catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Preview game catalog refresh failed: $error\n$stackTrace');
+      }
+    }
+    _runPreviewApp(configuration, preview, gameLibrary, resourceLibrary);
     return;
   }
   await AdService.initialize();
@@ -132,9 +170,16 @@ Future<void> main() async {
     credentials: credentials,
     configuration: configuration,
   );
+  // Couples requests never cache or delete a shared credential on delayed 401.
+  final couplesApiClient = ApiClient(
+    credentials: credentials,
+    configuration: configuration,
+    cacheSession: false,
+    clearSessionOnUnauthorized: false,
+  );
   final catalogSource = GameResourceCatalogSource(
     apiClient,
-    trustedKeys: _trustedGameCatalogKeys(),
+    trustedKeys: configuredGameCatalogTrustKeys(),
   );
   final gameLibrary = GameLibraryController(
     catalog: bundledGameCatalog,
@@ -149,6 +194,9 @@ Future<void> main() async {
           messagingRuntime.deviceIdentity != null
       ? peerTrust.remoteAuthenticator(local: messagingRuntime.deviceIdentity!)
       : null;
+  final p2pAuthenticator = messagingRuntime.deviceIdentity == null
+      ? null
+      : peerTrust.remoteAuthenticator(local: messagingRuntime.deviceIdentity!);
   final legacyChatStore = LocalChatRepository();
   final legacyChatRemoteSource = ServerLegacyChatRemoteSource(apiClient);
   final legacyInstallationStore = HiveLegacyInstallationStore();
@@ -165,11 +213,13 @@ Future<void> main() async {
   );
   await battleAnimationCacheService.initialize();
   final notificationService = NotificationService(
-    apiClient,
-    localRepository: legacyChatStore,
+    legacyPendingMessages: LegacyPendingMessageAdapter(
+      localRepository: legacyChatStore,
+    ),
     messagingCore: messagingRuntime.core,
     credentials: credentials,
     legacyInstallationStore: legacyInstallationStore,
+    pushProvider: FirebasePushProvider(),
     remoteAuthenticator: remoteAuthenticator,
     remoteSource: notificationRemoteSource,
     pendingNotificationSource: pendingNotificationSource,
@@ -178,13 +228,14 @@ Future<void> main() async {
   final messagingTransportFactory = MessagingTransportFactory(
     apiClient,
     p2pEnabled: configuration.p2pChatEnabled,
+    deviceId: messagingRuntime.deviceIdentity?.deviceId,
+    relayEncryptionReady: false,
     syncCursorStoreFactory: messagingRuntime.syncCursorStore == null
         ? null
         : ({required selfId, required friendId}) =>
               messagingRuntime.syncCursorStore!,
   );
   final chatServiceFactory = ChatServiceFactory(
-    apiClient: apiClient,
     messagingCore: messagingRuntime.core,
     authenticator: messagingRuntime.deviceIdentity == null
         ? null
@@ -192,11 +243,16 @@ Future<void> main() async {
             localIdentity: messagingRuntime.deviceIdentity!,
           ),
     remoteAuthenticator: remoteAuthenticator,
+    p2pAuthenticator: p2pAuthenticator,
     deviceId: messagingRuntime.deviceIdentity?.deviceId,
-    localRepository: legacyChatStore,
-    remoteSource: legacyChatRemoteSource,
+    legacyDeliveryStore: legacyChatStore,
+    legacyHistoryStore: legacyChatStore,
+    legacySnapshotStore: legacyChatStore,
+    legacyDeliveryRemoteSource: legacyChatRemoteSource,
+    legacyHistoryRemoteSource: legacyChatRemoteSource,
+    legacySnapshotRemoteSource: legacyChatRemoteSource,
     transportFactory: messagingTransportFactory.create,
-    manualSignaling: ManualPeerSignaling(),
+    manualSignalingFactory: ManualPeerSignaling.new,
     manualTransportFactory: messagingTransportFactory.createP2P,
   );
   runApp(
@@ -204,25 +260,25 @@ Future<void> main() async {
       providers: [
         Provider<AppConfiguration>.value(value: configuration),
         ChangeNotifierProvider<GameLibraryController>.value(value: gameLibrary),
+        Provider<street_scrap.StreetScrapProgressStore>.value(
+          value: HiveStreetScrapProgressStore(),
+        ),
         Provider<ApiClient>.value(value: apiClient),
         Provider<GameResourceLibraryService>(
           create: (_) =>
               _createGameResourceLibraryService(gameLibrary, apiClient),
         ),
         Provider<AdminService>(
-          create: (_) =>
-              AdminService(apiClient, remoteSource: adminRemoteSource),
+          create: (_) => AdminService(remoteSource: adminRemoteSource),
         ),
         Provider<LlmBotService>(
           create: (_) => LlmBotService(
-            apiClient,
             remoteSource: llmBotRemoteSource,
             configuration: configuration,
           ),
         ),
         Provider<RoyaleService>(
           create: (_) => RoyaleService(
-            apiClient,
             remoteSource: royaleRemoteSource,
             configuration: configuration,
             gameContractProvider: () => miniRoyaleGameContractFor(gameLibrary),
@@ -233,7 +289,6 @@ Future<void> main() async {
         ),
         Provider<FriendsService>(
           create: (_) => FriendsService(
-            apiClient,
             remoteSource: friendsRemoteSource,
             configuration: configuration,
           ),
@@ -244,7 +299,7 @@ Future<void> main() async {
         Provider<MessagingTransportFactory>(
           create: (_) => messagingTransportFactory,
         ),
-        Provider<ChatServiceFactory>.value(value: chatServiceFactory),
+        Provider<DirectMessageSessionFactory>.value(value: chatServiceFactory),
         Provider<MessagingCoreService>(
           create: (_) => messagingRuntime.core,
           dispose: (_, service) => service.dispose(),
@@ -256,7 +311,6 @@ Future<void> main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => AuthService(
-            apiClient,
             remoteSource: authRemoteSource,
             configuration: configuration,
           ),
@@ -267,6 +321,65 @@ Future<void> main() async {
             final nextService = service ?? notificationService;
             nextService.syncAuth(auth);
             return nextService;
+          },
+        ),
+        ChangeNotifierProxyProvider<AuthService, CouplesService>(
+          lazy: false,
+          create: (_) => CouplesService(
+            ServerCouplesRemoteSource(couplesApiClient),
+            cache: HiveCouplesCache(),
+            autoSync: true,
+            networkChanges: couplesNetworkChanges(),
+          ),
+          update: (_, auth, existing) {
+            final service =
+                existing ??
+                CouplesService(
+                  ServerCouplesRemoteSource(couplesApiClient),
+                  cache: HiveCouplesCache(),
+                  autoSync: true,
+                  networkChanges: couplesNetworkChanges(),
+                );
+            service.setAccount(auth.user?.id);
+            return service;
+          },
+        ),
+        ChangeNotifierProxyProvider2<
+          AuthService,
+          CouplesService,
+          CoupleWidgetController
+        >(
+          lazy: false,
+          create: (_) => CoupleWidgetController(
+            NativeCoupleWidgetBridge(),
+            scopeForAccount: persistentCoupleWidgetScope,
+            enabled: NativeCoupleWidgetBridge.supported,
+          ),
+          update: (_, auth, couples, existing) {
+            final controller = existing!;
+            controller.sync(
+              identityResolved:
+                  auth.identityState != AuthIdentityState.unresolved ||
+                  auth.isSigningIn ||
+                  couples.sessionExpired,
+              account: couples.sessionExpired || auth.isSigningIn
+                  ? null
+                  : auth.user?.id,
+              snapshot: couples.accountId == auth.user?.id
+                  ? couples.snapshot
+                  : null,
+            );
+            return controller;
+          },
+        ),
+        ChangeNotifierProxyProvider<AuthService, OfflineCoupleCounterService>(
+          lazy: false,
+          create: (_) =>
+              OfflineCoupleCounterService(NativeOfflineCoupleCounterSource()),
+          update: (_, auth, existing) {
+            final service = existing!;
+            service.syncAuth(auth);
+            return service;
           },
         ),
         ChangeNotifierProxyProvider<AuthService, FriendsOverviewSyncService>(
@@ -340,34 +453,30 @@ void _runPreviewApp(
   AppConfiguration configuration,
   PreviewRuntime preview,
   GameLibraryController gameLibrary,
+  GameResourceLibraryService resourceLibrary,
 ) {
   runApp(
     MultiProvider(
       providers: [
         Provider<AppConfiguration>.value(value: configuration),
         ChangeNotifierProvider<GameLibraryController>.value(value: gameLibrary),
-        Provider<ApiClient>.value(value: preview.apiClient),
-        Provider<GameResourceLibraryService>(
-          create: (_) =>
-              _createGameResourceLibraryService(gameLibrary, preview.apiClient),
+        Provider<street_scrap.StreetScrapProgressStore>.value(
+          value: HiveStreetScrapProgressStore(),
         ),
+        Provider<ApiClient>.value(value: preview.apiClient),
+        Provider<GameResourceLibraryService>.value(value: resourceLibrary),
         Provider<PlatformCredentialStore>.value(value: preview.credentials),
         Provider<AdminService>(
-          create: (_) => AdminService(
-            preview.apiClient,
-            remoteSource: preview.adminRemoteSource,
-          ),
+          create: (_) => AdminService(remoteSource: preview.adminRemoteSource),
         ),
         Provider<LlmBotService>(
           create: (_) => LlmBotService(
-            preview.apiClient,
             remoteSource: preview.llmBotRemoteSource,
             configuration: configuration,
           ),
         ),
         Provider<RoyaleService>(
           create: (_) => RoyaleService(
-            preview.apiClient,
             remoteSource: preview.royaleRemoteSource,
             configuration: configuration,
             gameContractProvider: () => miniRoyaleGameContractFor(gameLibrary),
@@ -378,7 +487,6 @@ void _runPreviewApp(
         ),
         Provider<FriendsService>(
           create: (_) => FriendsService(
-            preview.apiClient,
             remoteSource: preview.friendsRemoteSource,
             configuration: configuration,
           ),
@@ -386,7 +494,9 @@ void _runPreviewApp(
         Provider<MessagingStorageStatus>.value(
           value: preview.messagingRuntime.core.storageStatus,
         ),
-        Provider<ChatServiceFactory>.value(value: preview.chatServiceFactory),
+        Provider<DirectMessageSessionFactory>.value(
+          value: preview.chatServiceFactory,
+        ),
         Provider<MessagingCoreService>.value(
           value: preview.messagingRuntime.core,
         ),
@@ -467,21 +577,22 @@ void _runPreviewApp(
           },
         ),
       ],
-      child: const MainApp(initialRoute: '/home'),
+      child: const MainApp(),
     ),
   );
 }
 
 GameResourceLibraryService _createGameResourceLibraryService(
   GameLibraryController controller,
-  ApiClient apiClient,
-) {
+  ApiClient apiClient, {
+  bool previewMode = false,
+}) {
   final contentStore = HiveGameResourceContentStore();
   return GameResourceLibraryService(
     controller: controller,
     catalogSource: GameResourceCatalogSource(
       apiClient,
-      trustedKeys: _trustedGameCatalogKeys(),
+      trustedKeys: configuredGameCatalogTrustKeys(),
     ),
     resourceMigrations: gameResourceMigrations,
     contentStore: contentStore,
@@ -493,6 +604,9 @@ GameResourceLibraryService _createGameResourceLibraryService(
       signatureVerifier: Ed25519GameResourceSignatureVerifier(
         _trustedGameResourceKeys(),
       ),
+      client: previewMode
+          ? PreviewGameResourceHttpClient(apiBaseUrl: apiClient.apiBaseUrl)
+          : null,
     ),
   );
 }
@@ -519,48 +633,21 @@ Map<String, List<int>> _trustedGameResourceKeys() {
   }
 }
 
-Map<String, GameCatalogTrustKey> _trustedGameCatalogKeys() {
-  const encoded = String.fromEnvironment(
-    'GAME_CATALOG_TRUST_KEYS',
-    defaultValue: '{}',
-  );
-  try {
-    final decoded = jsonDecode(encoded);
-    if (decoded is! Map<String, dynamic>) return const {};
-    final keys = <String, GameCatalogTrustKey>{};
-    for (final entry in decoded.entries) {
-      if (entry.value is! Map) continue;
-      final value = Map<String, dynamic>.from(entry.value as Map);
-      if (value['publisher'] is! String || value['publicKey'] is! String) {
-        continue;
-      }
-      final bytes = base64Url.decode(
-        base64Url.normalize(value['publicKey'] as String),
-      );
-      if (bytes.length == 32) {
-        keys[entry.key] = GameCatalogTrustKey(
-          publisher: value['publisher'] as String,
-          publicKey: bytes,
-        );
-      }
-    }
-    return Map.unmodifiable(keys);
-  } on Object {
-    // Invalid deployment configuration leaves the trust set empty.
-    return const {};
-  }
-}
+final _mainNavigatorKey = GlobalKey<NavigatorState>();
 
 class MainApp extends StatelessWidget {
-  const MainApp({super.key, this.initialRoute = '/'});
+  const MainApp({super.key, this.initialRoute});
 
-  final String initialRoute;
+  /// `null` lets Flutter use the platform route, including Flutter Web's
+  /// hash URL, instead of pinning every cold start to the same route.
+  final String? initialRoute;
 
   @override
   Widget build(BuildContext context) {
     return Consumer2<ThemeProvider, UiSettingsProvider>(
       builder: (context, themeProvider, uiSettings, child) {
         return MaterialApp(
+          navigatorKey: _mainNavigatorKey,
           title: AppConstants.appName,
           initialRoute: initialRoute,
           navigatorObservers: [appRouteObserver],
@@ -568,12 +655,23 @@ class MainApp extends StatelessWidget {
           darkTheme: themeProvider.darkTheme,
           themeMode: themeProvider.themeMode,
           builder: (context, child) {
-            return MediaQuery(
-              data: MediaQuery.of(
-                context,
-              ).copyWith(textScaler: TextScaler.linear(uiSettings.fontScale)),
-              child: child!,
+            final locale = context.watch<LocaleProvider>().locale;
+            final content = street_scrap_i18n.StreetScrapLocalizationsScope(
+              locale: locale,
+              child: MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: TextScaler.linear(uiSettings.fontScale)),
+                child: child!,
+              ),
             );
+            return NativeCoupleWidgetBridge.supported &&
+                    context.read<CoupleWidgetController?>() != null
+                ? CoupleWidgetOpenListener(
+                    navigatorKey: _mainNavigatorKey,
+                    child: content,
+                  )
+                : content;
           },
           routes: {
             '/': (_) => const SplashPage(),
@@ -582,6 +680,8 @@ class MainApp extends StatelessWidget {
               builder: (_) => auth_page.AuthPage(),
             ),
             '/home': (_) => const HomePage(),
+            '/couple-widget': (_) => const CoupleWidgetGatePage(),
+            '/couple-offline': (_) => const OfflineCoupleCounterPage(),
             '/game-library': (_) => const GameLibraryPage(),
             '/profile': (_) => _DeferredWidget(
               loadLibrary: profile_page.loadLibrary,

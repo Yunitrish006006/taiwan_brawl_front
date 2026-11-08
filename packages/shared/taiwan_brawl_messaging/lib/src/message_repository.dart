@@ -23,6 +23,8 @@ class MessageRepository {
   final List<MessageEvent> _outbox = [];
   final List<MessageConflict> _conflicts = [];
   Future<void> _flushTail = Future<void>.value();
+  bool _eventIngestionBusy = false;
+  final List<_QueuedIngestionOperation> _eventIngestionQueue = [];
   final StreamController<MessageProjection> _changes =
       StreamController<MessageProjection>.broadcast();
 
@@ -30,6 +32,8 @@ class MessageRepository {
   List<MessageEvent> get pendingOutbox => List.unmodifiable(_outbox);
   List<MessageConflict> get conflicts => List.unmodifiable(_conflicts);
   List<MessageEvent> get events => List.unmodifiable(_eventsById.values);
+  bool get canDurablyRecordEvents => store != null;
+  bool get canDurablyRecordConflicts => store is MessageConflictStore;
 
   static Future<MessageRepository> restore(
     MessageEventStore store, {
@@ -69,9 +73,29 @@ class MessageRepository {
         await repository._recordConflict(event, result.error!);
       }
     }
+    final queuedOutboxIds = <String>{};
     for (final event in await store.loadPendingOutbox()) {
-      if (repository._eventsById.containsKey(event.eventId)) {
-        repository._outbox.add(event);
+      final storedEvent = repository._eventsById[event.eventId];
+      if (storedEvent != null) {
+        final payloadMismatch =
+            storedEvent.canonicalPayload != event.canonicalPayload;
+        final recordMismatch =
+            payloadMismatch || storedEvent.signature != event.signature;
+        if (payloadMismatch) {
+          await repository._recordConflict(
+            event,
+            'Pending outbox event differs from the durable event row',
+          );
+        }
+        if (recordMismatch) {
+          // The event row is authoritative. Repair the redundant outbox copy
+          // before exposing it for delivery; if this write fails, restore
+          // fails closed and the next restore can retry the repair.
+          await store.append(storedEvent, pendingOutbox: true);
+        }
+        if (queuedOutboxIds.add(storedEvent.eventId)) {
+          repository._outbox.add(storedEvent);
+        }
         continue;
       }
 
@@ -92,7 +116,9 @@ class MessageRepository {
           continue;
         }
         await store.append(event, pendingOutbox: true);
-        repository._outbox.add(event);
+        if (queuedOutboxIds.add(event.eventId)) {
+          repository._outbox.add(event);
+        }
       } on FormatException catch (error) {
         await repository._recordConflict(event, error.message);
       }
@@ -105,6 +131,15 @@ class MessageRepository {
         repository._mergeConflicts(await conflictStore.loadConflicts());
       } on FormatException {
         // A malformed conflict record must not prevent message recovery.
+      }
+    }
+    if (store case final MessageBatchInboxStore batchInboxStore) {
+      for (final batch in await batchInboxStore.loadInboxBatches()) {
+        await repository._acceptRemoteBatch(
+          batch.events,
+          authenticator: authenticator,
+          existingBatchId: batch.id,
+        );
       }
     }
     if (store case final MessageInboxStore inboxStore) {
@@ -144,25 +179,149 @@ class MessageRepository {
     MessageEvent event, {
     EventAuthenticator? authenticator,
   }) async {
-    final signed = authenticator == null
-        ? event
-        : event.withSignature(await authenticator.sign(event));
-    _validateLocalEvent(signed);
-    _insert(signed);
-    _outbox.add(signed);
-    await store?.append(signed, pendingOutbox: true);
-    _emit(signed.messageId);
-    return signed;
+    late MessageEvent added;
+    await _serializeIngestion(() async {
+      final signed = authenticator == null
+          ? event
+          : event.withSignature(await authenticator.sign(event));
+      _validateLocalEvent(signed);
+      _insert(signed);
+      _outbox.add(signed);
+      await store?.append(signed, pendingOutbox: true);
+      _emit(signed.messageId);
+      added = signed;
+      return true;
+    });
+    return added;
   }
 
   Future<bool> acceptRemote(
     MessageEvent event, {
     EventAuthenticator? authenticator,
+  }) => _serializeIngestion(
+    () => _acceptRemote(event, authenticator: authenticator),
+  );
+
+  /// Rejects an event outside the active transport scope and records why.
+  ///
+  /// Returns whether the rejection is durably recorded. Receipt transports
+  /// must retain the event for retry when this returns false.
+  Future<bool> rejectRemote(MessageEvent event, {required String reason}) {
+    if (reason.trim().isEmpty) {
+      throw ArgumentError.value(reason, 'reason', 'Must not be empty');
+    }
+    return _serializeIngestion(() async {
+      await _recordConflict(event, reason);
+      return canDurablyRecordConflicts;
+    });
+  }
+
+  /// Preflights a remote batch before accepting any of its events.
+  ///
+  /// Deterministic validation conflicts are persisted and return `false`
+  /// without applying otherwise-valid events from the same batch. A storage
+  /// failure can leave a durable prefix, but the in-memory projection remains
+  /// unchanged until every event has been persisted; the event inbox remains
+  /// the recovery source for retries.
+  Future<bool> acceptRemoteBatch(
+    Iterable<MessageEvent> batch, {
+    EventAuthenticator? authenticator,
+  }) => _serializeIngestion(
+    () => _acceptRemoteBatch(batch, authenticator: authenticator),
+  );
+
+  Future<bool> _acceptRemoteBatch(
+    Iterable<MessageEvent> batch, {
+    EventAuthenticator? authenticator,
+    String? existingBatchId,
+  }) async {
+    final events = batch.toList(growable: false);
+    if (events.isEmpty) return true;
+    final batchInboxStore = store is MessageBatchInboxStore
+        ? store as MessageBatchInboxStore
+        : null;
+    final batchId =
+        existingBatchId ?? await batchInboxStore?.appendInboxBatch(events);
+    final staged = MessageRepository(initialEvents: _eventsById.values);
+    final rejected = <MessageConflict>[];
+    for (final event in events) {
+      if (await staged.acceptRemote(event, authenticator: authenticator)) {
+        continue;
+      }
+      rejected.add(
+        staged.conflicts.lastWhere(
+          (conflict) => conflict.eventId == event.eventId,
+        ),
+      );
+    }
+    await staged.dispose();
+
+    if (rejected.isNotEmpty) {
+      for (final conflict in rejected) {
+        final event = events.firstWhere(
+          (candidate) => candidate.eventId == conflict.eventId,
+        );
+        await _recordConflict(event, conflict.reason);
+      }
+      if (batchId != null && store is MessageConflictStore) {
+        await batchInboxStore!.removeInboxBatch(batchId);
+      }
+      return false;
+    }
+
+    final uniqueEvents = <String, MessageEvent>{};
+    for (final event in events) {
+      uniqueEvents.putIfAbsent(event.eventId, () => event);
+    }
+    final inboxStore = store is MessageInboxStore
+        ? store as MessageInboxStore
+        : null;
+    final committedEvents = <MessageEvent>[
+      for (final event in uniqueEvents.values)
+        _eventsById[event.eventId] ?? event,
+    ];
+
+    // Persist inbox intent and every event before exposing any new projection.
+    // A partial durable prefix remains replayable, while this repository stays
+    // at its previous state if a later append fails.
+    if (batchInboxStore == null && inboxStore != null) {
+      for (final event in events) {
+        await inboxStore.appendInbox(event);
+      }
+    }
+    for (final event in committedEvents) {
+      await store?.append(event, pendingOutbox: false);
+    }
+
+    final changedMessageIds = <String>{};
+    for (final event in committedEvents) {
+      if (_eventsById.containsKey(event.eventId)) continue;
+      _insert(event);
+      changedMessageIds.add(event.messageId);
+    }
+    for (final messageId in changedMessageIds) {
+      _emit(messageId);
+    }
+
+    if (batchId != null) {
+      await batchInboxStore!.removeInboxBatch(batchId);
+    } else if (inboxStore != null) {
+      for (final event in events) {
+        await inboxStore.removeInbox(event.eventId);
+      }
+    }
+    return true;
+  }
+
+  Future<bool> _acceptRemote(
+    MessageEvent event, {
+    EventAuthenticator? authenticator,
+    bool trackInbox = true,
   }) async {
     final inboxStore = store is MessageInboxStore
         ? store as MessageInboxStore
         : null;
-    if (inboxStore != null) await inboxStore.appendInbox(event);
+    if (trackInbox && inboxStore != null) await inboxStore.appendInbox(event);
     var completed = false;
     try {
       if (authenticator != null && !await authenticator.verify(event)) {
@@ -170,10 +329,19 @@ class MessageRepository {
         completed = true;
         return false;
       }
-      if (_eventsById.containsKey(event.eventId)) {
+      final existingEvent = _eventsById[event.eventId];
+      if (existingEvent != null) {
+        if (existingEvent.canonicalPayload != event.canonicalPayload) {
+          await _recordConflict(
+            event,
+            'Event ID is already bound to a different payload',
+          );
+          completed = true;
+          return false;
+        }
         // A prior attempt may have inserted the event in memory before its
         // durable append failed. Re-append on retry before clearing the inbox.
-        await store?.append(event, pendingOutbox: false);
+        await store?.append(existingEvent, pendingOutbox: false);
         completed = true;
         return true;
       }
@@ -203,13 +371,46 @@ class MessageRepository {
       _emit(event.messageId);
       return true;
     } finally {
-      if (completed) await inboxStore?.removeInbox(event.eventId);
+      if (trackInbox && completed) await inboxStore?.removeInbox(event.eventId);
     }
   }
 
   Future<void> acknowledge(String eventId) async {
-    _outbox.removeWhere((event) => event.eventId == eventId);
     await store?.acknowledgeOutbox(eventId);
+    _outbox.removeWhere((event) => event.eventId == eventId);
+  }
+
+  Future<bool> _serializeIngestion(Future<bool> Function() action) {
+    if (_eventIngestionBusy) {
+      final queued = _QueuedIngestionOperation(action);
+      _eventIngestionQueue.add(queued);
+      return queued.result.future;
+    }
+    _eventIngestionBusy = true;
+    return _runIngestionOperation(action);
+  }
+
+  Future<bool> _runIngestionOperation(Future<bool> Function() action) async {
+    try {
+      return await action();
+    } finally {
+      if (_eventIngestionQueue.isEmpty) {
+        _eventIngestionBusy = false;
+      } else {
+        final queued = _eventIngestionQueue.removeAt(0);
+        unawaited(_completeQueuedIngestionOperation(queued));
+      }
+    }
+  }
+
+  Future<void> _completeQueuedIngestionOperation(
+    _QueuedIngestionOperation queued,
+  ) async {
+    try {
+      queued.result.complete(await _runIngestionOperation(queued.action));
+    } catch (error, stackTrace) {
+      queued.result.completeError(error, stackTrace);
+    }
   }
 
   Future<void> flush(
@@ -308,7 +509,12 @@ class MessageRepository {
     );
     if (!_mergeConflicts([conflict])) return;
     if (store case final MessageConflictStore conflictStore) {
-      await conflictStore.appendConflict(conflict);
+      try {
+        await conflictStore.appendConflict(conflict);
+      } catch (_) {
+        _conflicts.remove(conflict);
+        rethrow;
+      }
     }
   }
 
@@ -341,4 +547,11 @@ class _ProjectionBuildResult {
 
   final MessageProjection? projection;
   final String? error;
+}
+
+class _QueuedIngestionOperation {
+  _QueuedIngestionOperation(this.action);
+
+  final Future<bool> Function() action;
+  final Completer<bool> result = Completer<bool>();
 }

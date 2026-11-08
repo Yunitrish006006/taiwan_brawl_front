@@ -1,12 +1,11 @@
 import '../models/admin_models.dart';
 import 'package:taiwan_brawl_game_mini_royale/taiwan_brawl_game_mini_royale.dart';
-import 'api_client.dart';
 import 'admin_remote_source.dart';
 import 'service_utils.dart';
 
 class AdminService {
-  AdminService(ApiClient apiClient, {AdminRemoteSource? remoteSource})
-    : _remoteSource = remoteSource ?? ServerAdminRemoteSource(apiClient);
+  AdminService({required AdminRemoteSource remoteSource})
+    : _remoteSource = remoteSource;
 
   final AdminRemoteSource _remoteSource;
 

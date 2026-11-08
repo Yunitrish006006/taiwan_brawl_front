@@ -10,6 +10,13 @@ abstract interface class MessageTransport {
   Future<void> disconnect();
 }
 
+/// Optional capability for transports that must prepare negotiation data
+/// before the peer connection can be attached to a sync engine.
+abstract interface class NegotiatingMessageTransport
+    implements MessageTransport {
+  Future<void> prepare();
+}
+
 /// Optional receive acknowledgement boundary for transports with a durable
 /// remote queue. The sync engine calls this only after local ingestion has
 /// completed (including conflict recording), so a local storage failure leaves

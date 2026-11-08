@@ -1,0 +1,7 @@
+"widget.name" = "Couple days";
+"widget.description" = "Your last confirmed day count, including while offline.";
+"widget.days" = "Day %ld";
+"widget.unbound" = "No partner linked";
+"widget.signedOut" = "Please sign in";
+
+"widget.partnerLine" = "With %@";

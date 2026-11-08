@@ -12,6 +12,7 @@ class HiveMessageEventStore
         MessageEventStore,
         MessageConflictStore,
         MessageInboxStore,
+        MessageBatchInboxStore,
         MessageSyncCursorStore {
   HiveMessageEventStore({
     required this.encryptionKey,
@@ -25,6 +26,7 @@ class HiveMessageEventStore
   static const _outboxPrefix = 'outbox:';
   static const _conflictPrefix = 'conflict:';
   static const _inboxPrefix = 'inbox:';
+  static const _inboxBatchPrefix = 'inbox-batch:';
   static const _cursorPrefix = 'cursor:';
 
   Future<Box<String>> _open() => Hive.openBox<String>(
@@ -106,6 +108,79 @@ class HiveMessageEventStore
   Future<void> removeInbox(String eventId) async {
     final box = await _open();
     await box.delete('$_inboxPrefix$eventId');
+  }
+
+  @override
+  Future<String> appendInboxBatch(List<MessageEvent> events) async {
+    final box = await _open();
+    final baseId = DateTime.now().microsecondsSinceEpoch.toString();
+    var batchId = baseId;
+    var suffix = 0;
+    while (box.containsKey('$_inboxBatchPrefix$batchId')) {
+      batchId = '$baseId-${++suffix}';
+    }
+    await box.put(
+      '$_inboxBatchPrefix$batchId',
+      jsonEncode({'events': events.map((event) => event.toJson()).toList()}),
+    );
+    return batchId;
+  }
+
+  @override
+  Future<List<MessageEventBatch>> loadInboxBatches() async {
+    final box = await _open();
+    final keys =
+        box.keys
+            .whereType<String>()
+            .where((key) => key.startsWith(_inboxBatchPrefix))
+            .toList()
+          ..sort();
+    final batches = <MessageEventBatch>[];
+    for (final key in keys) {
+      try {
+        final encoded = box.get(key);
+        if (encoded == null) {
+          throw const FormatException('Batch inbox record is empty');
+        }
+        final decoded = jsonDecode(encoded);
+        if (decoded is! Map || decoded['events'] is! List) {
+          throw const FormatException('Batch inbox record is malformed');
+        }
+        final events = (decoded['events'] as List).map((value) {
+          if (value is! Map) {
+            throw const FormatException('Batch event must be an object');
+          }
+          return MessageEvent.fromJson(Map<String, Object?>.from(value));
+        }).toList();
+        if (events.isEmpty) {
+          throw const FormatException('Batch inbox record has no events');
+        }
+        batches.add(
+          MessageEventBatch(
+            id: key.substring(_inboxBatchPrefix.length),
+            events: events,
+          ),
+        );
+      } catch (error) {
+        final conflict = MessageConflict(
+          eventId: 'corrupt:$key',
+          messageId: 'unknown',
+          reason: 'Corrupt local event batch record: $error',
+        );
+        await box.put(
+          '$_conflictPrefix${conflict.eventId}',
+          jsonEncode(conflict.toJson()),
+        );
+        await box.delete(key);
+      }
+    }
+    return batches;
+  }
+
+  @override
+  Future<void> removeInboxBatch(String batchId) async {
+    final box = await _open();
+    await box.delete('$_inboxBatchPrefix$batchId');
   }
 
   @override

@@ -1,0 +1,12 @@
+{
+  "name": "taiwan-brawl-street-scrap-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "design:audit": "node tool/audit-street-scrap-design.mjs",
+    "design:simulate": "node tool/simulate-street-scrap-design.mjs",
+    "content:check": "node tool/compile-street-scrap-content.mjs",
+    "content:write": "node tool/compile-street-scrap-content.mjs --write",
+    "test:tools": "node --test tool/test/*.test.mjs"
+  }
+}

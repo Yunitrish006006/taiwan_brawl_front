@@ -1,0 +1,7 @@
+<resources>
+    <string name="couple_widget_name">情侶天數</string>
+    <string name="couple_widget_days">第 %1$d 天</string>
+    <string name="couple_widget_unbound">尚未綁定情侶</string>
+    <string name="couple_widget_signed_out">請登入</string>
+    <string name="couple_widget_partner_line">與 %1$s 交往的</string>
+</resources>

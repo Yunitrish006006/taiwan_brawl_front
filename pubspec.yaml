@@ -19,6 +19,8 @@ dependencies:
     path: packages/games/archery
   taiwan_brawl_game_mini_royale:
     path: packages/games/mini_royale
+  taiwan_brawl_game_street_scrap:
+    path: packages/games/street_scrap
   user_basic_system: ^0.1.1
   cupertino_icons: ^1.0.8
   firebase_core: ^4.9.0
@@ -35,6 +37,7 @@ dependencies:
   flutter_webrtc: ^0.14.0
   hive_flutter: ^1.1.0
   flutter_secure_storage: ^9.2.4
+  connectivity_plus: 6.1.5
   google_mobile_ads: ^5.0.0
 
 dev_dependencies:

@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:taiwan_brawl/services/peer_trust_service.dart';
 import 'package:taiwan_brawl/services/secure_device_identity.dart';
@@ -20,6 +23,15 @@ void main() {
       final decoded = PeerTrustInvitation.decode(invitation.encode());
 
       expect(decoded.deviceId, peer.deviceId);
+      expect(decoded.wireVersion, 2);
+      expect(decoded.algorithm, 'ed25519');
+      expect(decoded.encodedMaterial, peer.publicKeyMaterial);
+      final privateSeed =
+          peerCredentials.values['taiwan_brawl.device-identity.ed25519.seed']!;
+      expect(
+        invitation.encode(),
+        isNot(contains(privateSeed)),
+      );
       expect(decoded.fingerprint, isNotEmpty);
       await trust.trustInvitation(
         invitation.encode(),
@@ -80,8 +92,6 @@ void main() {
       final peer = await SecureDeviceIdentity.restore(
         credentials: peerCredentials,
       );
-      final peerSecret =
-          peerCredentials.values['taiwan_brawl.device-identity.secret']!;
       final trust = PeerTrustService(credentials: localCredentials);
       final authenticator = trust.remoteAuthenticator(local: local);
       final event =
@@ -114,11 +124,65 @@ void main() {
       expect(await authenticator.verify(event), isFalse);
       await trust.trustPeer(
         deviceId: peer.deviceId,
-        encodedMaterial: peerSecret,
+        encodedMaterial: 'ed25519:${peer.publicKeyMaterial}',
       );
       expect(await authenticator.verify(event), isTrue);
       await trust.revokePeer(peer.deviceId);
       expect(await authenticator.verify(event), isFalse);
+    },
+  );
+
+  test(
+    'accepts legacy v1 shared-secret invitations only with confirmed fingerprint',
+    () async {
+      const deviceId = 'legacy-peer';
+      final secret = base64UrlEncode(
+        List<int>.generate(32, (index) => index + 1),
+      );
+      final fingerprint = sha256
+          .convert(utf8.encode('$deviceId:$secret'))
+          .toString();
+      final encodedInvitation = jsonEncode({
+        'version': 1,
+        'deviceId': deviceId,
+        'encodedMaterial': secret,
+        'fingerprint': fingerprint,
+      });
+      final credentials = _MemoryCredentials();
+      final trust = PeerTrustService(credentials: credentials);
+
+      await trust.trustInvitation(
+        encodedInvitation,
+        confirmedFingerprint: fingerprint,
+      );
+      final legacyEvent = MessageEvent(
+        eventId: 'legacy-event',
+        messageId: 'legacy-message',
+        conversationId: '1:2',
+        actorId: '2',
+        deviceId: deviceId,
+        type: MessageEventType.created,
+        revision: 0,
+        createdAt: DateTime.utc(2026, 1, 1),
+        body: 'legacy peer',
+      );
+      final signature = base64UrlEncode(
+        Hmac(
+          sha256,
+          base64Url.decode(secret),
+        ).convert(utf8.encode(legacyEvent.canonicalPayload)).bytes,
+      );
+
+      expect(
+        await trust
+            .remoteAuthenticator(
+              local: await SecureDeviceIdentity.restore(
+                credentials: _MemoryCredentials(),
+              ),
+            )
+            .verify(legacyEvent.withSignature(signature)),
+        isTrue,
+      );
     },
   );
 }

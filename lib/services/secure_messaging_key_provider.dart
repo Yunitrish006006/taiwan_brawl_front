@@ -3,16 +3,6 @@ import 'dart:math';
 
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
-import 'platform_credential_store.dart';
-
-/// Backward-compatible name for the platform credential adapter.
-///
-/// New composition roots should construct [PlatformCredentialStore] directly;
-/// this alias remains so older callers do not create a second credential
-/// implementation while migrating.
-@Deprecated('Use PlatformCredentialStore directly.')
-typedef FlutterSecureCredentialStore = PlatformCredentialStore;
-
 /// Loads or creates a 256-bit key without exposing key persistence to feature
 /// code. The returned key can be injected into [HiveMessageEventStore].
 class SecureMessagingKeyProvider implements EncryptionKeyProvider {

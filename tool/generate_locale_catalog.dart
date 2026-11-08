@@ -88,9 +88,7 @@ String _buildGeneratedFile(Map<String, Map<String, String>> sources) {
     );
   }
 
-  buffer
-    ..writeln('    };')
-    ..writeln();
+  buffer.writeln('    };');
 
   return buffer.toString();
 }

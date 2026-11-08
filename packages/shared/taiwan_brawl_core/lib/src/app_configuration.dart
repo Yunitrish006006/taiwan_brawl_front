@@ -39,7 +39,7 @@ class AppConfiguration {
     ),
     p2pChatEnabled: bool.fromEnvironment(
       'P2P_CHAT_ENABLED',
-      defaultValue: false,
+      defaultValue: true,
     ),
     peerVerificationEnabled: bool.fromEnvironment(
       'PEER_VERIFICATION_ENABLED',

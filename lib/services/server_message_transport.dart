@@ -14,6 +14,8 @@ class ServerMessageTransport implements MessageReceiptTransport {
     required ApiClient apiClient,
     required this.selfId,
     required this.friendId,
+    this.deviceId,
+    this.relayEncryptionReady = false,
     this.pollInterval = const Duration(seconds: 2),
     this.syncCursorStore,
   }) : _apiClient = apiClient;
@@ -21,6 +23,8 @@ class ServerMessageTransport implements MessageReceiptTransport {
   final ApiClient _apiClient;
   final int selfId;
   final int friendId;
+  final String? deviceId;
+  final bool relayEncryptionReady;
   final Duration pollInterval;
   final MessageSyncCursorStore? syncCursorStore;
   final StreamController<MessageEvent> _events =
@@ -39,6 +43,11 @@ class ServerMessageTransport implements MessageReceiptTransport {
   @override
   Future<void> connect() async {
     if (_connected) return;
+    if (deviceId != null) {
+      await _apiClient.postJson('/api/chat/dm/device-register', {
+        'deviceId': deviceId,
+      });
+    }
     _connected = true;
     await _poll();
     _pollTimer = Timer.periodic(pollInterval, (_) => _poll());
@@ -48,6 +57,11 @@ class ServerMessageTransport implements MessageReceiptTransport {
   Future<void> send(MessageEvent event) async {
     if (!_connected) {
       throw StateError('Server message transport is not connected');
+    }
+    if (!relayEncryptionReady) {
+      throw StateError(
+        'Server relay is disabled until end-to-end message encryption is ready',
+      );
     }
     await _apiClient.postJson('/api/chat/dm/$friendId/event', {
       'event': event.toJson(),
@@ -74,6 +88,7 @@ class ServerMessageTransport implements MessageReceiptTransport {
     if (pendingId == null || !_connected) return;
     await _apiClient.postJson('/api/chat/dm/ack', {
       'ids': [pendingId],
+      'deviceId': ?deviceId,
     });
     _pendingReceipts.remove(event.eventId);
     _acknowledgedPendingIds.add(pendingId);
@@ -108,7 +123,10 @@ class ServerMessageTransport implements MessageReceiptTransport {
     try {
       final cursor = await syncCursorStore?.loadSyncCursor(_cursorScope);
       _cursorValue ??= _parseCursor(cursor) ?? 0;
-      final query = <String, String>{'friendId': '$friendId'};
+      final query = <String, String>{
+        'friendId': '$friendId',
+        'deviceId': ?deviceId,
+      };
       final parsedCursor = _cursorValue;
       if (parsedCursor != null) query['afterId'] = '$parsedCursor';
       final response = await _apiClient.getJson(
@@ -131,6 +149,7 @@ class ServerMessageTransport implements MessageReceiptTransport {
         if (event == null) {
           await _apiClient.postJson('/api/chat/dm/ack', {
             'ids': [pendingId],
+            'deviceId': ?deviceId,
           });
           _acknowledgedPendingIds.add(pendingId);
           await _advanceCursor();
@@ -144,7 +163,9 @@ class ServerMessageTransport implements MessageReceiptTransport {
     }
   }
 
-  String get _cursorScope => 'dm:$selfId:$friendId';
+  String get _cursorScope => deviceId == null
+      ? 'dm:$selfId:$friendId'
+      : 'dm:$selfId:$deviceId:$friendId';
 
   static int? _parseCursor(String? cursor) => int.tryParse(cursor ?? '');
 

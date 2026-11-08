@@ -13,6 +13,7 @@ import '../../config/app_configuration.dart';
 import '../../constants/psn_theme.dart';
 import '../../utils/snackbar.dart';
 import '../../widgets/google_sign_in_web_button.dart';
+import '../social/offline_couple_counter_page.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key, this.configuration});
@@ -24,6 +25,11 @@ class AuthPage extends StatefulWidget {
 }
 
 class _AuthPageState extends State<AuthPage> {
+  // GoogleSignIn.instance is process-wide. AuthPage can be recreated (for
+  // example after route replacement), but the plugin's initialize() is not
+  // idempotent, so all page instances must share the first initialization.
+  static Future<void>? _googleSignInInitialization;
+
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
   StreamSubscription<GoogleSignInAuthenticationEvent>? _googleAuthSubscription;
@@ -48,12 +54,13 @@ class _AuthPageState extends State<AuthPage> {
     final t = context.read<LocaleProvider>().translation;
     final configuration = widget.configuration ?? AppConfiguration.environment;
     try {
-      await _googleSignIn.initialize(
+      _googleSignInInitialization ??= _googleSignIn.initialize(
         clientId: kIsWeb
             ? _nonEmptyOrNull(configuration.googleWebClientId)
             : null,
         serverClientId: _nonEmptyOrNull(configuration.googleServerClientId),
       );
+      await _googleSignInInitialization;
 
       _googleAuthSubscription ??= _googleSignIn.authenticationEvents.listen((
         event,
@@ -474,6 +481,7 @@ class _AuthPageState extends State<AuthPage> {
           ),
           child: Column(
             children: [
+              const OfflineCoupleCounterEntry(),
               _buildLoginGuide(theme, t),
               _buildAuthCard(theme, t, loading, frameWidth, useDarkTheme),
             ],

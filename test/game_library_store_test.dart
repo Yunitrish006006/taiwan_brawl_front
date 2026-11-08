@@ -133,6 +133,7 @@ void main() {
         kind: GameResourceKind.gameplayData,
         sha256: 'a' * 64,
         affectsGameplay: true,
+        payloadSchemaVersion: 1,
         downloadUrl: 'https://example.test/rules',
         byteLength: 12,
         signature: 'signed-payload',

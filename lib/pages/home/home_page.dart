@@ -4,14 +4,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/app_user.dart';
+import '../social/couples_page.dart';
+import '../social/friend_detail_page.dart';
+import '../../services/couples_service.dart';
+import '../../widgets/couples_text.dart';
 import '../../models/friends_models.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 import '../../services/friends_service.dart';
 import '../../services/friends_overview_sync_service.dart';
 import '../../services/locale_provider.dart';
-import '../../services/chat_service.dart';
-import '../../services/chat_service_factory.dart';
+import '../../services/direct_message_session.dart';
 import '../../services/messaging_core_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/game_library_controller.dart';
@@ -41,7 +44,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage>
     with RouteAware, TickerProviderStateMixin {
   late final FriendsService _friendsService;
-  late final ChatService _chatService;
+  late final DirectMessageSessionFactory _chatServiceFactory;
   late final AnimationController _entranceController;
   String? _busyKey;
   int? _overviewRequestedForUserId;
@@ -59,7 +62,7 @@ class _HomePageState extends State<HomePage>
   void initState() {
     super.initState();
     _friendsService = context.read<FriendsService>();
-    _chatService = context.read<ChatServiceFactory>().create();
+    _chatServiceFactory = context.read<DirectMessageSessionFactory>();
     _entranceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -121,7 +124,6 @@ class _HomePageState extends State<HomePage>
 
   @override
   void dispose() {
-    _chatService.dispose();
     _entranceController.dispose();
     if (_observedRoute != null) {
       appRouteObserver.unsubscribe(this);
@@ -207,10 +209,15 @@ class _HomePageState extends State<HomePage>
     final currentUserId = context.read<AuthService>().user?.id ?? 0;
     await dm_page_lib.loadLibrary();
     if (!mounted) return;
+    final chatService = _chatServiceFactory.create();
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => dm_page_lib.DmPage(
-          chatService: _chatService,
+          service: chatService,
+          retryService: chatService.retryCapability,
+          manualP2pService: chatService.manualP2pCapability,
+          relayFallbackService: chatService.relayFallbackCapability,
+          syncService: chatService.syncCapability,
           friendId: friend.userId,
           friendName: friend.name,
           currentUserId: currentUserId,

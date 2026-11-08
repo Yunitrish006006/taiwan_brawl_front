@@ -1,0 +1,5 @@
+<resources>
+    <string name="couple_days_spike_name">交際日数（サンプル）</string>
+    <string name="couple_days_spike_count">%1$d 日目</string>
+    <string name="couple_days_spike_placeholder">1 日目</string>
+</resources>

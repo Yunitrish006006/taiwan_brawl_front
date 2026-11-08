@@ -1,46 +1,57 @@
-import '../models/chat_models.dart';
+import '../models/legacy_chat_record.dart';
 
-/// Compatibility storage port for conversations that have not migrated to
-/// shared event projections yet. Application services depend on this port;
-/// Hive is only one legacy adapter.
-abstract interface class LegacyChatStore {
-  Future<void> saveMessage(int selfId, ChatMessage message);
-
-  Future<void> markDelivered(
+/// Read and migration-manifest capability used by history promotion.
+abstract interface class LegacyChatHistoryStore {
+  Future<LegacyChatHistorySnapshot> getHistorySnapshot(
     int selfId,
     int friendId,
-    String createdAt,
-    int senderId,
   );
+
+  Future<Set<String>?> migratedEventMessageIds(int selfId, int friendId);
+
+  Future<bool> markEventMessagesMigrated(
+    int selfId,
+    int friendId,
+    Set<String> messageIds, {
+    required String expectedSourceRevision,
+  });
+}
+
+/// A decoded legacy history read paired with the exact source revision read.
+/// Implementations must reject the completion marker if the source changed.
+class LegacyChatHistorySnapshot {
+  const LegacyChatHistorySnapshot({
+    required this.messages,
+    required this.sourceRevision,
+    this.invalidRowKeys = const [],
+  });
+
+  final List<LegacyChatRecord> messages;
+  final String sourceRevision;
+
+  /// Legacy Hive rows that could not be decoded or failed identity checks.
+  /// They remain in the source box and prevent a complete migration marker.
+  final List<String> invalidRowKeys;
+}
+
+/// Write capability used while consuming legacy pending rows.
+abstract interface class LegacyPendingMessageStore {
+  Future<void> saveMessage(int selfId, LegacyChatRecord message);
 
   Future<void> markRecalled(int selfId, int friendId, String messageKey);
+}
 
-  Future<void> updateMessageText(
-    int selfId,
-    int friendId,
-    String messageKey,
-    String text,
-  );
+/// Minimal write capability needed by the legacy HTTP delivery fallback.
+abstract interface class LegacyChatDeliveryStore {
+  Future<void> saveMessage(int selfId, LegacyChatRecord message);
+}
 
-  Future<List<ChatMessage>> getMessages(int selfId, int friendId);
-
-  Future<ChatMessage?> getMessage(int selfId, int friendId, String messageKey);
-
-  Future<void> deleteMessage(
-    int selfId,
-    int friendId,
-    String createdAt,
-    int senderId,
-  );
-
-  Future<void> clearMessages(int selfId, int friendId);
-
+/// Snapshot import/export capability used by legacy history synchronization.
+abstract interface class LegacyChatSnapshotStore {
   Future<Map<String, Map<String, String>>> exportAll(
     int selfId,
     List<int> friendIds,
   );
 
   Future<void> importAll(Map<String, dynamic> data);
-
-  Future<void> closeAll();
 }

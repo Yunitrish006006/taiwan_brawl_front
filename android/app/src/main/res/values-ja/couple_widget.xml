@@ -1,0 +1,7 @@
+<resources>
+    <string name="couple_widget_name">交際日数</string>
+    <string name="couple_widget_days">%1$d 日目</string>
+    <string name="couple_widget_unbound">パートナー未連携</string>
+    <string name="couple_widget_signed_out">ログインしてください</string>
+    <string name="couple_widget_partner_line">%1$s と付き合って</string>
+</resources>

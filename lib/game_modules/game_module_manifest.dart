@@ -172,6 +172,8 @@ class GameResourceManifest {
     this.dependencies = const [],
     this.activationGroup,
     this.platforms = allGamePlatforms,
+    this.displayNameKey,
+    this.descriptionKey,
   });
 
   final String resourceId;
@@ -191,6 +193,8 @@ class GameResourceManifest {
   final List<GameModuleDependency> dependencies;
   final String? activationGroup;
   final List<GamePlatform> platforms;
+  final String? displayNameKey;
+  final String? descriptionKey;
 
   factory GameResourceManifest.fromJson(
     Map<String, dynamic> json, {
@@ -218,6 +222,8 @@ class GameResourceManifest {
           .toList(growable: false),
       activationGroup: json['activationGroup'] as String?,
       platforms: _parsePlatforms(json['platforms']) ?? defaultPlatforms,
+      displayNameKey: json['displayNameKey'] as String?,
+      descriptionKey: json['descriptionKey'] as String?,
     );
   }
 
@@ -236,6 +242,8 @@ class GameResourceManifest {
     'activationGroup': activationGroup,
     'platforms': platforms.map((platform) => platform.name).toList(),
     if (downloadUrl != null) 'downloadUrl': downloadUrl,
+    if (displayNameKey != null) 'displayNameKey': displayNameKey,
+    if (descriptionKey != null) 'descriptionKey': descriptionKey,
     if (byteLength != null) 'byteLength': byteLength,
     if (signature != null) 'signature': signature,
     if (signingKeyId != null) 'signingKeyId': signingKeyId,
@@ -288,6 +296,11 @@ class GameResourceManifest {
       );
     }
     if (downloadUrl != null) {
+      if (payloadSchemaVersion == null) {
+        throw FormatException(
+          'Downloadable resource $resourceId must declare a payload schema version.',
+        );
+      }
       final uri = Uri.tryParse(downloadUrl!);
       if (uri == null || uri.scheme != 'https' || !uri.hasAuthority) {
         throw FormatException('Resource $resourceId must use an HTTPS URL.');
@@ -385,6 +398,55 @@ class GameModuleManifest {
             ),
           )
           .toList(growable: false),
+    );
+  }
+
+  /// Reads a bundled game's package-owned manifest, including the payload
+  /// schemas its shipped code can decode. Remote catalogs use [fromJson] and
+  /// cannot grant themselves additional decoder capabilities.
+  factory GameModuleManifest.fromPackageJson(Map<String, dynamic> json) {
+    final parsed = GameModuleManifest.fromJson(json);
+    final rawSchemas = json['supportedResourceSchemas'];
+    if (rawSchemas is! Map) {
+      throw const FormatException(
+        'A bundled game manifest must declare supported resource schemas.',
+      );
+    }
+    final schemas = <String, int>{};
+    for (final entry in rawSchemas.entries) {
+      if (entry.key is! String ||
+          entry.value is! int ||
+          (entry.value as int) < 1) {
+        throw const FormatException('Invalid supported resource schema.');
+      }
+      schemas[entry.key as String] = entry.value as int;
+    }
+    for (final entry in schemas.entries) {
+      final resource = parsed.resources
+          .where((candidate) => candidate.resourceId == entry.key)
+          .firstOrNull;
+      if (resource == null || resource.payloadSchemaVersion != entry.value) {
+        throw FormatException(
+          'Supported payload schema for ${entry.key} must match its resource manifest.',
+        );
+      }
+    }
+    return GameModuleManifest(
+      moduleId: parsed.moduleId,
+      displayName: parsed.displayName,
+      description: parsed.description,
+      packageVersion: parsed.packageVersion,
+      minimumShellVersion: parsed.minimumShellVersion,
+      dataSchemaVersion: parsed.dataSchemaVersion,
+      manifestVersion: parsed.manifestVersion,
+      kind: parsed.kind,
+      publisher: parsed.publisher,
+      hostApiRange: parsed.hostApiRange,
+      dependencies: parsed.dependencies,
+      multiplayer: parsed.multiplayer,
+      supportedResourceSchemas: schemas,
+      resources: parsed.resources,
+      platforms: parsed.platforms,
     );
   }
 

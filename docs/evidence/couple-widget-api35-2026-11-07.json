@@ -1,0 +1,148 @@
+{
+  "observedOn": "2026-11-06/2026-11-08",
+  "scope": "partial Android emulator acceptance; synthetic native snapshots; not production delivery",
+  "apkSha256": "f7dd86271b613004cc8c65405eec68b89555ab34cee64942a577f719056ab766",
+  "scriptSha256": "7bc4d8c0ec050fafd4a40c377fee89f37c8fccc365ecefa84d17a9e0c9401350",
+  "singleInstance": {
+    "level": "android-emulator-production-provider-with-synthetic-private-snapshots",
+    "device": {
+      "sdk": "35",
+      "timezone": "Asia/Taipei"
+    },
+    "cases": [
+      {
+        "name": "active-light",
+        "expected": "Day 33",
+        "instances": 1,
+        "bounds": [
+          "[56,326][424,547]"
+        ],
+        "pngSha256": "87b698902465c77dbd4e641d3bfd5dd79f60630330515f07842b5dfebaa59300"
+      },
+      {
+        "name": "active-dark-large",
+        "expected": "Day 33",
+        "instances": 1,
+        "bounds": [
+          "[56,326][424,547]"
+        ],
+        "pngSha256": "cd409e4e5ffe7517838904a4530244f1235de67a03709ad9402f9d41eb657029"
+      },
+      {
+        "name": "unbound-dark-large",
+        "expected": "No partner linked",
+        "instances": 1,
+        "bounds": [
+          "[56,326][424,547]"
+        ],
+        "pngSha256": "d4a3dac0480edc24b3fe098bf2cb5c706d01b7df31952590d912bad73704c840"
+      },
+      {
+        "name": "signed-out-dark-large",
+        "expected": "Please sign in",
+        "instances": 1,
+        "bounds": [
+          "[56,326][424,547]"
+        ],
+        "pngSha256": "cd8fbd7bc5a0d84978d42a78f998aef6ac4481f8c76bfe9addbabdaa15cef588"
+      }
+    ],
+    "notTested": [
+      "OAuth",
+      "backend consent/end/logout",
+      "Dart beginSession/replace channel",
+      "physical device battery",
+      "reboot",
+      "automatic midnight alarm timing",
+      "iOS"
+    ],
+    "passed": true
+  },
+  "multipleInstances": {
+    "level": "android-emulator-production-provider-with-synthetic-private-snapshots",
+    "device": {
+      "sdk": "35",
+      "timezone": "Asia/Taipei"
+    },
+    "cases": [
+      {
+        "name": "active-light",
+        "expected": "Day 33",
+        "instances": 2,
+        "bounds": [
+          "[56,326][424,547]",
+          "[456,326][824,547]"
+        ],
+        "pngSha256": "dbb401b029e4e4333337f122cb4a6a1ac9208a5c84c1d2a45eacc20ba541dfeb"
+      },
+      {
+        "name": "active-dark-large",
+        "expected": "Day 33",
+        "instances": 2,
+        "bounds": [
+          "[56,326][424,547]",
+          "[456,326][824,547]"
+        ],
+        "pngSha256": "ab3f338dd20e09576a24f2f9f46b9e3b867de80e255313fc6280af0fbce44526"
+      },
+      {
+        "name": "unbound-dark-large",
+        "expected": "No partner linked",
+        "instances": 2,
+        "bounds": [
+          "[56,326][424,547]",
+          "[456,326][824,547]"
+        ],
+        "pngSha256": "1c35faad133bf13c12d9ddebc678e39834dab0ce301b7f52161fa9cecb33bfe3"
+      },
+      {
+        "name": "signed-out-dark-large",
+        "expected": "Please sign in",
+        "instances": 2,
+        "bounds": [
+          "[56,326][424,547]",
+          "[456,326][824,547]"
+        ],
+        "pngSha256": "a4c829ad9c93ab32680b59b91cd87745a76fb9a705f17626b25ed14dcaf0233d"
+      }
+    ],
+    "restored": true,
+    "notTested": [
+      "OAuth",
+      "backend consent/end/logout",
+      "Dart beginSession/replace channel",
+      "physical device battery",
+      "reboot",
+      "automatic midnight alarm timing",
+      "iOS"
+    ],
+    "passed": true
+  },
+  "manualObservations": {
+    "productionWidgetAdded": true,
+    "offlineClickOpenedLogin": true,
+    "offlineReadCounterDisplayedDay33WithoutLogin": true,
+    "screenshotsVisuallyInspected": true,
+    "rebootUnlockedTwoInstancesDay33": true,
+    "nextMidnightInexactAlarmPresentAfterReboot": true
+  },
+  "evidenceRetention": "Full PNG and XML in temporary run directories; may be removed by OS. Hashes alone are not visual evidence.",
+  "rebootPngSha256": "d3c9eabf02a2b52a8846ff3eb87283336b7ee2276bab21f5c03df61cb0d7843b",
+  "timezoneBroadcastObservations": [
+    {
+      "timezone": "Pacific/Honolulu",
+      "date": "2026-11-07",
+      "expected": "Day 33",
+      "instances": 2,
+      "pngSha256": "8652e1f1c0b904534efa40c0be7b507fe208ab7ad8a64406903511454fb9e7fb"
+    },
+    {
+      "timezone": "Asia/Taipei",
+      "date": "2026-11-08",
+      "expected": "Day 34",
+      "instances": 2,
+      "pngSha256": "5f1d20dc4beb38e8956635c79611bcc4a45fee522ef2676af55c1e2829cee045"
+    }
+  ],
+  "note": "The scripted runs exclude reboot; reboot and timezone observations were separate manual device checks. No explicit refresh was sent during the timezone check."
+}

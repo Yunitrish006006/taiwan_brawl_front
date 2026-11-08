@@ -2,182 +2,222 @@ import 'dart:async';
 
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
-import 'package:user_basic_system/user_basic_system.dart' show DmService;
-
-import '../models/chat_models.dart';
-import 'api_client.dart';
-import 'editable_dm_service.dart';
-import 'legacy_chat_store.dart';
-import 'legacy_chat_remote_source.dart';
-import 'local_chat_repository.dart';
-import 'message_chat_projection.dart';
-import 'message_chat_sync_adapter.dart';
+import '../models/direct_message.dart';
+import '../models/message_history_page.dart';
+import 'direct_message_session.dart';
+import 'direct_message_sync_service.dart';
+import 'legacy_chat_delivery_adapter.dart';
+import 'legacy_chat_history_adapter.dart';
+import 'legacy_chat_sync_snapshot_adapter.dart';
+import 'manual_p2p_dm_service.dart';
 import 'messaging_core_service.dart';
-import 'p2p_message_transport.dart';
-import 'server_message_transport.dart';
+import 'fallback_message_transport.dart';
+import 'relay_fallback_dm_service.dart';
+import 'remote_source_exception.dart';
+import 'retryable_dm_service.dart';
 
-typedef ChatMessageTransportFactory =
+typedef DirectMessageTransportFactory =
     MessageTransport Function({
       required int selfId,
       required int friendId,
       required bool isCaller,
     });
 
-/// Chat service preserving the legacy [DmService] API during event migration.
-///
-/// - Send: POST /api/chat/dm/:friendId/send → stored in D1 pending_messages
-/// - Receive: [ServerMessageTransport] polls the pending relay and feeds the
-///   transport-neutral event repository.
-/// - History: shared projection first, with injected legacy storage and server
-///   history as migration fallbacks.
-class ChatService implements DmService, EditableDmService {
-  ChatService(
-    this._apiClient, {
-    MessagingCoreService? messagingCore,
-    MessageRepository? eventRepository,
+typedef ManualP2PTransportFactory =
+    NegotiatingMessageTransport Function({
+      required int friendId,
+      required PeerSignalingChannel signalingService,
+      required bool isCaller,
+    });
+
+/// Chat service supplying the app-owned DM UI contract during event migration.
+/// Storage, remote compatibility, and event transport are supplied by ports.
+class ChatService
+    implements
+        DirectMessageSession,
+        DirectMessageSyncService,
+        RetryableDmService,
+        ManualP2pDmService,
+        RelayFallbackDmService {
+  ChatService({
+    required MessagingCoreService messagingCore,
     EventAuthenticator? authenticator,
     EventAuthenticator? remoteAuthenticator,
+    EventAuthenticator? p2pAuthenticator,
     String? deviceId,
-    ChatMessageTransportFactory? transportFactory,
-    LegacyChatStore? localRepository,
-    LegacyChatRemoteSource? remoteSource,
+    required DirectMessageTransportFactory transportFactory,
+    required LegacyChatDeliveryAdapter legacyDelivery,
+    required LegacyChatHistoryAdapter legacyHistory,
+    required LegacyChatSyncSnapshotAdapter legacySyncSnapshots,
     PeerSignalingChannel? manualSignaling,
-    P2PMessageTransportFactory? manualTransportFactory,
-    this.p2pIceConfiguration = P2PMessageTransport.defaultIceConfiguration,
-  }) : _messagingCore =
-           messagingCore ??
-           MessagingCoreService(
-             repository: eventRepository ?? MessageRepository(),
-           ),
+    ManualP2PTransportFactory? manualTransportFactory,
+    this.outboxRetryInterval = const Duration(seconds: 5),
+  }) : _messagingCore = messagingCore,
        _authenticator = authenticator,
        _remoteAuthenticator = remoteAuthenticator,
+       _p2pAuthenticator = p2pAuthenticator,
        _deviceId = deviceId,
        _transportFactory = transportFactory,
-       _localRepo = localRepository ?? LocalChatRepository(),
-       _remoteSource = remoteSource ?? ServerLegacyChatRemoteSource(_apiClient),
+       _legacyDelivery = legacyDelivery,
+       _legacyHistory = legacyHistory,
+       _legacySyncSnapshots = legacySyncSnapshots,
        _manualSignaling = manualSignaling,
        _manualTransportFactory = manualTransportFactory;
 
-  final ApiClient _apiClient;
   final MessagingCoreService _messagingCore;
   final EventAuthenticator? _authenticator;
   final EventAuthenticator? _remoteAuthenticator;
+  final EventAuthenticator? _p2pAuthenticator;
   final String? _deviceId;
-  final ChatMessageTransportFactory? _transportFactory;
-  final LegacyChatStore _localRepo;
-  final LegacyChatRemoteSource _remoteSource;
+  final DirectMessageTransportFactory _transportFactory;
+  final LegacyChatDeliveryAdapter _legacyDelivery;
+  final LegacyChatHistoryAdapter _legacyHistory;
+  final LegacyChatSyncSnapshotAdapter _legacySyncSnapshots;
   final PeerSignalingChannel? _manualSignaling;
-  final P2PMessageTransportFactory? _manualTransportFactory;
-  final Map<String, dynamic> p2pIceConfiguration;
+  final ManualP2PTransportFactory? _manualTransportFactory;
+  final Duration outboxRetryInterval;
 
-  final StreamController<ChatMessage> _messageStream =
+  final StreamController<DirectMessage> _directMessageStream =
       StreamController.broadcast();
+  final StreamController<void> _connectionStateChanges =
+      StreamController<void>.broadcast();
 
   @override
-  Stream<ChatMessage> get messageStream => _messageStream.stream;
+  Stream<DirectMessage> get directMessageStream => _directMessageStream.stream;
 
   int? _currentSelfId;
   int? _currentFriendId;
   MessageSyncEngine? _syncEngine;
+  MessageTransport? _activeTransport;
+  StreamSubscription<void>? _transportStateSubscription;
   Future<void> _lifecycleTail = Future<void>.value();
-  final Map<String, String> _messageEventIds = <String, String>{};
+  Future<void>? _disposeFuture;
+  bool _manualPrepared = false;
 
   bool get manualP2pEnabled => _manualSignaling != null;
 
   String? get manualDeviceId => _deviceId;
 
-  // ── history ───────────────────────────────────────────────────────────────
-
-  /// Returns locally stored messages. If empty, falls back to server history.
   @override
-  Future<List<ChatMessage>> fetchHistory(
-    int selfId,
-    int friendId, {
-    String? before,
-  }) async {
-    final projected = _projectedMessages(selfId, friendId);
-    final local = await _localRepo.getMessages(selfId, friendId);
-    if (local.isNotEmpty) {
-      // Always replay the compatibility cache into the shared projection.
-      // The projection may already contain newer events from a previous
-      // session; returning early would strand older legacy rows forever.
-      await _promoteLegacyMessages(local, selfId, friendId);
-      final promoted = _projectedMessages(selfId, friendId);
-      return promoted.isNotEmpty ? promoted : local;
-    }
-    if (projected.isNotEmpty) return projected;
+  Duration get p2pRetryInterval => outboxRetryInterval;
 
-    List<ChatMessage> serverMessages;
-    try {
-      serverMessages = await _remoteSource.fetchHistory(
-        friendId,
-        before: before,
-      );
-    } catch (error) {
-      // An initial history read must remain usable without a network. Preserve
-      // explicit HTTP responses (auth/server errors) for the UI, but treat a
-      // transport-level failure as an empty local conversation.
-      if (error is ApiException && error.statusCode != null) rethrow;
-      return const <ChatMessage>[];
-    }
-    await _promoteLegacyMessages(serverMessages, selfId, friendId);
-    final projectedAfterSync = _projectedMessages(selfId, friendId);
-    return projectedAfterSync.isNotEmpty ? projectedAfterSync : serverMessages;
+  @override
+  Stream<void> get connectionStateChanges => _connectionStateChanges.stream;
+
+  @override
+  bool get relayFallbackChoiceRequired {
+    final transport = _activeTransport;
+    return transport is FallbackMessageTransport &&
+        transport.relayChoiceRequired;
   }
 
-  /// Force-fetch history from server and merge into local cache (no data loss).
   @override
-  Future<List<ChatMessage>> syncFromServer(int selfId, int friendId) async {
-    List<ChatMessage> serverMessages;
-    try {
-      serverMessages = await _remoteSource.fetchHistory(friendId);
-    } catch (error) {
-      if (error is ApiException && error.statusCode != null) rethrow;
-      return _projectedMessages(selfId, friendId);
-    }
-    await _promoteLegacyMessages(serverMessages, selfId, friendId);
-    // Return merged result (local + server)
-    final projected = _projectedMessages(selfId, friendId);
-    return projected.isNotEmpty
-        ? projected
-        : _localRepo.getMessages(selfId, friendId);
+  bool get relayFallbackActive {
+    final transport = _activeTransport;
+    return transport is FallbackMessageTransport && transport.relayActive;
+  }
+
+  @override
+  bool get p2pActive {
+    final transport = _activeTransport;
+    return transport is FallbackMessageTransport && transport.p2pActive;
+  }
+
+  @override
+  Future<bool> retryP2PConnection() async {
+    var connected = false;
+    await _enqueueLifecycle(() async {
+      final transport = _activeTransport;
+      final engine = _syncEngine;
+      if (transport is! FallbackMessageTransport || engine == null) return;
+      if (!await transport.retryPrimary()) return;
+      try {
+        if (engine.started) {
+          await engine.syncNow();
+        } else {
+          await engine.start();
+        }
+        connected = transport.p2pActive;
+      } catch (_) {
+        connected = false;
+      }
+    });
+    return connected;
+  }
+
+  @override
+  bool get enabled => manualP2pEnabled;
+
+  @override
+  String? get localDeviceId => manualDeviceId;
+
+  @override
+  Future<List<DirectMessage>> loadConversation(
+    int selfId,
+    int friendId, {
+    MessageHistoryCursor? before,
+  }) async {
+    await _legacyHistory.loadAndPromote(selfId, friendId, before: before);
+    return _projectedDirectMessages(selfId, friendId);
+  }
+
+  @override
+  Future<MessageHistoryPage<DirectMessage>> loadConversationPage(
+    int selfId,
+    int friendId, {
+    MessageHistoryCursor? before,
+  }) async {
+    final legacyPage = await _legacyHistory.loadPageAndPromote(
+      selfId,
+      friendId,
+      before: before,
+    );
+    return MessageHistoryPage(
+      messages: _projectedDirectMessages(selfId, friendId),
+      hasMore: legacyPage.hasMore,
+      nextCursor: legacyPage.nextCursor,
+    );
+  }
+
+  @override
+  Future<List<DirectMessage>> refreshConversation(
+    int selfId,
+    int friendId,
+  ) async {
+    await _legacyHistory.refreshAndPromote(selfId, friendId);
+    return _projectedDirectMessages(selfId, friendId);
   }
 
   /// Export local chat history for one conversation and upload to server.
   /// Valid for 1 hour, one-time download. Both participants share the same key.
   @override
   Future<void> uploadSyncData(int selfId, int friendId) async {
-    final projected = _projectedMessages(selfId, friendId);
-    final exported = projected.isNotEmpty
-        ? MessageChatSyncAdapter.exportMessages(projected, selfId, friendId)
-        : await _localRepo.exportAll(selfId, [friendId]);
-    if (exported.isEmpty) return;
-    await _remoteSource.uploadSyncData(friendId, exported);
+    await _legacySyncSnapshots.upload(selfId, friendId);
   }
 
   /// Download sync data for one conversation and merge into local cache.
   @override
   Future<void> downloadAndMergeSyncData(int friendId) async {
-    final data = await _remoteSource.downloadSyncData(friendId);
-    await _localRepo.importAll(data);
-    final selfId = _currentSelfId;
-    if (selfId == null) return;
-    for (final event in MessageChatSyncAdapter.importEvents(
-      data,
-      selfId,
+    await _legacySyncSnapshots.downloadAndMerge(
       friendId,
-    )) {
-      await _messagingCore.acceptRemote(event);
-    }
+      selfId: _currentSelfId,
+    );
   }
 
   // ── connect ───────────────────────────────────────────────────────────────
 
   @override
   Future<void> connectToDm(int selfId, int friendId, {bool isCaller = true}) {
-    final operation = _lifecycleTail.then<void>(
-      (_) => _connectToDm(selfId, friendId, isCaller: isCaller),
+    return _enqueueLifecycle(
+      () => _connectToDm(selfId, friendId, isCaller: isCaller),
     );
+  }
+
+  Future<void> _enqueueLifecycle(Future<void> Function() action) {
+    if (_disposeFuture != null) {
+      return Future<void>.error(StateError('The DM session is disposed'));
+    }
+    final operation = _lifecycleTail.then<void>((_) => action());
     _lifecycleTail = operation.catchError((Object _, StackTrace _) {});
     return operation;
   }
@@ -193,31 +233,56 @@ class ChatService implements DmService, EditableDmService {
 
     // The event transport owns polling and acknowledgements. Legacy send and
     // recall remain active until their event route is deployed and verified.
-    final transport =
-        _transportFactory?.call(
-          selfId: selfId,
-          friendId: friendId,
-          isCaller: isCaller,
-        ) ??
-        ServerMessageTransport(
-          apiClient: _apiClient,
-          selfId: selfId,
-          friendId: friendId,
-        );
+    final transport = _transportFactory(
+      selfId: selfId,
+      friendId: friendId,
+      isCaller: isCaller,
+    );
+    _activeTransport = transport;
+    if (transport is FallbackMessageTransport) {
+      _transportStateSubscription = transport.connectionStateChanges.listen((
+        _,
+      ) {
+        if (!_connectionStateChanges.isClosed) {
+          _connectionStateChanges.add(null);
+        }
+      });
+    }
     final engine = _messagingCore.syncEngine(
       transport: transport,
       authenticator: _remoteAuthenticator,
       onRemoteEvent: _handleRemoteEvent,
       eventFilter: (event) =>
           event.conversationId == _conversationId(selfId, friendId),
+      retryInterval: outboxRetryInterval,
     );
     _syncEngine = engine;
     await engine.start();
   }
 
+  @override
+  Future<void> useRelayFallback() => _enqueueLifecycle(() async {
+    final transport = _activeTransport;
+    final engine = _syncEngine;
+    if (transport is! FallbackMessageTransport || engine == null) {
+      throw StateError('Relay fallback is unavailable for this conversation');
+    }
+    transport.selectRelayFallback();
+    if (engine.started) {
+      await transport.connect();
+      await engine.syncNow();
+    } else {
+      await engine.start();
+    }
+  });
+
   /// Prepares a serverless P2P transport without waiting for its DataChannel.
   /// The caller can then export a negotiation bundle for out-of-band exchange.
-  Future<void> prepareManualP2p({required bool isCaller}) async {
+  @override
+  Future<void> prepare({required bool isCaller}) =>
+      _enqueueLifecycle(() => _prepare(isCaller: isCaller));
+
+  Future<void> _prepare({required bool isCaller}) async {
     final signaling = _manualSignaling;
     final selfId = _currentSelfId;
     final friendId = _currentFriendId;
@@ -227,72 +292,96 @@ class ChatService implements DmService, EditableDmService {
     if (selfId == null || friendId == null) {
       throw StateError('A DM must be connected before manual P2P setup');
     }
+    final p2pAuthenticator = _p2pAuthenticator;
+    if (p2pAuthenticator == null) {
+      throw StateError(
+        'P2P requires a device identity and an explicitly trusted peer',
+      );
+    }
+    if (_manualPrepared) return;
     await _stopEngine();
-    final transport =
-        _manualTransportFactory?.call(
-          friendId: friendId,
-          signalingService: signaling,
-          isCaller: isCaller,
-          iceConfiguration: p2pIceConfiguration,
-        ) ??
-        P2PMessageTransport(
-          friendId: friendId,
-          signalingService: signaling,
-          isCaller: isCaller,
-          iceConfiguration: p2pIceConfiguration,
-        );
+    final transportFactory = _manualTransportFactory;
+    if (transportFactory == null) {
+      throw StateError('Manual P2P transport is not configured');
+    }
+    final transport = transportFactory(
+      friendId: friendId,
+      signalingService: signaling,
+      isCaller: isCaller,
+    );
+    _activeTransport = transport;
     _syncEngine = _messagingCore.syncEngine(
       transport: transport,
-      authenticator: _remoteAuthenticator,
+      authenticator: p2pAuthenticator,
       onRemoteEvent: _handleRemoteEvent,
       eventFilter: (event) =>
           event.conversationId == _conversationId(selfId, friendId),
+      retryInterval: outboxRetryInterval,
     );
     await transport.prepare();
+    _manualPrepared = true;
   }
 
-  String exportManualP2pBundle({
+  @override
+  Future<String> exportBundle({
     required String sessionId,
     required String senderDeviceId,
   }) {
+    if (_disposeFuture != null) {
+      return Future<String>.error(StateError('The DM session is disposed'));
+    }
     final signaling = _manualSignaling;
     if (signaling is! ManualPeerSignaling) {
       throw StateError('Manual P2P signaling is not configured');
     }
-    return signaling.exportBundle(
+    final authenticator = _p2pAuthenticator;
+    if (authenticator == null) {
+      throw StateError('Manual P2P requires a local device signer');
+    }
+    return signaling.exportSignedBundle(
       sessionId: sessionId,
       senderDeviceId: senderDeviceId,
+      authenticator: authenticator,
     );
   }
 
-  void importManualP2pBundle(
+  @override
+  Future<void> importBundle(
     String encoded, {
     String? expectedSessionId,
     String? expectedSenderDeviceId,
   }) {
+    if (_disposeFuture != null) {
+      return Future<void>.error(StateError('The DM session is disposed'));
+    }
     final signaling = _manualSignaling;
     if (signaling is! ManualPeerSignaling) {
       throw StateError('Manual P2P signaling is not configured');
     }
-    signaling.importBundle(
+    final authenticator = _p2pAuthenticator;
+    if (authenticator == null) {
+      throw StateError('Manual P2P requires a trusted-device verifier');
+    }
+    return signaling.importSignedBundle(
       encoded,
+      authenticator: authenticator,
       expectedSessionId: expectedSessionId,
       expectedSenderDeviceId: expectedSenderDeviceId,
     );
   }
 
-  Future<void> completeManualP2p() async {
+  @override
+  Future<void> complete() => _enqueueLifecycle(() async {
     final engine = _syncEngine;
     if (engine == null) {
       throw StateError('Manual P2P has not been prepared');
     }
     await engine.start();
-  }
+  });
 
   // ── send ──────────────────────────────────────────────────────────────────
 
-  @override
-  Future<void> sendMessage(int receiverId, String text) async {
+  Future<void> _sendText(int receiverId, String text) async {
     final createdAt = DateTime.now().toIso8601String();
     final selfId = _currentSelfId;
 
@@ -303,8 +392,6 @@ class ChatService implements DmService, EditableDmService {
           selfId,
           receiverId,
         ).create(text, createdAt: DateTime.parse(createdAt).toUtc());
-        _messageEventIds['${event.createdAt.toIso8601String()}_$selfId'] =
-            event.messageId;
         _emitProjected(selfId, receiverId, messageId: event.messageId);
       }
       final sentAsEvent = event != null && await _tryFlushEvent(event);
@@ -322,27 +409,61 @@ class ChatService implements DmService, EditableDmService {
       }
 
       // Compatibility fallback: older deployments do not expose /event.
-      final res = await _remoteSource.sendMessage(receiverId, text);
+      await _legacyDelivery.sendText(
+        receiverId,
+        text,
+        selfId: selfId,
+        fallbackCreatedAt: createdAt,
+        persistLegacyCopy: event == null,
+      );
       if (event != null) {
         await _messagingCore.repository.acknowledge(event.eventId);
         _emitProjected(selfId!, receiverId);
         return;
       }
-      final serverCreatedAt = res['createdAt'] as String? ?? createdAt;
-      if (selfId != null) {
-        final delivered = ChatMessage(
-          senderId: selfId,
-          receiverId: receiverId,
-          text: text,
-          createdAt: serverCreatedAt,
-          isPending: false,
-        );
-        await _localRepo.saveMessage(selfId, delivered);
-        if (!_messageStream.isClosed) _messageStream.add(delivered);
-      }
     } catch (_) {
-      // isPending stays true in UI
+      // Keep the durable outbox event for reconnect, but surface the failure
+      // so the composer can preserve the text and explain what happened.
+      rethrow;
     }
+  }
+
+  @override
+  Future<void> sendText(int receiverId, String text) =>
+      _sendText(receiverId, text);
+
+  @override
+  Future<void> retryPendingMessage(int receiverId, String text) async {
+    final selfId = _currentSelfId;
+    if (selfId == null) {
+      throw StateError('The chat is not connected to a user session');
+    }
+    final normalizedText = text.trim();
+    final conversationId = _conversationId(selfId, receiverId);
+    final pending = _messagingCore.repository.pendingOutbox
+        .where(
+          (event) =>
+              event.type == MessageEventType.created &&
+              event.actorId == selfId.toString() &&
+              event.conversationId == conversationId &&
+              event.body == normalizedText,
+        )
+        .lastOrNull;
+
+    // The automatic reconnect may already have delivered the event while the
+    // draft remained visible. In that case, consider retry complete.
+    if (pending == null) return;
+    final sentAsEvent = await _tryFlushEvent(pending);
+    if (sentAsEvent) {
+      _emitProjected(selfId, receiverId, messageId: pending.messageId);
+      return;
+    }
+    if (_syncEngine?.started != true) return;
+
+    // Compatibility with deployments that do not yet expose the event route.
+    await _legacyDelivery.sendText(receiverId, normalizedText);
+    await _messagingCore.repository.acknowledge(pending.eventId);
+    _emitProjected(selfId, receiverId, messageId: pending.messageId);
   }
 
   /// Edits a locally owned message through the shared event outbox.
@@ -351,73 +472,72 @@ class ChatService implements DmService, EditableDmService {
   /// the edit remains durable locally and is flushed when a compatible
   /// transport becomes available.
   @override
-  Future<void> editMessage(ChatMessage msg, String newText) async {
+  Future<void> editProjectedMessage(String messageId, String newText) async {
     final selfId = _currentSelfId;
     final friendId = _currentFriendId;
     final text = newText.trim();
-    if (selfId == null || friendId == null || text.isEmpty) return;
-    if (msg.senderId != selfId || msg.isRecalled || msg.text == text) return;
-
-    final eventMessageId = _eventMessageIdFor(msg, selfId);
-    final commands = _messageCommands(selfId, friendId);
-    var projection = _messagingCore.repository.projectionFor(eventMessageId);
-    if (projection == null) {
-      await commands.create(
-        msg.text,
-        messageId: eventMessageId,
-        eventId: 'legacy-created:$eventMessageId',
-        createdAt: DateTime.parse(msg.createdAt).toUtc(),
-      );
-      projection = _messagingCore.repository.projectionFor(eventMessageId);
+    final projection = _messagingCore.repository.projectionFor(messageId);
+    if (selfId == null ||
+        friendId == null ||
+        projection == null ||
+        projection.authorId != selfId.toString() ||
+        projection.recalled ||
+        text.isEmpty) {
+      return;
     }
-    if (projection == null || projection.recalled) return;
-
-    final event = await commands.edit(
-      eventMessageId,
-      text,
-      eventId: 'edited:$eventMessageId:${projection.revision + 1}',
-    );
+    final pendingEdit = _messagingCore.repository.pendingOutbox
+        .where(
+          (candidate) =>
+              candidate.messageId == messageId &&
+              candidate.type == MessageEventType.edited &&
+              candidate.body == text,
+        )
+        .lastOrNull;
+    final event = projection.visibleBody == text
+        ? pendingEdit
+        : await _messageCommands(selfId, friendId).edit(
+            messageId,
+            text,
+            eventId: 'edited:$messageId:${projection.revision + 1}',
+          );
     if (event == null) return;
     _emitProjected(selfId, friendId, messageId: event.messageId);
-    if (_syncEngine?.started == true) {
-      try {
-        await _syncEngine!.syncNow();
-      } on ApiException {
-        // The read event remains in the durable outbox for reconnect. Read
-        // marking is best-effort from the UI and must not surface a
-        // background transport failure as an unhandled async error.
-      } catch (_) {
-        // The local edit is durable in the outbox; retry it on reconnect.
-      }
+    if (_syncEngine?.started != true) {
+      throw StateError(
+        'Edit is saved locally but the message transport is not connected',
+      );
+    }
+    final delivered = await _tryFlushEvent(event);
+    if (!delivered) {
+      throw RemoteSourceException(
+        'The server does not support message edit events yet',
+        statusCode: 404,
+      );
     }
   }
 
-  /// Appends a durable read event for an incoming message.
-  ///
-  /// Read state follows the same offline-first path as edits and recalls: it
-  /// is projected locally immediately and remains in the shared outbox until
-  /// a transport can deliver it.
-  Future<void> markMessageRead(ChatMessage message) async {
+  @override
+  Future<void> markProjectedMessageRead(String messageId) async {
     final selfId = _currentSelfId;
     final friendId = _currentFriendId;
-    if (selfId == null || friendId == null || message.senderId != friendId) {
-      return;
-    }
-    final eventMessageId = _eventMessageIdFor(message, selfId);
-    final projection = _messagingCore.repository.projectionFor(eventMessageId);
-    if (projection == null || projection.readBy.contains(selfId.toString())) {
+    final projection = _messagingCore.repository.projectionFor(messageId);
+    if (selfId == null ||
+        friendId == null ||
+        projection == null ||
+        projection.authorId != friendId.toString() ||
+        projection.readBy.contains(selfId.toString())) {
       return;
     }
     final event = await _messageCommands(
       selfId,
       friendId,
-    ).read(eventMessageId, eventId: 'read:$eventMessageId:$selfId');
+    ).read(messageId, eventId: 'read:$messageId:$selfId');
     if (event == null) return;
     _emitProjected(selfId, friendId, messageId: event.messageId);
     if (_syncEngine?.started == true) {
       try {
         await _syncEngine!.syncNow();
-      } on ApiException catch (error) {
+      } on RemoteSourceException catch (error) {
         if (error.statusCode != 404 && error.statusCode != 405) rethrow;
       } catch (_) {
         // The read event remains in the durable outbox for reconnect.
@@ -427,58 +547,68 @@ class ChatService implements DmService, EditableDmService {
 
   // ── recall ────────────────────────────────────────────────────────────────
 
-  /// Recalls a message. Marks it locally and notifies the receiver via server.
+  /// Recalls a locally owned projection through the shared event outbox.
   @override
-  Future<void> recallMessage(ChatMessage msg) async {
+  Future<void> recallProjectedMessage(String messageId) async {
     final selfId = _currentSelfId;
     final friendId = _currentFriendId;
-    if (selfId == null || friendId == null) return;
-
-    try {
-      final eventMessageId = _eventMessageIdFor(msg, selfId);
-      final projection = _messagingCore.repository.projectionFor(
-        eventMessageId,
-      );
-      String? legacyCreatedEventId;
-      final commands = _messageCommands(selfId, friendId);
-      if (projection == null) {
-        legacyCreatedEventId = 'legacy-created:$eventMessageId';
-        await commands.create(
-          msg.text,
-          messageId: eventMessageId,
-          eventId: legacyCreatedEventId,
-          createdAt: DateTime.parse(msg.createdAt).toUtc(),
-        );
-      }
-      final current = _messagingCore.repository.projectionFor(eventMessageId);
-      if (current?.recalled == true) return;
-      if (current != null) {
-        final event = await commands.recall(
-          eventMessageId,
-          eventId: 'legacy-recalled:$eventMessageId',
-        );
-        if (event == null) return;
-        _emitProjected(selfId, friendId, messageId: event.messageId);
-        final sentAsEvent = await _tryFlushEvent(event);
-        if (sentAsEvent) return;
-        if (_syncEngine?.started != true) {
-          // Keep the recall event pending until a transport is available.
-          // A disconnected client must not acknowledge locally or use the
-          // legacy HTTP path as an accidental online fallback.
-          return;
-        }
-        await _messagingCore.repository.acknowledge(event.eventId);
-        if (legacyCreatedEventId != null) {
-          await _messagingCore.repository.acknowledge(legacyCreatedEventId);
-        }
-      }
-
-      // Compatibility fallback: older deployments only understand messageKey.
-      await _remoteSource.recallMessage(friendId, msg.messageKey);
-      _emitProjected(selfId, friendId, messageId: eventMessageId);
-    } catch (_) {
-      // Best-effort; local state already updated
+    final projection = _messagingCore.repository.projectionFor(messageId);
+    if (selfId == null ||
+        friendId == null ||
+        projection == null ||
+        projection.authorId != selfId.toString()) {
+      return;
     }
+
+    final pendingRecall = _messagingCore.repository.pendingOutbox
+        .where(
+          (candidate) =>
+              candidate.messageId == messageId &&
+              candidate.type == MessageEventType.recalled,
+        )
+        .lastOrNull;
+    if (projection.recalled) {
+      if (pendingRecall == null) return;
+      if (_syncEngine?.started != true) {
+        throw StateError(
+          'Recall is saved locally but the message transport is not connected',
+        );
+      }
+      if (!await _tryFlushEvent(pendingRecall)) {
+        await _messagingCore.repository.acknowledge(pendingRecall.eventId);
+        await _sendLegacyRecall(friendId, projection, selfId, messageId);
+      }
+      return;
+    }
+
+    final event = await _messageCommands(
+      selfId,
+      friendId,
+    ).recall(messageId, eventId: 'legacy-recalled:$messageId');
+    if (event == null) return;
+    _emitProjected(selfId, friendId, messageId: event.messageId);
+    if (await _tryFlushEvent(event)) return;
+    if (_syncEngine?.started != true) {
+      throw StateError(
+        'Recall is saved locally but the message transport is not connected',
+      );
+    }
+    await _messagingCore.repository.acknowledge(event.eventId);
+    await _sendLegacyRecall(friendId, projection, selfId, messageId);
+  }
+
+  Future<void> _sendLegacyRecall(
+    int friendId,
+    MessageProjection projection,
+    int selfId,
+    String eventMessageId,
+  ) async {
+    await _legacyDelivery.recallProjection(
+      friendId,
+      projection,
+      selfId: selfId,
+    );
+    _emitProjected(selfId, friendId, messageId: eventMessageId);
   }
 
   Future<bool> _tryFlushEvent(MessageEvent event) async {
@@ -486,38 +616,13 @@ class ChatService implements DmService, EditableDmService {
     if (engine == null || !engine.started) return false;
     try {
       await engine.syncNow();
-      return true;
-    } on ApiException catch (error) {
+      return !_messagingCore.repository.pendingOutbox.any(
+        (pending) => pending.eventId == event.eventId,
+      );
+    } on RemoteSourceException catch (error) {
       if (error.statusCode == 404 || error.statusCode == 405) return false;
       rethrow;
     }
-  }
-
-  String _eventMessageIdFor(ChatMessage message, int selfId) {
-    final known = _messageEventIds[message.messageKey];
-    if (known != null) return known;
-
-    final createdAt = DateTime.tryParse(message.createdAt)?.toUtc();
-    if (createdAt != null) {
-      MessageEvent? createdAtMatch;
-      for (final event in _messagingCore.repository.events) {
-        if (event.type != MessageEventType.created ||
-            event.actorId != selfId.toString() ||
-            event.createdAt.toUtc() != createdAt) {
-          continue;
-        }
-        if (event.body == message.text) {
-          _messageEventIds[message.messageKey] = event.messageId;
-          return event.messageId;
-        }
-        createdAtMatch ??= event;
-      }
-      if (createdAtMatch != null) {
-        _messageEventIds[message.messageKey] = createdAtMatch.messageId;
-        return createdAtMatch.messageId;
-      }
-    }
-    return message.messageKey;
   }
 
   static String _conversationId(int userIdA, int userIdB) {
@@ -535,58 +640,43 @@ class ChatService implements DmService, EditableDmService {
     );
   }
 
-  List<ChatMessage> _projectedMessages(int selfId, int friendId) {
-    return MessageChatProjection.toMessages(
-      projections: _messagingCore.repository.projectionsFor(
-        _conversationId(selfId, friendId),
-      ),
-      selfId: selfId,
-      friendId: friendId,
-      pendingMessageIds: _messagingCore.repository.pendingOutbox.map(
-        (event) => event.messageId,
-      ),
-    );
-  }
-
-  Future<void> _promoteLegacyMessages(
-    Iterable<ChatMessage> messages,
-    int selfId,
-    int friendId,
-  ) async {
-    for (final event in MessageChatSyncAdapter.eventsFromMessages(
-      messages,
-      selfId,
-      friendId,
-    )) {
-      await _messagingCore.acceptRemote(
-        event,
-        authenticator: _remoteAuthenticator,
-      );
-    }
+  List<DirectMessage> _projectedDirectMessages(int selfId, int friendId) {
+    final projections = _messagingCore.repository.projectionsFor(
+      _conversationId(selfId, friendId),
+    )..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    final pendingIds = _pendingMessageIds.toSet();
+    return [
+      for (final projection in projections)
+        DirectMessage.fromProjection(
+          projection,
+          isPending: pendingIds.contains(projection.messageId),
+        ),
+    ];
   }
 
   void _emitProjected(int selfId, int friendId, {String? messageId}) {
-    if (_messageStream.isClosed) return;
+    if (_directMessageStream.isClosed) return;
     if (messageId != null) {
       final projection = _messagingCore.repository.projectionFor(messageId);
-      final message = projection == null
-          ? null
-          : MessageChatProjection.toMessage(
-              projection: projection,
-              selfId: selfId,
-              friendId: friendId,
-              pendingMessageIds: _messagingCore.repository.pendingOutbox.map(
-                (event) => event.messageId,
-              ),
-            );
-      if (message != null) {
-        _messageStream.add(message);
-        return;
+      if (projection != null) {
+        _directMessageStream.add(
+          DirectMessage.fromProjection(
+            projection,
+            isPending: _pendingMessageIds.contains(projection.messageId),
+          ),
+        );
       }
+      if (projection != null) return;
     }
-    final projected = _projectedMessages(selfId, friendId);
-    if (projected.isNotEmpty) _messageStream.add(projected.last);
+    final direct = _projectedDirectMessages(selfId, friendId);
+    if (direct.isNotEmpty) _directMessageStream.add(direct.last);
   }
+
+  Iterable<String> get _pendingMessageIds => _messagingCore
+      .repository
+      .pendingOutbox
+      .where((event) => event.type == MessageEventType.created)
+      .map((event) => event.messageId);
 
   // ── event projection bridge ──────────────────────────────────────────────
 
@@ -598,9 +688,6 @@ class ChatService implements DmService, EditableDmService {
     final senderId = int.tryParse(event.actorId);
     if (senderId == null || senderId != friendId) return;
 
-    _messageEventIds[event.messageId] = event.messageId;
-    _messageEventIds['${event.createdAt.toIso8601String()}_$senderId'] =
-        event.messageId;
     _emitProjected(selfId, friendId, messageId: event.messageId);
   }
 
@@ -608,12 +695,12 @@ class ChatService implements DmService, EditableDmService {
 
   /// Waits for the active sync engine to release its transport.
   Future<void> disconnectAsync() {
-    final operation = _lifecycleTail.then<void>((_) => _stopEngine());
-    _lifecycleTail = operation.catchError((Object _, StackTrace _) {});
-    return operation;
+    final disposal = _disposeFuture;
+    if (disposal != null) return disposal;
+    return _enqueueLifecycle(_stopEngine);
   }
 
-  /// Legacy synchronous API retained for [DmService] consumers.
+  /// Synchronous lifecycle operation exposed by the app-owned DM port.
   @override
   void disconnect() {
     unawaited(disconnectAsync());
@@ -622,16 +709,35 @@ class ChatService implements DmService, EditableDmService {
   Future<void> _stopEngine() async {
     final engine = _syncEngine;
     _syncEngine = null;
+    _activeTransport = null;
+    _manualPrepared = false;
+    await _transportStateSubscription?.cancel();
+    _transportStateSubscription = null;
     await engine?.stop();
   }
 
-  Future<void> disposeAsync() async {
-    await _lifecycleTail;
-    await _stopEngine();
-    _manualSignaling?.dispose();
-    await _messageStream.close();
+  Future<void> disposeAsync() {
+    final existing = _disposeFuture;
+    if (existing != null) return existing;
+    final operation = _lifecycleTail.then<void>((_) async {
+      try {
+        await _stopEngine();
+      } finally {
+        _manualSignaling?.dispose();
+        if (!_directMessageStream.isClosed) {
+          await _directMessageStream.close();
+        }
+        if (!_connectionStateChanges.isClosed) {
+          await _connectionStateChanges.close();
+        }
+      }
+    });
+    _lifecycleTail = operation.catchError((Object _, StackTrace _) {});
+    _disposeFuture = operation;
+    return operation;
   }
 
+  @override
   void dispose() {
     unawaited(disposeAsync());
   }

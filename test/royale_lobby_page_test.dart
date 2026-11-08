@@ -5,18 +5,22 @@ import 'package:provider/provider.dart';
 import 'package:taiwan_brawl_game_mini_royale/taiwan_brawl_game_mini_royale.dart';
 import 'package:taiwan_brawl/pages/game/royale_lobby_page.dart';
 import 'package:taiwan_brawl/services/api_client.dart';
+import 'package:taiwan_brawl/services/auth_remote_source.dart';
 import 'package:taiwan_brawl/services/auth_service.dart';
 import 'package:taiwan_brawl/services/locale_provider.dart';
+import 'package:taiwan_brawl/services/royale_remote_source.dart';
 import 'package:taiwan_brawl/services/royale_service.dart';
 
 class _CaptureCreateRoomService extends RoyaleService {
-  _CaptureCreateRoomService() : super(ApiClient());
+  _CaptureCreateRoomService()
+    : super(remoteSource: ServerRoyaleRemoteSource(ApiClient()));
 
   bool? capturedVsBot;
   String? capturedBotController;
   String? capturedSimulationMode;
   int? capturedDeckId;
   String? capturedHeroId;
+  Object? createRoomError;
 
   @override
   Future<List<RoyaleDeck>> fetchDeckSummaries() async {
@@ -77,12 +81,13 @@ class _CaptureCreateRoomService extends RoyaleService {
     capturedVsBot = vsBot;
     capturedBotController = botController;
     capturedSimulationMode = simulationMode;
+    if (createRoomError case final error?) throw error;
     throw ApiException('test stop');
   }
 }
 
 void main() {
-  test('shows the server remedy for unsupported gameplay content', () {
+  test('localizes a server room-version incompatibility', () {
     final error = ApiException(
       'GAME_VERSION_INCOMPATIBLE',
       statusCode: 409,
@@ -93,12 +98,13 @@ void main() {
     );
 
     expect(
-      miniRoyaleLobbyErrorMessage(error),
-      'Remove gameplay packs or update the server.',
+      miniRoyaleLobbyErrorMessage(error, incompatibleMessage: '本地化更新提示'),
+      '本地化更新提示',
     );
+    expect(miniRoyaleLobbyRequiresGameUpdate(error), isTrue);
   });
 
-  test('shows a package-owned compatibility error from the host adapter', () {
+  test('recognizes a package-owned room-version incompatibility', () {
     const error = MiniRoyaleServiceException(
       'GAME_VERSION_INCOMPATIBLE',
       statusCode: 409,
@@ -109,9 +115,66 @@ void main() {
     );
 
     expect(
-      miniRoyaleLobbyErrorMessage(error),
-      'Install the room-required gameplay version.',
+      miniRoyaleLobbyErrorMessage(error, incompatibleMessage: '本地化更新提示'),
+      '本地化更新提示',
     );
+    expect(miniRoyaleLobbyRequiresGameUpdate(error), isTrue);
+  });
+
+  testWidgets('version mismatch offers navigation to the game library', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    const updateMessage = '遊戲版本不相容，請更新後再試。';
+    const libraryAction = '開啟遊戲庫';
+    final localeProvider = LocaleProvider(
+      defaultLocale: 'zh-Hant',
+      translationResolver: (_) => <String, String>{
+        'This game version is incompatible with the room. Update the game and try again.':
+            updateMessage,
+        'Open Game Library': libraryAction,
+      },
+    );
+    final authService = AuthService(
+      remoteSource: ServerAuthRemoteSource(ApiClient()),
+    );
+    final service = _CaptureCreateRoomService()
+      ..createRoomError = ApiException(
+        'GAME_VERSION_INCOMPATIBLE',
+        statusCode: 409,
+        responseBody: {
+          'error': 'GAME_VERSION_INCOMPATIBLE',
+          'detail': 'Backend-only English detail.',
+        },
+      );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<LocaleProvider>.value(value: localeProvider),
+          ChangeNotifierProvider<AuthService>.value(value: authService),
+        ],
+        child: MaterialApp(
+          home: RoyaleLobbyPage(service: service),
+          routes: {
+            '/game-library': (_) => const Scaffold(body: Text('Library page')),
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Create Room'));
+    await tester.pump();
+
+    expect(find.textContaining(updateMessage), findsOneWidget);
+    expect(find.textContaining('Backend-only English detail.'), findsNothing);
+    expect(find.text(libraryAction), findsOneWidget);
+    tester.widget<SnackBarAction>(find.byType(SnackBarAction)).onPressed();
+    await tester.pumpAndSettle();
+    expect(find.text('Library page'), findsOneWidget);
   });
 
   testWidgets('Create Bot Match sends vsBot=true', (tester) async {
@@ -119,7 +182,9 @@ void main() {
       defaultLocale: 'zh-Hant',
       translationResolver: (_) => <String, String>{},
     );
-    final authService = AuthService(ApiClient());
+    final authService = AuthService(
+      remoteSource: ServerAuthRemoteSource(ApiClient()),
+    );
     final service = _CaptureCreateRoomService();
 
     await tester.pumpWidget(

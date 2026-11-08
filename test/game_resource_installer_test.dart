@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
+import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -20,6 +21,7 @@ import 'package:taiwan_brawl/services/game_resource_catalog_source.dart';
 import 'package:taiwan_brawl/services/game_resource_content_store.dart';
 import 'package:taiwan_brawl/services/game_resource_installer.dart';
 import 'package:taiwan_brawl/services/game_resource_library_service.dart';
+import 'package:taiwan_brawl/services/preview_game_resource_http_client.dart';
 import 'package:taiwan_brawl/game_modules/mini_royale/arena_presentation_source.dart';
 import 'package:taiwan_brawl_game_archery/archery_game_module.dart'
     show archeryRulesResourceId;
@@ -27,6 +29,14 @@ import 'package:taiwan_brawl_game_archery/taiwan_brawl_game_archery.dart'
     show ArcheryRules;
 import 'package:taiwan_brawl_game_mini_royale/taiwan_brawl_game_mini_royale.dart'
     show miniRoyaleArenaPresentationResourceId;
+import 'package:taiwan_brawl_game_street_scrap/street_scrap_content.dart'
+    show
+        streetScrapMaterialPackArtResourceId,
+        streetScrapMaterialPackArtSchemaVersion,
+        streetScrapMaterialPackArtSha256,
+        streetScrapMaterialPackArtResourceVersion,
+        streetScrapModuleId,
+        validateStreetScrapMaterialPackArtBytes;
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
 class _MemoryLibraryStore implements GameLibraryStore {
@@ -55,6 +65,7 @@ class _MemoryLibraryStore implements GameLibraryStore {
 
 class _MemoryContentStore implements GameResourceContentStore {
   bool failRemoval = false;
+  Object? stagedWriteFailure;
   int activationCount = 0;
   final Map<String, Map<String, String>> activeSets = {};
   final Map<String, Uint8List> activeBytesByResource = {};
@@ -101,7 +112,11 @@ class _MemoryContentStore implements GameResourceContentStore {
     String resourceId,
     String version,
     Uint8List bytes,
-  ) async => staged[_key(moduleId, resourceId, version)] = bytes;
+  ) async {
+    final failure = stagedWriteFailure;
+    if (failure != null) throw failure;
+    staged[_key(moduleId, resourceId, version)] = bytes;
+  }
 
   @override
   Future<void> activate(
@@ -287,7 +302,7 @@ GameResourceManifest _resource({
   List<GameModuleDependency> dependencies = const [],
   String signature = 'test-signature',
   String? activationGroup,
-  int? payloadSchemaVersion,
+  int? payloadSchemaVersion = 1,
 }) => GameResourceManifest(
   resourceId: resourceId,
   version: version,
@@ -377,13 +392,237 @@ _resourceLibrary({
       catalogSource: GameResourceCatalogSource(api),
       installer: installer,
       contentStore: content,
-      resourceMigrations: resourceMigrations ?? gameResourceMigrations,
+      resourceMigrations:
+          resourceMigrations ??
+          {
+            for (final module in controller.manifests)
+              for (final resource in module.resources)
+                if (resource.payloadSchemaVersion != null &&
+                    !gameResourceMigrations.containsKey(
+                      '${module.moduleId}:${resource.resourceId}',
+                    ))
+                  '${module.moduleId}:${resource.resourceId}': (_) async {},
+            ...gameResourceMigrations,
+          },
     ),
     installer: installer,
   );
 }
 
 void main() {
+  test(
+    'signed Street Scrap art pack downloads and activates in preview',
+    () async {
+      final payload = await File(
+        'packages/games/street_scrap/resources/art/street-scrap-art-material-pack-v0.1.0.png',
+      ).readAsBytes();
+      expect(
+        sha256.convert(payload).toString(),
+        streetScrapMaterialPackArtSha256,
+      );
+
+      final keyPair = await Ed25519().newKeyPair();
+      final publicKey = await keyPair.extractPublicKey();
+      final digest = sha256.convert(payload).toString();
+      const keyId = 'test-street-scrap-publisher';
+      final message =
+          Ed25519GameResourceSignatureVerifier.canonicalSignedMessage(
+            moduleId: streetScrapModuleId,
+            resourceId: streetScrapMaterialPackArtResourceId,
+            version: streetScrapMaterialPackArtResourceVersion,
+            sha256: digest,
+            payload: Uint8List.fromList(payload),
+          );
+      final signature = await Ed25519().sign(message, keyPair: keyPair);
+      final signedResource = GameResourceManifest(
+        resourceId: streetScrapMaterialPackArtResourceId,
+        version: streetScrapMaterialPackArtResourceVersion,
+        kind: GameResourceKind.presentation,
+        sha256: digest,
+        affectsGameplay: false,
+        payloadSchemaVersion: streetScrapMaterialPackArtSchemaVersion,
+        downloadUrl:
+            'https://taiwan-brawl-api.yunitrish0419.workers.dev/game-resources/street-scrap/$streetScrapMaterialPackArtResourceId/$streetScrapMaterialPackArtResourceVersion',
+        byteLength: payload.length,
+        signature: base64Url.encode(signature.bytes).replaceAll('=', ''),
+        signingKeyId: keyId,
+      );
+      final module = GameModuleManifest(
+        moduleId: streetScrapModuleId,
+        displayName: 'Street Scrap',
+        description: 'Optional art pack test',
+        packageVersion: '0.1.0',
+        minimumShellVersion: '1.0.0',
+        dataSchemaVersion: 1,
+        supportedResourceSchemas: {
+          streetScrapMaterialPackArtResourceId:
+              streetScrapMaterialPackArtSchemaVersion,
+        },
+        resources: [signedResource],
+      );
+      final store = _MemoryLibraryStore();
+      final controller = GameLibraryController(
+        catalog: GameModuleCatalog([module]),
+        store: store,
+      );
+      await controller.initialize();
+      Uri? requestedUri;
+      final previewClient = PreviewGameResourceHttpClient(
+        apiBaseUrl: 'http://127.0.0.1:8795',
+        client: MockClient((request) async {
+          requestedUri = request.url;
+          return http.Response.bytes(payload, 200);
+        }),
+      );
+      final contentStore = _MemoryContentStore();
+      final installer = GameResourceInstaller(
+        controller: controller,
+        contentStore: contentStore,
+        signatureVerifier: Ed25519GameResourceSignatureVerifier({
+          keyId: publicKey.bytes,
+        }),
+        client: previewClient,
+      );
+      final api = ApiClient(
+        client: MockClient((_) async => http.Response('{}', 200)),
+        credentials: _MemoryCredentials(),
+        configuration: const AppConfiguration(
+          apiBaseUrl: 'http://127.0.0.1:8795',
+          googleWebClientId: '',
+          googleServerClientId: '',
+          p2pChatEnabled: false,
+          previewMode: true,
+          peerVerificationEnabled: false,
+        ),
+      );
+      final service = GameResourceLibraryService(
+        controller: controller,
+        catalogSource: GameResourceCatalogSource(api),
+        installer: installer,
+        contentStore: contentStore,
+        resourceMigrations: {
+          '$streetScrapModuleId:$streetScrapMaterialPackArtResourceId':
+              validateStreetScrapMaterialPackArtBytes,
+        },
+      );
+
+      await service.install(
+        streetScrapModuleId,
+        streetScrapMaterialPackArtResourceId,
+      );
+
+      expect(requestedUri?.scheme, 'http');
+      expect(requestedUri?.host, '127.0.0.1');
+      expect(requestedUri?.port, 8795);
+      expect(
+        requestedUri?.path,
+        '/game-resources/street-scrap/$streetScrapMaterialPackArtResourceId/$streetScrapMaterialPackArtResourceVersion',
+      );
+      expect(
+        controller
+            .resourceRecord(
+              streetScrapModuleId,
+              streetScrapMaterialPackArtResourceId,
+            )
+            ?.status,
+        GameResourceInstallStatus.installed,
+      );
+      expect(
+        await contentStore.readActiveVersion(
+          streetScrapModuleId,
+          streetScrapMaterialPackArtResourceId,
+        ),
+        streetScrapMaterialPackArtResourceVersion,
+      );
+      expect(
+        await contentStore.readActive(
+          streetScrapModuleId,
+          streetScrapMaterialPackArtResourceId,
+        ),
+        Uint8List.fromList(payload),
+      );
+      expect(contentStore.activationCount, 1);
+      previewClient.close();
+      controller.dispose();
+    },
+    skip: kIsWeb ? 'Reads the checked-in PNG through dart:io File.' : false,
+  );
+
+  test(
+    'storage exhaustion while staging an update keeps the old resource',
+    () async {
+      const moduleId = 'game.archery';
+      const resourceId = 'game.archery.content';
+      final firstPayload = Uint8List.fromList(utf8.encode('stable-rules-v1'));
+      final secondPayload = Uint8List.fromList(utf8.encode('larger-rules-v2'));
+      final firstResource = _resource(
+        resourceId: resourceId,
+        version: '1.0.0',
+        payload: firstPayload,
+      );
+      final libraryStore = _MemoryLibraryStore();
+      final controller = await _controller(
+        firstResource,
+        libraryStore,
+        supportedResourceSchemas: {resourceId: 1},
+      );
+      await controller.setModuleEnabled(moduleId, true);
+      final content = _MemoryContentStore();
+      await _resourceLibrary(
+        controller: controller,
+        content: content,
+        payload: firstPayload,
+      ).service.install(moduleId, resourceId);
+
+      final secondResource = _resource(
+        resourceId: resourceId,
+        version: '2.0.0',
+        payload: secondPayload,
+      );
+      controller.mergeRemoteManifests([
+        GameModuleManifest(
+          moduleId: moduleId,
+          displayName: 'Archery',
+          description: 'Storage exhaustion rollback fixture.',
+          packageVersion: '1.0.0',
+          minimumShellVersion: '1.0.0',
+          dataSchemaVersion: 1,
+          supportedResourceSchemas: {resourceId: 1},
+          resources: [secondResource],
+        ),
+      ]);
+      content.stagedWriteFailure = StateError(
+        'simulated storage quota exceeded',
+      );
+
+      await expectLater(
+        _resourceLibrary(
+          controller: controller,
+          content: content,
+          payload: secondPayload,
+        ).service.install(moduleId, resourceId),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            'simulated storage quota exceeded',
+          ),
+        ),
+      );
+
+      expect(await content.readActiveVersion(moduleId, resourceId), '1.0.0');
+      expect(await content.readActive(moduleId, resourceId), firstPayload);
+      expect(controller.resourceRecord(moduleId, resourceId)?.version, '1.0.0');
+      expect(
+        controller.resourceRecord(moduleId, resourceId)?.status,
+        GameResourceInstallStatus.installed,
+      );
+      expect(content.staged, isEmpty);
+      expect(content.activationCount, 1);
+      controller.dispose();
+    },
+  );
+
   test(
     'Hive persists resource install, failed-update rollback, update and removal',
     () async {
@@ -414,6 +653,7 @@ void main() {
             packageVersion: '0.1.0',
             minimumShellVersion: '0.132.0',
             dataSchemaVersion: 1,
+            supportedResourceSchemas: {resourceId: 1},
             resources: [firstResource],
           ),
         ]),
@@ -443,6 +683,7 @@ void main() {
         packageVersion: '0.1.0',
         minimumShellVersion: '0.132.0',
         dataSchemaVersion: 1,
+        supportedResourceSchemas: {resourceId: 1},
         resources: [secondResource],
       );
       controller.mergeRemoteManifests([secondManifest]);
@@ -533,6 +774,7 @@ void main() {
             packageVersion: '1.0.0',
             minimumShellVersion: '1.0.0',
             dataSchemaVersion: 1,
+            supportedResourceSchemas: {resourceId: 1},
             resources: [firstResource],
           ),
           GameModuleManifest(
@@ -542,6 +784,7 @@ void main() {
             packageVersion: '1.0.0',
             minimumShellVersion: '1.0.0',
             dataSchemaVersion: 1,
+            supportedResourceSchemas: {resourceId: 1},
             resources: const [],
           ),
         ]),
@@ -582,6 +825,7 @@ void main() {
           packageVersion: '1.0.0',
           minimumShellVersion: '1.0.0',
           dataSchemaVersion: 1,
+          supportedResourceSchemas: {resourceId: 1},
           resources: [secondResource],
         ),
       ]);

@@ -2,124 +2,49 @@ import 'dart:convert';
 
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
-import '../models/chat_models.dart';
-
-/// Bridges the legacy Hive/KV chat snapshot format to the event repository.
-/// This is a migration adapter; new durable state remains event-based.
+/// Encodes shared projections in the retained legacy snapshot format.
+/// Legacy snapshot input is converted to events by `LegacyChatEventMapper`.
 class MessageChatSyncAdapter {
   const MessageChatSyncAdapter._();
 
-  static Map<String, Map<String, String>> exportMessages(
-    Iterable<ChatMessage> messages,
+  /// Exports shared projections in the legacy snapshot format without first
+  /// materializing the legacy UI model.
+  static Map<String, Map<String, String>> exportProjections(
+    Iterable<MessageProjection> projections,
     int selfId,
-    int friendId,
-  ) {
-    final low = selfId < friendId ? selfId : friendId;
-    final high = selfId < friendId ? friendId : selfId;
-    return {
-      'chat_${low}_$high': {
-        for (final message in messages)
-          message.messageKey: jsonEncode({
-            'senderId': message.senderId,
-            'receiverId': message.receiverId,
-            'text': message.text,
-            'createdAt': message.createdAt,
-            'isPending': message.isPending,
-            'isRecalled': message.isRecalled,
-            'pendingId': message.pendingId,
-          }),
-      },
-    };
-  }
-
-  static List<MessageEvent> importEvents(
-    Map<String, dynamic> data,
-    int selfId,
-    int friendId,
-  ) {
-    final low = selfId < friendId ? selfId : friendId;
-    final high = selfId < friendId ? friendId : selfId;
-    final box = data['chat_${low}_$high'];
-    if (box is! Map) return const [];
-    final conversationId = '$low:$high';
-    final events = <MessageEvent>[];
-    for (final entry in box.entries) {
-      if (entry.value is! String) continue;
-      final raw = jsonDecode(entry.value as String);
-      if (raw is! Map) continue;
-      final senderId = raw['senderId'];
-      final messageKey = entry.key.toString();
-      final createdAt = DateTime.tryParse(raw['createdAt']?.toString() ?? '');
-      final body = raw['text']?.toString();
-      if (senderId == null || createdAt == null || body == null) continue;
-      events.add(
-        MessageEvent(
-          eventId: 'sync-created:$messageKey',
-          messageId: messageKey,
-          conversationId: conversationId,
-          actorId: senderId.toString(),
-          type: MessageEventType.created,
-          revision: 0,
-          createdAt: createdAt.toUtc(),
-          body: body,
-        ),
-      );
-      if (raw['isRecalled'] == true) {
-        events.add(
-          MessageEvent(
-            eventId: 'sync-recalled:$messageKey',
-            messageId: messageKey,
-            conversationId: conversationId,
-            actorId: senderId.toString(),
-            type: MessageEventType.recalled,
-            revision: 1,
-            createdAt: createdAt.toUtc(),
-          ),
-        );
-      }
-    }
-    return events;
-  }
-
-  /// Converts legacy UI snapshots into synthetic events for shared storage.
-  static List<MessageEvent> eventsFromMessages(
-    Iterable<ChatMessage> messages,
-    int selfId,
-    int friendId,
-  ) {
+    int friendId, {
+    Iterable<String> pendingMessageIds = const <String>[],
+  }) {
     final low = selfId < friendId ? selfId : friendId;
     final high = selfId < friendId ? friendId : selfId;
     final conversationId = '$low:$high';
-    final events = <MessageEvent>[];
-    for (final message in messages) {
-      final createdAt = DateTime.tryParse(message.createdAt);
-      if (createdAt == null || message.messageKey.isEmpty) continue;
-      events.add(
-        MessageEvent(
-          eventId: 'legacy-created:${message.messageKey}',
-          messageId: message.messageKey,
-          conversationId: conversationId,
-          actorId: message.senderId.toString(),
-          type: MessageEventType.created,
-          revision: 0,
-          createdAt: createdAt.toUtc(),
-          body: message.text,
-        ),
-      );
-      if (message.isRecalled) {
-        events.add(
-          MessageEvent(
-            eventId: 'legacy-recalled:${message.messageKey}',
-            messageId: message.messageKey,
-            conversationId: conversationId,
-            actorId: message.senderId.toString(),
-            type: MessageEventType.recalled,
-            revision: 1,
-            createdAt: createdAt.toUtc(),
-          ),
-        );
-      }
+    final pending = pendingMessageIds.toSet();
+    final ordered = projections.toList()
+      ..sort((left, right) {
+        final byCreatedAt = left.createdAt.compareTo(right.createdAt);
+        return byCreatedAt != 0
+            ? byCreatedAt
+            : left.messageId.compareTo(right.messageId);
+      });
+    final messages = <String, String>{};
+    for (final projection in ordered) {
+      if (projection.conversationId != conversationId) continue;
+      final senderId = int.tryParse(projection.authorId);
+      if (senderId == null) continue;
+      final isPending = pending.contains(projection.messageId);
+      final createdAt = projection.createdAt.toIso8601String();
+      messages['${createdAt}_$senderId'] = jsonEncode({
+        'senderId': senderId,
+        'receiverId': senderId == selfId ? friendId : selfId,
+        'text': projection.visibleBody ?? '',
+        'createdAt': createdAt,
+        'isPending': isPending,
+        'isRecalled': projection.recalled,
+        'pendingId': isPending
+            ? projection.createdAt.millisecondsSinceEpoch
+            : null,
+      });
     }
-    return events;
+    return {'chat_${low}_$high': messages};
   }
 }

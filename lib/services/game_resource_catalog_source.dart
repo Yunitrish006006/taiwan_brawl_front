@@ -152,9 +152,9 @@ class GameResourceCatalogSource {
     final moduleIds = <String>{};
     final manifests = <GameModuleManifest>[];
     for (final item in rawModules) {
-      final manifest = GameModuleManifest.fromJson(
-        Map<String, dynamic>.from(item as Map),
-      );
+      final moduleJson = _asStringMap(item);
+      _requireExplicitPlatforms(moduleJson);
+      final manifest = GameModuleManifest.fromJson(moduleJson);
       if (!moduleIds.add(manifest.moduleId)) {
         throw FormatException(
           'Catalog contains duplicate module ${manifest.moduleId}.',
@@ -184,6 +184,24 @@ class GameResourceCatalogSource {
       return Map<String, dynamic>.from(value);
     } on Object {
       throw const FormatException('Game catalog keys must be strings.');
+    }
+  }
+
+  static void _requireExplicitPlatforms(Map<String, dynamic> module) {
+    if (module['platforms'] is! List) {
+      throw const FormatException(
+        'Catalog module must declare supported platforms.',
+      );
+    }
+    final resources = module['resources'];
+    if (resources is! List) return;
+    for (final item in resources) {
+      final resource = _asStringMap(item);
+      if (resource['platforms'] is! List) {
+        throw const FormatException(
+          'Catalog resource must declare supported platforms.',
+        );
+      }
     }
   }
 

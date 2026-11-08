@@ -1,7 +1,7 @@
 name: taiwan_brawl_messaging
 description: Offline-first, transport-neutral messaging primitives for Taiwan Brawl apps.
 publish_to: none
-version: 0.1.0
+version: 0.3.0
 
 environment:
   sdk: ^3.11.1

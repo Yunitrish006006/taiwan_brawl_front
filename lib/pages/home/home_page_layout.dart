@@ -287,35 +287,53 @@ extension _HomePageLayout on _HomePageState {
     SocialUser friend, {
     RoomInviteItem? roomInvite,
   }) {
+    final relation = context.watch<CouplesService?>()?.snapshot?.relationship;
     return _buildDrawerFriendTileFrame(
-      avatar: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          _buildUserAvatar(
-            label: friend.name,
-            avatarUrl: friend.avatarUrl,
-            radius: 18,
-            fallbackBackgroundColor: const Color(0xFF16324F),
-          ),
-          Positioned(
-            right: -1,
-            bottom: -1,
-            child: Container(
-              width: 11,
-              height: 11,
-              decoration: BoxDecoration(
-                color: friend.isOnline
-                    ? const Color(0xFF34C759)
-                    : Colors.grey.shade500,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 1.6),
+      avatar: InkWell(
+        onTap: context.read<CouplesService?>()?.accountId == null
+            ? null
+            : () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => FriendDetailPage(
+                    friend: friend,
+                    accountId: context.read<CouplesService>().accountId!,
+                  ),
+                ),
+              ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            _buildUserAvatar(
+              label: friend.name,
+              avatarUrl: friend.avatarUrl,
+              radius: 18,
+              fallbackBackgroundColor: const Color(0xFF16324F),
+            ),
+            Positioned(
+              right: -1,
+              bottom: -1,
+              child: Container(
+                width: 11,
+                height: 11,
+                decoration: BoxDecoration(
+                  color: friend.isOnline
+                      ? const Color(0xFF34C759)
+                      : Colors.grey.shade500,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.6),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       title: friend.name,
-      subtitle: roomInvite != null
+      subtitle: relation?.partnerUserId == friend.userId
+          ? couplesText(context, 'couples.dayCount', {
+              'days': '${relation!.dayCount(DateTime.now())}',
+            })
+          : roomInvite != null
           ? '${_t.text('Room')} ${roomInvite.roomCode}'
           : _friendStatusText(friend),
       trailingWidth: roomInvite != null ? 72 : 32,
@@ -920,6 +938,28 @@ extension _HomePageLayout on _HomePageState {
                 onTap: () => _openRoute('/admin/roles', closeDrawer: true),
               ),
             _buildDrawerFriendHeader(),
+            Consumer<CouplesService?>(
+              builder: (context, couples, _) {
+                if (couples == null) return const SizedBox.shrink();
+                final relation = couples.snapshot?.relationship;
+                return ListTile(
+                  leading: const Icon(Icons.favorite_outline),
+                  title: Text(
+                    relation == null
+                        ? couplesText(context, 'couples.title')
+                        : couplesText(context, 'couples.dayCount', {
+                            'days': '${relation.dayCount(DateTime.now())}',
+                          }),
+                  ),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          CouplesPage(friends: overview?.friends ?? const []),
+                    ),
+                  ),
+                );
+              },
+            ),
             Expanded(
               child: _buildDrawerFriendList(
                 overview,

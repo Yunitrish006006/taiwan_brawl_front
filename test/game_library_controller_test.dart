@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:taiwan_brawl_game_archery/archery_game_module.dart';
 import 'package:taiwan_brawl_game_mini_royale/taiwan_brawl_game_mini_royale.dart';
+import 'package:taiwan_brawl_game_street_scrap/street_scrap_content.dart'
+    as street_scrap;
 import 'package:taiwan_brawl/game_modules/bundled_game_catalog.dart';
 import 'package:taiwan_brawl/game_modules/game_resource_migrations.dart';
 import 'package:taiwan_brawl/game_modules/game_module_manifest.dart';
@@ -76,9 +78,11 @@ void main() {
   test('bundled peer games use their package-owned module versions', () {
     final archery = bundledGameCatalog['game.archery']!;
     final miniRoyale = bundledGameCatalog['game.mini-royale']!;
+    final streetScrap = bundledGameCatalog[street_scrap.streetScrapModuleId]!;
 
     expect(archery.packageVersion, archeryGameManifest.packageVersion);
     expect(miniRoyale.packageVersion, miniRoyaleManifest.packageVersion);
+    expect(streetScrap.packageVersion, street_scrap.streetScrapPackageVersion);
     expect(
       miniRoyale.multiplayer?.protocolVersion,
       miniRoyaleManifest.protocolVersion,
@@ -90,6 +94,40 @@ void main() {
     );
   });
 
+  test('remote downloadable resources require a supported payload schema', () {
+    final controller = GameLibraryController(
+      catalog: bundledGameCatalog,
+      store: _MemoryGameLibraryStore(),
+    );
+    addTearDown(controller.dispose);
+    final bundled = bundledGameCatalog['game.archery']!;
+    expect(
+      () => GameModuleManifest(
+        moduleId: bundled.moduleId,
+        displayName: bundled.displayName,
+        description: bundled.description,
+        packageVersion: bundled.packageVersion,
+        minimumShellVersion: bundled.minimumShellVersion,
+        dataSchemaVersion: bundled.dataSchemaVersion,
+        resources: const [
+          GameResourceManifest(
+            resourceId: 'game.archery.rules',
+            version: '1.0.0',
+            kind: GameResourceKind.gameplayData,
+            sha256: _digest,
+            affectsGameplay: true,
+            downloadUrl: 'https://example.test/archery/rules',
+            byteLength: 8,
+            signature: 'signed',
+            signingKeyId: 'test-key',
+          ),
+        ],
+      ),
+      throwsFormatException,
+    );
+    expect(controller.catalog['game.archery']!.resources, isEmpty);
+  });
+
   test('every bundled payload schema has its package validator wired', () {
     for (final module in bundledGameCatalog.manifests) {
       for (final resourceId in module.supportedResourceSchemas.keys) {
@@ -99,6 +137,24 @@ void main() {
         );
       }
     }
+  });
+
+  test('resource manifests cannot advertise executable code as a download', () {
+    const resource = GameResourceManifest(
+      resourceId: 'game.archery.rules',
+      version: '1.0.0',
+      kind: GameResourceKind.gameplayData,
+      sha256: _digest,
+      affectsGameplay: true,
+    );
+
+    expect(
+      () => GameResourceManifest.fromJson({
+        ...resource.toJson(),
+        'kind': 'executable',
+      }),
+      throwsArgumentError,
+    );
   });
 
   test('catalog rejects duplicate module IDs', () {
@@ -456,6 +512,34 @@ void main() {
     expect(mergedRoyale.multiplayer, bundledContract);
   });
 
+  test('remote catalog preserves bundled resource presentation labels', () {
+    final controller = GameLibraryController(
+      catalog: bundledGameCatalog,
+      store: _MemoryGameLibraryStore(),
+    );
+    final bundled = bundledGameCatalog['game.street-scrap']!;
+    final remoteJson = bundled.toJson()
+      ..['resources'] = bundled.resources.map((resource) {
+        final json = resource.toJson()
+          ..remove('displayNameKey')
+          ..remove('descriptionKey');
+        return json;
+      }).toList();
+
+    controller.mergeRemoteManifests([GameModuleManifest.fromJson(remoteJson)]);
+
+    final mergedResources = controller.catalog['game.street-scrap']!.resources;
+    expect(mergedResources, hasLength(bundled.resources.length));
+    expect(
+      mergedResources.first.displayNameKey,
+      bundled.resources.first.displayNameKey,
+    );
+    expect(
+      mergedResources.first.descriptionKey,
+      bundled.resources.first.descriptionKey,
+    );
+  });
+
   test('remote resource schemas must be implemented by the owning package', () {
     final controller = GameLibraryController(
       catalog: bundledGameCatalog,
@@ -621,6 +705,72 @@ void main() {
     expect(restored.isModuleEnabled('game.mini-royale'), isFalse);
   });
 
+  test(
+    'disabling one game preserves its installed pack and peer selection',
+    () async {
+      const archeryRules = GameResourceManifest(
+        resourceId: 'game.archery.rules',
+        version: '1.0.0',
+        kind: GameResourceKind.gameplayData,
+        sha256: _digest,
+        affectsGameplay: true,
+      );
+      const royaleRules = GameResourceManifest(
+        resourceId: 'game.mini-royale.rules',
+        version: '1.0.0',
+        kind: GameResourceKind.gameplayData,
+        sha256: _digest,
+        affectsGameplay: true,
+      );
+      const archeryRecord = GameResourceInstallRecord(
+        moduleId: 'game.archery',
+        resourceId: 'game.archery.rules',
+        version: '1.0.0',
+        sha256: _digest,
+        status: GameResourceInstallStatus.installed,
+      );
+      const royaleRecord = GameResourceInstallRecord(
+        moduleId: 'game.mini-royale',
+        resourceId: 'game.mini-royale.rules',
+        version: '1.0.0',
+        sha256: _digest,
+        status: GameResourceInstallStatus.installed,
+      );
+      final store = _MemoryGameLibraryStore()
+        ..enabled = {'game.archery', 'game.mini-royale'}
+        ..resources['game.archery:game.archery.rules'] = archeryRecord
+        ..resources['game.mini-royale:game.mini-royale.rules'] = royaleRecord;
+      final controller = GameLibraryController(
+        catalog: GameModuleCatalog([
+          _manifest(resources: const [archeryRules]),
+          GameModuleManifest(
+            moduleId: 'game.mini-royale',
+            displayName: 'Mini Royale',
+            description: 'Multiplayer strategy game',
+            packageVersion: '1.0.0',
+            minimumShellVersion: '1.0.0',
+            dataSchemaVersion: 1,
+            resources: const [royaleRules],
+          ),
+        ]),
+        store: store,
+      );
+      await controller.initialize();
+
+      await controller.setModuleEnabled('game.archery', false);
+
+      expect(controller.enabledModuleIds, {'game.mini-royale'});
+      expect(
+        controller.resourceRecord('game.archery', archeryRules.resourceId),
+        archeryRecord,
+      );
+      expect(
+        controller.resourceRecord('game.mini-royale', royaleRules.resourceId),
+        royaleRecord,
+      );
+    },
+  );
+
   test('detects an available resource update by version or digest', () async {
     const oldResource = GameResourceManifest(
       resourceId: 'game.archery.rules',
@@ -676,6 +826,7 @@ void main() {
         kind: GameResourceKind.gameplayData,
         sha256: _digest,
         affectsGameplay: true,
+        payloadSchemaVersion: 1,
         downloadUrl: 'https://assets.example.test/archery/rules/1.0.0',
         byteLength: 32,
         signature: 'signed-resource',
@@ -692,7 +843,16 @@ void main() {
             );
       final controller = GameLibraryController(
         catalog: GameModuleCatalog([
-          _manifest(resources: [withdrawn]),
+          GameModuleManifest(
+            moduleId: 'game.archery',
+            displayName: 'Archery',
+            description: 'Archery game',
+            packageVersion: '1.0.0',
+            minimumShellVersion: '1.0.0',
+            dataSchemaVersion: 1,
+            supportedResourceSchemas: {'game.archery.rules': 1},
+            resources: [withdrawn],
+          ),
         ]),
         store: store,
       );

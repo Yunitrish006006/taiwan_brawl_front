@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "version": "development",
+  "assets": [
+    "/",
+    "/index.html",
+    "/flutter_bootstrap.js",
+    "/flutter.js"
+  ]
+}

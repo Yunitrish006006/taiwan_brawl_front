@@ -1,0 +1,9 @@
+<resources>
+    <string name="couple_widget_name">Couple days</string>
+    <string name="couple_widget_days">Day %1$d</string>
+    <string name="couple_widget_unbound">No partner linked</string>
+    <string name="couple_widget_signed_out">Please sign in</string>
+    <color name="couple_widget_background">#FFF3F6</color>
+    <color name="couple_widget_foreground">#451526</color>
+    <string name="couple_widget_partner_line">With %1$s</string>
+</resources>

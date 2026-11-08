@@ -10,7 +10,8 @@ if [[ -n "${FLUTTER_BIN_DIR:-}" ]]; then
 elif command -v flutter >/dev/null 2>&1; then
   FLUTTER_BIN_DIR="$(dirname "$(command -v flutter)")"
 else
-  FLUTTER_BIN_DIR="/Volumes/DataExtended/flutter/bin"
+  echo "Unable to locate Flutter SDK. Set FLUTTER_BIN_DIR or add flutter to PATH." >&2
+  exit 1
 fi
 
 if [[ ! -x "${FLUTTER_BIN_DIR}/flutter" ]]; then

@@ -1,0 +1,131 @@
+{
+  "packId": "game.street-scrap.content.chapter-5",
+  "packVersion": "0.1.24",
+  "orders": [
+    {
+      "id": "ss.order.advanced_search",
+      "phase": 5,
+      "acceptedItems": [
+        "wood.board",
+        "wood.chip",
+        "wood.driftwood"
+      ],
+      "requirementGroups": [
+        [
+          {
+            "item": "wood.board",
+            "quantity": 2
+          }
+        ],
+        [
+          {
+            "item": "wood.chip",
+            "quantity": 2
+          }
+        ],
+        [
+          {
+            "item": "wood.driftwood",
+            "quantity": 2
+          }
+        ]
+      ],
+      "rejectedItems": [],
+      "quantity": 1,
+      "reward": {
+        "currency": "exchangeTickets",
+        "quantity": 4
+      },
+      "countsTowardCycle": false,
+      "returnContainer": false,
+      "requiresAcceptance": true,
+      "requiredSource": "fixed:old_street_exchange",
+      "completionGroupId": "q5.01"
+    },
+    {
+      "id": "ss.order.advanced_recycle",
+      "phase": 5,
+      "acceptedItems": [
+        "cloth.thread_spool",
+        "adhesive.recycled"
+      ],
+      "requirementGroups": [
+        [
+          {
+            "item": "cloth.thread_spool",
+            "quantity": 1
+          },
+          {
+            "item": "adhesive.recycled",
+            "quantity": 1
+          }
+        ]
+      ],
+      "rejectedItems": [],
+      "quantity": 1,
+      "reward": {
+        "currency": "exchangeTickets",
+        "quantity": 5
+      },
+      "countsTowardCycle": false,
+      "returnContainer": false,
+      "requiresAcceptance": true,
+      "requiredRecipes": [
+        "ss.recipe.unpick_cloth",
+        "ss.recipe.recycle_glue"
+      ],
+      "completionGroupId": "q5.01"
+    },
+    {
+      "id": "ss.order.advanced_fish",
+      "phase": 5,
+      "acceptedItems": [
+        "fish.pack"
+      ],
+      "rejectedItems": [],
+      "quantity": 1,
+      "reward": {
+        "currency": "exchangeTickets",
+        "quantity": 5
+      },
+      "countsTowardCycle": false,
+      "returnContainer": false,
+      "completionGroupId": "q5.01"
+    },
+    {
+      "id": "ss.order.advanced_workbench",
+      "phase": 5,
+      "acceptedItems": [
+        "tool.awl"
+      ],
+      "rejectedItems": [],
+      "quantity": 1,
+      "reward": {
+        "currency": "exchangeTickets",
+        "quantity": 5
+      },
+      "countsTowardCycle": false,
+      "returnContainer": false,
+      "completionGroupId": "q5.01"
+    },
+    {
+      "id": "ss.order.advanced_cooking",
+      "phase": 5,
+      "acceptedItems": [
+        "meal.shared"
+      ],
+      "rejectedItems": [
+        "meal.failed"
+      ],
+      "quantity": 1,
+      "reward": {
+        "currency": "exchangeTickets",
+        "quantity": 6
+      },
+      "countsTowardCycle": false,
+      "returnContainer": true,
+      "returnedContainerCleanliness": "soiled",
+      "completionGroupId": "q5.01"
+    }
+  ]
+}

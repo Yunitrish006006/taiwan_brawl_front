@@ -5,26 +5,30 @@ import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
 import 'secure_device_identity.dart';
 
-/// Versioned, serverless trust invitation for the current HMAC identity
-/// adapter. The material is still a shared secret; the fingerprint exists so
-/// two users can compare the invitation through an independent channel before
-/// accepting it.
+/// Versioned serverless trust invitation. v2 contains only an Ed25519 public
+/// key; v1 HMAC invitations remain readable for migration compatibility.
 class PeerTrustInvitation {
   const PeerTrustInvitation({
     required this.deviceId,
+    required this.algorithm,
     required this.encodedMaterial,
     required this.fingerprint,
+    required this.wireVersion,
   });
 
-  static const int version = 1;
+  static const int version = 2;
+  static const int legacyVersion = 1;
 
   final String deviceId;
+  final String algorithm;
   final String encodedMaterial;
   final String fingerprint;
+  final int wireVersion;
 
   String encode() => jsonEncode({
-    'version': version,
+    'version': wireVersion,
     'deviceId': deviceId,
+    'algorithm': algorithm,
     'encodedMaterial': encodedMaterial,
     'fingerprint': fingerprint,
   });
@@ -34,33 +38,53 @@ class PeerTrustInvitation {
     if (raw is! Map) {
       throw const FormatException('Peer trust invitation must be an object');
     }
-    if (raw['version'] != version) {
+    final version = raw['version'];
+    if (version != legacyVersion && version != PeerTrustInvitation.version) {
       throw const FormatException('Unsupported peer trust invitation version');
     }
     final deviceId = _requiredText(raw['deviceId'], 'deviceId');
     final material = _requiredText(raw['encodedMaterial'], 'encodedMaterial');
     final fingerprint = _requiredText(raw['fingerprint'], 'fingerprint');
-    final expected = _fingerprint(deviceId, material);
+    final algorithm = version == legacyVersion
+        ? 'hmac-sha256'
+        : _requiredText(raw['algorithm'], 'algorithm');
+    if (algorithm != 'hmac-sha256' && algorithm != 'ed25519') {
+      throw const FormatException('Unsupported peer trust key algorithm');
+    }
+    final expected = version == legacyVersion
+        ? _legacyFingerprint(deviceId, material)
+        : _fingerprint(algorithm, deviceId, material);
     if (fingerprint != expected) {
       throw const FormatException('Peer trust invitation fingerprint mismatch');
     }
     return PeerTrustInvitation(
       deviceId: deviceId,
+      algorithm: algorithm,
       encodedMaterial: material,
       fingerprint: fingerprint,
+      wireVersion: version as int,
     );
   }
 
   static PeerTrustInvitation fromDevice(SecureDeviceIdentity identity) {
-    final material = identity.trustedMaterial;
+    const algorithm = 'ed25519';
+    final material = identity.publicKeyMaterial;
     return PeerTrustInvitation(
       deviceId: identity.deviceId,
       encodedMaterial: material,
-      fingerprint: _fingerprint(identity.deviceId, material),
+      algorithm: algorithm,
+      fingerprint: _fingerprint(algorithm, identity.deviceId, material),
+      wireVersion: version,
     );
   }
 
-  static String _fingerprint(String deviceId, String material) =>
+  static String _fingerprint(
+    String algorithm,
+    String deviceId,
+    String material,
+  ) => sha256.convert(utf8.encode('$algorithm:$deviceId:$material')).toString();
+
+  static String _legacyFingerprint(String deviceId, String material) =>
       sha256.convert(utf8.encode('$deviceId:$material')).toString();
 
   static String _requiredText(Object? value, String field) {
@@ -74,10 +98,8 @@ class PeerTrustInvitation {
 
 /// Application boundary for explicit, out-of-band peer trust.
 ///
-/// The shared-secret decoder is a migration bridge for the current local HMAC
-/// identity. It does not provide automatic key exchange: callers must obtain
-/// the material through a separately authenticated user flow before calling
-/// [trust].
+/// Trust remains explicit and requires independent fingerprint confirmation.
+/// The directory accepts v2 public keys and legacy v1 shared secrets.
 class PeerTrustService {
   PeerTrustService({
     required CredentialStore credentials,
@@ -88,7 +110,7 @@ class PeerTrustService {
          decoder: (deviceId, encodedMaterial) =>
              SecureDeviceIdentity.fromTrustedMaterial(
                deviceId: deviceId,
-               encodedSecret: encodedMaterial,
+               encodedMaterial: encodedMaterial,
              ),
        );
 
@@ -115,7 +137,7 @@ class PeerTrustService {
     }
     await trustPeer(
       deviceId: invitation.deviceId,
-      encodedMaterial: invitation.encodedMaterial,
+      encodedMaterial: '${invitation.algorithm}:${invitation.encodedMaterial}',
     );
   }
 

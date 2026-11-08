@@ -8,12 +8,11 @@ import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 import '../config/app_configuration.dart';
 import 'http_client_factory.dart';
 import 'platform_credential_store.dart';
+import 'remote_source_exception.dart';
 
-class ApiException implements Exception {
-  ApiException(this.message, {this.statusCode, this.responseBody});
+class ApiException extends RemoteSourceException {
+  ApiException(super.message, {super.statusCode, this.responseBody});
 
-  final String message;
-  final int? statusCode;
   final Map<String, dynamic>? responseBody;
 
   @override
@@ -26,6 +25,8 @@ class ApiClient {
     http.Client? client,
     CredentialStore? credentials,
     AppConfiguration? configuration,
+    this.cacheSession = true,
+    this.clearSessionOnUnauthorized = true,
   }) : _client = client ?? createHttpClient(),
        _credentials = credentials ?? PlatformCredentialStore(),
        configuration = configuration ?? AppConfiguration.environment;
@@ -33,6 +34,8 @@ class ApiClient {
   final http.Client _client;
   final CredentialStore _credentials;
   final AppConfiguration configuration;
+  final bool cacheSession;
+  final bool clearSessionOnUnauthorized;
   String get apiBaseUrl => configuration.apiBaseUrl;
   static const _sessionCredentialKey = 'taiwan_brawl.session_id';
   String? _sessionCache;
@@ -45,9 +48,10 @@ class ApiClient {
   Future<Map<String, String>> _headers() async {
     final headers = <String, String>{'Content-Type': 'application/json'};
     if (!kIsWeb) {
-      final sessionId =
-          _sessionCache ?? await _credentials.read(_sessionCredentialKey);
-      if (sessionId != null && sessionId.isNotEmpty) {
+      final sessionId = cacheSession
+          ? (_sessionCache ?? await _credentials.read(_sessionCredentialKey))
+          : await _credentials.read(_sessionCredentialKey);
+      if (cacheSession && sessionId != null && sessionId.isNotEmpty) {
         _sessionCache = sessionId;
       }
       if (sessionId != null && sessionId.isNotEmpty) {
@@ -80,21 +84,28 @@ class ApiClient {
     return webSocketHeaders();
   }
 
-  Future<Map<String, dynamic>> getJson(String path) async {
+  Future<Map<String, dynamic>> getJson(
+    String path, {
+    Map<String, String>? extraHeaders,
+  }) async {
     final response = await _runWithTimeout(
-      () async => _client.get(_buildUri(path), headers: await _headers()),
+      () async => _client.get(
+        _buildUri(path),
+        headers: {...await _headers(), ...?extraHeaders},
+      ),
     );
     return _parseResponse(response);
   }
 
   Future<Map<String, dynamic>> postJson(
     String path,
-    Map<String, dynamic> body,
-  ) async {
+    Map<String, dynamic> body, {
+    Map<String, String>? extraHeaders,
+  }) async {
     final response = await _runWithTimeout(
       () async => _client.post(
         _buildUri(path),
-        headers: await _headers(),
+        headers: {...await _headers(), ...?extraHeaders},
         body: jsonEncode(body),
       ),
     );
@@ -133,6 +144,11 @@ class ApiClient {
   }
 
   Future<String> getRaw(String path) async {
+    final response = await getRawResponse(path);
+    return response.body;
+  }
+
+  Future<http.Response> getRawResponse(String path) async {
     final response = await _runWithTimeout(
       () async => _client.get(_buildUri(path), headers: await _headers()),
     );
@@ -142,7 +158,7 @@ class ApiClient {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException('Request failed', statusCode: response.statusCode);
     }
-    return response.body;
+    return response;
   }
 
   /// Kept for source compatibility with older callers.
@@ -175,10 +191,10 @@ class ApiClient {
 
     if (!kIsWeb) {
       final sessionId = decoded['session_id'];
-      if (sessionId is String && sessionId.isNotEmpty) {
+      if (cacheSession && sessionId is String && sessionId.isNotEmpty) {
         _sessionCache = sessionId;
         await _credentials.write(_sessionCredentialKey, sessionId);
-      } else if (response.statusCode == 401) {
+      } else if (clearSessionOnUnauthorized && response.statusCode == 401) {
         await clearSession();
       }
     }

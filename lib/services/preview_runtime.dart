@@ -15,8 +15,10 @@ import 'api_client.dart';
 import 'auth_remote_source.dart';
 import 'auth_service.dart';
 import 'chat_service_factory.dart';
+import 'direct_message_session.dart';
 import 'friends_remote_source.dart';
 import 'legacy_chat_remote_source.dart';
+import 'legacy_pending_message_adapter.dart';
 import 'legacy_installation_store.dart';
 import 'local_chat_repository.dart';
 import 'llm_bot_remote_source.dart';
@@ -27,6 +29,7 @@ import 'notification_remote_source.dart';
 import 'notification_service.dart';
 import 'pending_notification_source.dart';
 import 'platform_credential_store.dart';
+import 'preview_push_provider.dart';
 import 'royale_remote_source.dart';
 import 'secure_messaging_key_provider.dart';
 import 'storage_runtime.dart';
@@ -37,11 +40,19 @@ import 'storage_runtime.dart';
 /// exercise the same parsing and service contracts as production without
 /// requiring OAuth, Cloudflare, or a network connection.
 class PreviewHttpClient extends http.BaseClient {
+  static const _streetScrapCatalogBase64 = String.fromEnvironment(
+    'STREET_SCRAP_PREVIEW_CATALOG_B64',
+  );
+
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final path = request.url.path;
     final method = request.method;
-    final body = _response(path, method);
+    final body =
+        path == '/api/games/catalog' && _streetScrapCatalogBase64.isNotEmpty
+        ? jsonDecode(utf8.decode(base64Decode(_streetScrapCatalogBase64)))
+              as Map<String, dynamic>
+        : _response(path, method);
     final encoded = utf8.encode(jsonEncode(body));
     return http.StreamedResponse(
       Stream<List<int>>.value(encoded),
@@ -158,7 +169,6 @@ class PreviewRuntime {
     required this.messagingRuntime,
     required this.peerTrust,
     required this.legacyChatStore,
-    required this.legacyChatRemoteSource,
     required this.adminRemoteSource,
     required this.authRemoteSource,
     required this.friendsRemoteSource,
@@ -177,7 +187,6 @@ class PreviewRuntime {
   final MessagingRuntime messagingRuntime;
   final PeerTrustService peerTrust;
   final LocalChatRepository legacyChatStore;
-  final LegacyChatRemoteSource legacyChatRemoteSource;
   final AdminRemoteSource adminRemoteSource;
   final AuthRemoteSource authRemoteSource;
   final FriendsRemoteSource friendsRemoteSource;
@@ -187,7 +196,7 @@ class PreviewRuntime {
   final PendingNotificationSource pendingNotificationSource;
   final mini_royale.BattleAnimationCacheService battleAnimationCacheService;
   final NotificationService notificationService;
-  final ChatServiceFactory chatServiceFactory;
+  final DirectMessageSessionFactory chatServiceFactory;
   final AuthService authService;
 
   static Future<PreviewRuntime> create(AppConfiguration configuration) async {
@@ -221,17 +230,19 @@ class PreviewRuntime {
     );
     await battleAnimationCacheService.initialize();
     final notificationService = NotificationService(
-      apiClient,
-      localRepository: legacyChatStore,
+      legacyPendingMessages: LegacyPendingMessageAdapter(
+        localRepository: legacyChatStore,
+      ),
       messagingCore: messagingRuntime.core,
+      remoteAuthenticator: null,
       credentials: credentials,
       legacyInstallationStore: HiveLegacyInstallationStore(),
+      pushProvider: PreviewPushProvider(),
       remoteSource: notificationRemoteSource,
       pendingNotificationSource: pendingNotificationSource,
     );
     await notificationService.initialize();
     final chatServiceFactory = ChatServiceFactory(
-      apiClient: apiClient,
       messagingCore: messagingRuntime.core,
       authenticator: messagingRuntime.deviceIdentity == null
           ? null
@@ -239,15 +250,18 @@ class PreviewRuntime {
               localIdentity: messagingRuntime.deviceIdentity!,
             ),
       deviceId: messagingRuntime.deviceIdentity?.deviceId,
-      localRepository: legacyChatStore,
-      remoteSource: legacyChatRemoteSource,
+      legacyDeliveryStore: legacyChatStore,
+      legacyHistoryStore: legacyChatStore,
+      legacySnapshotStore: legacyChatStore,
+      legacyDeliveryRemoteSource: legacyChatRemoteSource,
+      legacyHistoryRemoteSource: legacyChatRemoteSource,
+      legacySnapshotRemoteSource: legacyChatRemoteSource,
       transportFactory:
           ({required selfId, required friendId, required isCaller}) =>
               PreviewMessageTransport(),
-      manualSignaling: ManualPeerSignaling(),
+      manualSignalingFactory: ManualPeerSignaling.new,
     );
     final authService = AuthService(
-      apiClient,
       remoteSource: authRemoteSource,
       configuration: configuration,
     );
@@ -258,7 +272,6 @@ class PreviewRuntime {
       messagingRuntime: messagingRuntime,
       peerTrust: peerTrust,
       legacyChatStore: legacyChatStore,
-      legacyChatRemoteSource: legacyChatRemoteSource,
       adminRemoteSource: adminRemoteSource,
       authRemoteSource: authRemoteSource,
       friendsRemoteSource: friendsRemoteSource,

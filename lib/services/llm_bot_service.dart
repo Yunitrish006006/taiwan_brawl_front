@@ -1,11 +1,8 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
-
 import '../models/app_user.dart';
 import '../config/app_configuration.dart';
 
-import 'api_client.dart';
 import 'llm_bot_remote_source.dart';
 
 /// Application service for testing the configured LLM connection.
@@ -13,13 +10,10 @@ import 'llm_bot_remote_source.dart';
 /// The settings widget owns form state only; HTTP provider details and the
 /// backend-proxy/direct-provider split stay behind this service boundary.
 class LlmBotService {
-  LlmBotService(
-    ApiClient apiClient, {
-    LlmBotRemoteSource? remoteSource,
-    http.Client? client,
+  LlmBotService({
+    required LlmBotRemoteSource remoteSource,
     AppConfiguration? configuration,
-  }) : _remoteSource =
-           remoteSource ?? ServerLlmBotRemoteSource(apiClient, client: client),
+  }) : _remoteSource = remoteSource,
        _configuration = configuration ?? AppConfiguration.environment;
 
   final LlmBotRemoteSource _remoteSource;

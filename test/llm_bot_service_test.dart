@@ -6,17 +6,20 @@ import 'package:http/testing.dart';
 import 'package:taiwan_brawl/models/app_user.dart';
 import 'package:taiwan_brawl/services/api_client.dart';
 import 'package:taiwan_brawl/config/app_configuration.dart';
+import 'package:taiwan_brawl/services/llm_bot_remote_source.dart';
 import 'package:taiwan_brawl/services/llm_bot_service.dart';
 
 void main() {
   test('direct provider checks stay inside the application service', () async {
     late http.BaseRequest request;
     final service = LlmBotService(
-      ApiClient(),
-      client: MockClient((incoming) async {
-        request = incoming;
-        return http.Response('{}', 200);
-      }),
+      remoteSource: ServerLlmBotRemoteSource(
+        ApiClient(),
+        client: MockClient((incoming) async {
+          request = incoming;
+          return http.Response('{}', 200);
+        }),
+      ),
     );
 
     await service.testConnection(
@@ -36,13 +39,15 @@ void main() {
     'non-success provider responses expose a stable service error',
     () async {
       final service = LlmBotService(
-        ApiClient(),
-        client: MockClient(
-          (_) async => http.Response(
-            jsonEncode({
-              'error': {'message': 'bad key'},
-            }),
-            401,
+        remoteSource: ServerLlmBotRemoteSource(
+          ApiClient(),
+          client: MockClient(
+            (_) async => http.Response(
+              jsonEncode({
+                'error': {'message': 'bad key'},
+              }),
+              401,
+            ),
           ),
         ),
       );
@@ -66,7 +71,13 @@ void main() {
   test('uses injected LLM defaults when fields are blank', () async {
     late http.BaseRequest request;
     final service = LlmBotService(
-      ApiClient(),
+      remoteSource: ServerLlmBotRemoteSource(
+        ApiClient(),
+        client: MockClient((incoming) async {
+          request = incoming;
+          return http.Response('{}', 200);
+        }),
+      ),
       configuration: const AppConfiguration(
         apiBaseUrl: 'https://api.example.test',
         googleWebClientId: 'web',
@@ -75,10 +86,6 @@ void main() {
         defaultLlmBaseUrl: 'https://llm.example.test/v1',
         defaultLlmModel: 'configured-model',
       ),
-      client: MockClient((incoming) async {
-        request = incoming;
-        return http.Response('{}', 200);
-      }),
     );
 
     await service.testConnection(

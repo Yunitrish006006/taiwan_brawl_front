@@ -1,0 +1,1725 @@
+{
+  "schemaVersion": 1,
+  "status": "design-prototype-not-game-runtime",
+  "items": [
+    {
+      "id": "cloth.rag_piece",
+      "name": "破布片",
+      "phase": 0,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cloth.edge_scrap",
+      "name": "布邊料",
+      "phase": 0,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cloth.repair_strip",
+      "name": "縫補布條",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cloth.patchwork",
+      "name": "拼接布",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "cloth.thread_spool",
+      "name": "線團",
+      "phase": 0,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cloth.thread_end",
+      "name": "線頭",
+      "phase": 0,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cloth.binding",
+      "name": "綁帶",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "rope.coarse",
+      "name": "粗繩",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "line.fishing",
+      "name": "釣線",
+      "phase": 2,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cloth.waterproof",
+      "name": "防水布",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "cloth.insulation",
+      "name": "隔熱布",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "wood.chip",
+      "name": "碎木片",
+      "phase": 0,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "wood.sawdust",
+      "name": "木屑",
+      "phase": 0,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "wood.driftwood",
+      "name": "漂木",
+      "phase": 0,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "wood.rod",
+      "name": "木條",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "wood.board",
+      "name": "木板",
+      "phase": 0,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "wood.frame",
+      "name": "木框",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "adhesive.residue",
+      "name": "標籤殘膠",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "adhesive.recycled",
+      "name": "回收膠料",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "adhesive.starch_paste",
+      "name": "澱粉糊",
+      "phase": 4,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "metal.scrap",
+      "name": "金屬屑",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "metal.shard",
+      "name": "金屬碎片",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "metal.sheet",
+      "name": "金屬片",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "metal.bar",
+      "name": "金屬條",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "metal.wire",
+      "name": "鐵線",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "metal.nail_bundle",
+      "name": "釘件束",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "metal.fastener",
+      "name": "金屬扣",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "metal.ferrule",
+      "name": "套環",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "metal.hook",
+      "name": "釣鉤",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "plastic.scrap",
+      "name": "塑料碎片",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "plastic.sheet",
+      "name": "塑料片",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "plastic.float_part",
+      "name": "浮標零件",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "plastic.seal",
+      "name": "防水接頭",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "paper.scrap",
+      "name": "紙屑",
+      "phase": 0,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "paper.pulp",
+      "name": "紙漿",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "paper.board",
+      "name": "乾燥紙板",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "paper.packaging",
+      "name": "防潮包材",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "water.turbid",
+      "name": "濁水",
+      "phase": 4,
+      "location": "content",
+      "footprint": null
+    },
+    {
+      "id": "water.dirty",
+      "name": "髒水",
+      "phase": 4,
+      "location": "content",
+      "footprint": null
+    },
+    {
+      "id": "water.muddy",
+      "name": "泥水",
+      "phase": 4,
+      "location": "content",
+      "footprint": null
+    },
+    {
+      "id": "water.filtered",
+      "name": "過濾水",
+      "phase": 0,
+      "location": "content",
+      "footprint": null
+    },
+    {
+      "id": "water.boiled",
+      "name": "開水",
+      "phase": 4,
+      "location": "content",
+      "footprint": null
+    },
+    {
+      "id": "water.distilled",
+      "name": "蒸餾水",
+      "phase": 5,
+      "location": "content",
+      "footprint": null
+    },
+    {
+      "id": "water.mineral",
+      "name": "礦泉水",
+      "phase": 5,
+      "location": "content",
+      "footprint": null
+    },
+    {
+      "id": "material.mineral_pack",
+      "name": "礦物包",
+      "phase": 5,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "material.mud",
+      "name": "泥料",
+      "phase": 4,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "material.charcoal",
+      "name": "木炭",
+      "phase": 4,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "material.filter_cloth",
+      "name": "濾布",
+      "phase": 4,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "material.waterproof_coating",
+      "name": "防水塗料",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "material.glass_scrap",
+      "name": "玻璃碎料",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "fish.raw",
+      "name": "整魚",
+      "phase": 2,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "fish.meat",
+      "name": "魚肉",
+      "phase": 2,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "fish.bone",
+      "name": "魚骨",
+      "phase": 2,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "fish.pack",
+      "name": "魚貨包",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "food.scrap",
+      "name": "食物碎屑",
+      "phase": 2,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "food.greens",
+      "name": "野菜",
+      "phase": 4,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "food.edible",
+      "name": "可食拾得物",
+      "phase": 4,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "food.cleaned",
+      "name": "清理食材",
+      "phase": 4,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "food.starch",
+      "name": "澱粉食材",
+      "phase": 4,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "herb.wild",
+      "name": "香草",
+      "phase": 4,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "seasoning.salt",
+      "name": "鹽",
+      "phase": 4,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "seasoning.packet",
+      "name": "調味包",
+      "phase": 4,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "seasoning.blend",
+      "name": "綜合香料",
+      "phase": 5,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "fuel.mixed",
+      "name": "混合燃料",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "fuel.dry",
+      "name": "乾燥燃料",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "fuel.oilcloth",
+      "name": "可燃油布",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "fuel.efficient_pack",
+      "name": "節能燃料包",
+      "phase": 5,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "container.broken_bottle",
+      "name": "破瓶",
+      "phase": 0,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "container.used_intact",
+      "name": "完整舊瓶",
+      "phase": 0,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "container.clean",
+      "name": "清潔容器",
+      "phase": 0,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "container.clean_jar",
+      "name": "清潔罐",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "container.meal_box",
+      "name": "餐盒",
+      "phase": 4,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "container.meal_box_insulated",
+      "name": "保溫餐盒",
+      "phase": 4,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "bag.basic",
+      "name": "起始背包",
+      "phase": 0,
+      "location": "equipment",
+      "footprint": null
+    },
+    {
+      "id": "bag.reinforced",
+      "name": "修補背包",
+      "phase": 3,
+      "location": "equipment",
+      "footprint": null
+    },
+    {
+      "id": "bag.weatherproof",
+      "name": "耐候收納袋",
+      "phase": 5,
+      "location": "equipment",
+      "footprint": null
+    },
+    {
+      "id": "storage.wooden_crate",
+      "name": "木箱",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "storage.reinforced_chest",
+      "name": "加固箱櫃",
+      "phase": 5,
+      "location": "grid",
+      "footprint": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "bait.basic",
+      "name": "基礎魚餌",
+      "phase": 2,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "bait.herb",
+      "name": "香草餌",
+      "phase": 4,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "tool.needle",
+      "name": "針具",
+      "phase": 0,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "tool.paper_mould",
+      "name": "抄紙模具",
+      "phase": 3,
+      "location": "station",
+      "footprint": null
+    },
+    {
+      "id": "tool.awl",
+      "name": "修補錐",
+      "phase": 3,
+      "location": "grid",
+      "baseDurability": 20,
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "tool.crowbar",
+      "name": "撬具",
+      "phase": 3,
+      "location": "grid",
+      "baseDurability": 30,
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "tool.pliers",
+      "name": "分類鉗",
+      "phase": 3,
+      "location": "grid",
+      "baseDurability": 30,
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "tool.kit",
+      "name": "維修工具組",
+      "phase": 5,
+      "location": "grid",
+      "footprint": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "tool.rod_basic",
+      "name": "簡易釣竿",
+      "phase": 2,
+      "location": "grid",
+      "baseDurability": 20,
+      "footprint": [
+        1,
+        3
+      ]
+    },
+    {
+      "id": "tool.rod_repaired",
+      "name": "修補釣竿",
+      "phase": 3,
+      "location": "grid",
+      "baseDurability": 30,
+      "footprint": [
+        1,
+        3
+      ]
+    },
+    {
+      "id": "tool.rod_advanced",
+      "name": "改良釣竿",
+      "phase": 5,
+      "location": "grid",
+      "baseDurability": 40,
+      "footprint": [
+        1,
+        3
+      ]
+    },
+    {
+      "id": "tool.pot",
+      "name": "簡易鍋具",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "tool.stove",
+      "name": "便攜爐架",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "tool.cook_kit",
+      "name": "外出料理組",
+      "phase": 5,
+      "location": "grid",
+      "footprint": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "tool.condenser",
+      "name": "冷凝器",
+      "phase": 5,
+      "location": "grid",
+      "footprint": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "toolpart.handle",
+      "name": "工具柄",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "toolpart.rig",
+      "name": "備用釣組",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "toolpart.float",
+      "name": "簡易浮標",
+      "phase": 2,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "structure.raft",
+      "name": "小型浮架",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "structure.tarp",
+      "name": "避雨棚布",
+      "phase": 3,
+      "location": "grid",
+      "footprint": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "structure.shelter",
+      "name": "可折雨棚",
+      "phase": 5,
+      "location": "grid",
+      "footprint": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "meal.soup_basic",
+      "name": "基礎湯",
+      "phase": 4,
+      "location": "content",
+      "footprint": null
+    },
+    {
+      "id": "meal.soup_fish",
+      "name": "魚湯",
+      "phase": 4,
+      "location": "content",
+      "footprint": null
+    },
+    {
+      "id": "meal.soup_vegetable",
+      "name": "素食湯",
+      "phase": 4,
+      "location": "content",
+      "footprint": null
+    },
+    {
+      "id": "meal.shared",
+      "name": "共享餐",
+      "phase": 5,
+      "location": "content",
+      "footprint": null
+    },
+    {
+      "id": "meal.failed",
+      "name": "失敗餐",
+      "phase": 4,
+      "location": "content",
+      "footprint": null
+    },
+    {
+      "id": "meal.relief_box",
+      "name": "政府救助便當",
+      "phase": 0,
+      "location": "mailbox",
+      "footprint": null
+    },
+    {
+      "id": "bundle.cloth_scrap",
+      "name": "布邊料束",
+      "phase": 0,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "bundle.thread_end",
+      "name": "線頭束",
+      "phase": 0,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "bundle.wood_chip",
+      "name": "碎木片束",
+      "phase": 0,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "bundle.metal_scrap",
+      "name": "金屬屑束",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "bundle.plastic_scrap",
+      "name": "塑料碎片束",
+      "phase": 1,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "bundle.paper_scrap",
+      "name": "紙屑束",
+      "phase": 0,
+      "location": "grid",
+      "footprint": [
+        1,
+        2
+      ]
+    }
+  ],
+  "aliases": {
+    "空清潔瓶": "container.clean",
+    "清潔瓶": "container.clean",
+    "濁水瓶": "container.clean",
+    "髒水瓶": "container.clean",
+    "濾水瓶": "container.clean",
+    "開水瓶": "container.clean",
+    "空餐盒": "container.meal_box",
+    "基本湯餐盒": "container.meal_box",
+    "基礎湯餐盒": "container.meal_box",
+    "空清潔罐": "container.clean_jar",
+    "空餐盒": "container.meal_box",
+    "空木箱": "storage.wooden_crate",
+    "背包容量升級一次": "bag.reinforced",
+    "耐候收納袋升級": "bag.weatherproof"
+  },
+  "supplies": [
+    {
+      "item": "cloth.rag_piece",
+      "phase": 0,
+      "quantity": 3,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "cloth.edge_scrap",
+      "phase": 0,
+      "quantity": 3,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "cloth.thread_end",
+      "phase": 0,
+      "quantity": 3,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "cloth.thread_spool",
+      "phase": 0,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "wood.chip",
+      "phase": 0,
+      "quantity": 3,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "wood.sawdust",
+      "phase": 0,
+      "quantity": 3,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "wood.driftwood",
+      "phase": 0,
+      "quantity": 2,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "paper.scrap",
+      "phase": 0,
+      "quantity": 3,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "container.used_intact",
+      "phase": 0,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "container.broken_bottle",
+      "phase": 0,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "water.filtered",
+      "phase": 0,
+      "quantity": 1,
+      "stamina": 2,
+      "repeatable": true
+    },
+    {
+      "item": "metal.shard",
+      "phase": 1,
+      "quantity": 3,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "metal.scrap",
+      "phase": 1,
+      "quantity": 3,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "metal.wire",
+      "phase": 1,
+      "quantity": 2,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "metal.nail_bundle",
+      "phase": 1,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "metal.sheet",
+      "phase": 1,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "container.clean_jar",
+      "phase": 1,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "plastic.scrap",
+      "phase": 1,
+      "quantity": 3,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "adhesive.residue",
+      "phase": 1,
+      "quantity": 2,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "rope.coarse",
+      "phase": 2,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "food.scrap",
+      "phase": 2,
+      "quantity": 2,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "material.waterproof_coating",
+      "phase": 3,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "fuel.oilcloth",
+      "phase": 3,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "fuel.dry",
+      "phase": 3,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "food.greens",
+      "phase": 4,
+      "quantity": 2,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "food.edible",
+      "phase": 4,
+      "quantity": 2,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "food.starch",
+      "phase": 4,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "herb.wild",
+      "phase": 4,
+      "quantity": 2,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "seasoning.salt",
+      "phase": 4,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "water.muddy",
+      "phase": 4,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "water.turbid",
+      "phase": 4,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "water.dirty",
+      "phase": 4,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "material.mineral_pack",
+      "phase": 5,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    },
+    {
+      "item": "water.mineral",
+      "phase": 5,
+      "quantity": 1,
+      "stamina": 3,
+      "repeatable": true
+    }
+  ],
+  "seeds": [
+    {
+      "item": "tool.needle",
+      "phase": 0,
+      "mechanism": "permanent-tutorial"
+    },
+    {
+      "item": "bag.basic",
+      "phase": 0,
+      "mechanism": "permanent-tutorial"
+    },
+    {
+      "item": "meal.relief_box",
+      "phase": 0,
+      "mechanism": "daily-until-stable"
+    },
+    {
+      "item": "tool.rod_basic",
+      "phase": 2,
+      "mechanism": "renewable-loaner"
+    },
+    {
+      "item": "tool.paper_mould",
+      "phase": 3,
+      "mechanism": "permanent-station"
+    },
+    {
+      "item": "fish.raw",
+      "phase": 2,
+      "mechanism": "fishing-third-attempt-guarantee"
+    },
+    {
+      "item": "container.clean",
+      "phase": 0,
+      "mechanism": "public-basin-wash"
+    }
+  ],
+  "bundles": [
+    {
+      "input": "container.clean",
+      "output": "toolpart.float",
+      "count": 1,
+      "manualUnpack": true
+    },
+    {
+      "input": "tool.pot",
+      "inputItems": ["tool.pot", "tool.stove"],
+      "output": "tool.cook_kit",
+      "count": 2,
+      "manualUnpack": true
+    },
+    {
+      "input": "cloth.edge_scrap",
+      "output": "bundle.cloth_scrap",
+      "count": 4,
+      "manualUnpack": true
+    },
+    {
+      "input": "cloth.thread_end",
+      "output": "bundle.thread_end",
+      "count": 4,
+      "manualUnpack": true
+    },
+    {
+      "input": "wood.chip",
+      "output": "bundle.wood_chip",
+      "count": 4,
+      "manualUnpack": true
+    },
+    {
+      "input": "metal.scrap",
+      "output": "bundle.metal_scrap",
+      "count": 4,
+      "manualUnpack": true
+    },
+    {
+      "input": "plastic.scrap",
+      "output": "bundle.plastic_scrap",
+      "count": 4,
+      "manualUnpack": true
+    },
+    {
+      "input": "paper.scrap",
+      "output": "bundle.paper_scrap",
+      "count": 4,
+      "manualUnpack": true
+    }
+  ],
+  "limits": {
+    "staminaMax": 60,
+    "regenSeconds": 300,
+    "startingBackpack": [
+      4,
+      4
+    ],
+    "board": [
+      6,
+      6
+    ]
+  },
+  "orders": [
+    {
+      "id": "ss.order.recycle",
+      "phase": 0,
+      "acceptedItems": ["cloth.edge_scrap", "wood.chip", "metal.scrap", "paper.scrap", "plastic.scrap", "material.glass_scrap", "material.mud"],
+      "rejectedItems": [],
+      "quantity": 3,
+      "reward": { "currency": "exchangeTickets", "quantity": 1 },
+      "countsTowardCycle": true,
+      "returnContainer": false,
+      "returnedContainerCleanliness": null
+    },
+    {
+      "id": "ss.order.mending",
+      "phase": 1,
+      "acceptedItems": ["cloth.repair_strip"],
+      "rejectedItems": [],
+      "quantity": 1,
+      "reward": { "currency": "exchangeTickets", "quantity": 2 },
+      "countsTowardCycle": true,
+      "returnContainer": false,
+      "returnedContainerCleanliness": null
+    },
+    {
+      "id": "ss.order.fish",
+      "phase": 2,
+      "acceptedItems": ["fish.raw", "fish.meat"],
+      "requirementGroups": [
+        [{ "item": "fish.raw", "quantity": 1 }],
+        [{ "item": "fish.meat", "quantity": 2 }]
+      ],
+      "rejectedItems": [],
+      "quantity": 1,
+      "reward": { "currency": "exchangeTickets", "quantity": 3 },
+      "countsTowardCycle": true,
+      "returnContainer": false,
+      "returnedContainerCleanliness": null
+    },
+    {
+      "id": "ss.order.board",
+      "phase": 3,
+      "acceptedItems": ["wood.board"],
+      "rejectedItems": [],
+      "quantity": 1,
+      "reward": { "currency": "exchangeTickets", "quantity": 3 },
+      "countsTowardCycle": true,
+      "returnContainer": false,
+      "returnedContainerCleanliness": null
+    },
+    {
+      "id": "ss.order.packaging",
+      "phase": 3,
+      "acceptedItems": ["paper.packaging"],
+      "rejectedItems": [],
+      "quantity": 1,
+      "reward": { "currency": "exchangeTickets", "quantity": 2 },
+      "countsTowardCycle": true,
+      "returnContainer": false,
+      "returnedContainerCleanliness": null
+    },
+    {
+      "id": "ss.order.meal",
+      "phase": 4,
+      "acceptedItems": ["meal.soup_basic", "meal.soup_fish", "meal.soup_vegetable"],
+      "rejectedItems": ["meal.failed"],
+      "reward": { "currency": "exchangeTickets", "quantity": 4 },
+      "countsTowardCycle": false,
+      "returnContainer": true,
+      "returnedContainerCleanliness": "soiled",
+      "requiresTutorial": "q4.02",
+      "oncePerTutorial": "q4.03"
+    },
+    {
+      "id": "ss.order.failed_meal_recycle",
+      "phase": 4,
+      "acceptedItems": ["meal.failed"],
+      "requirementGroups": [[{ "item": "meal.failed", "quantity": 3 }]],
+      "rejectedItems": [],
+      "quantity": 3,
+      "reward": { "currency": "exchangeTickets", "quantity": 1 },
+      "countsTowardCycle": false,
+      "returnContainer": true,
+      "containerItemId": "container.meal_box",
+      "returnedContainerCleanliness": "soiled",
+      "requiresTutorial": "q4.02"
+    },
+    {
+      "id": "ss.order.insulated",
+      "phase": 4,
+      "acceptedItems": ["meal.soup_basic", "meal.soup_fish", "meal.soup_vegetable"],
+      "rejectedItems": ["meal.failed"],
+      "quantity": 1,
+      "reward": { "currency": "exchangeTickets", "quantity": 8 },
+      "countsTowardCycle": true,
+      "returnContainer": false,
+      "consumeContainer": true,
+      "containerItemId": "container.meal_box_insulated",
+      "returnedContainerCleanliness": null
+    },
+    {
+      "id": "ss.order.advanced_search",
+      "phase": 5,
+      "acceptedItems": ["wood.board", "wood.chip", "wood.driftwood"],
+      "requirementGroups": [
+        [{ "item": "wood.board", "quantity": 2 }],
+        [{ "item": "wood.chip", "quantity": 2 }],
+        [{ "item": "wood.driftwood", "quantity": 2 }]
+      ],
+      "rejectedItems": [],
+      "quantity": 1,
+      "reward": { "currency": "exchangeTickets", "quantity": 4 },
+      "countsTowardCycle": false,
+      "returnContainer": false,
+      "requiresAcceptance": true,
+      "requiredSource": "fixed:old_street_exchange",
+      "completionGroupId": "q5.01"
+    },
+    {
+      "id": "ss.order.advanced_recycle",
+      "phase": 5,
+      "acceptedItems": ["cloth.thread_spool", "adhesive.recycled"],
+      "requirementGroups": [
+        [
+          { "item": "cloth.thread_spool", "quantity": 1 },
+          { "item": "adhesive.recycled", "quantity": 1 }
+        ]
+      ],
+      "rejectedItems": [],
+      "quantity": 1,
+      "reward": { "currency": "exchangeTickets", "quantity": 5 },
+      "countsTowardCycle": false,
+      "returnContainer": false,
+      "requiresAcceptance": true,
+      "requiredRecipes": ["ss.recipe.unpick_cloth", "ss.recipe.recycle_glue"],
+      "completionGroupId": "q5.01"
+    },
+    {
+      "id": "ss.order.advanced_fish",
+      "phase": 5,
+      "acceptedItems": ["fish.pack"],
+      "rejectedItems": [],
+      "quantity": 1,
+      "reward": { "currency": "exchangeTickets", "quantity": 5 },
+      "countsTowardCycle": false,
+      "returnContainer": false,
+      "completionGroupId": "q5.01"
+    },
+    {
+      "id": "ss.order.advanced_workbench",
+      "phase": 5,
+      "acceptedItems": ["tool.awl"],
+      "rejectedItems": [],
+      "quantity": 1,
+      "reward": { "currency": "exchangeTickets", "quantity": 5 },
+      "countsTowardCycle": false,
+      "returnContainer": false,
+      "completionGroupId": "q5.01"
+    },
+    {
+      "id": "ss.order.advanced_cooking",
+      "phase": 5,
+      "acceptedItems": ["meal.shared"],
+      "rejectedItems": ["meal.failed"],
+      "quantity": 1,
+      "reward": { "currency": "exchangeTickets", "quantity": 6 },
+      "countsTowardCycle": false,
+      "returnContainer": true,
+      "returnedContainerCleanliness": "soiled",
+      "completionGroupId": "q5.01"
+    }
+  ],
+  "reliefPolicy": {
+    "intervalSeconds": 86400,
+    "initialClaims": 1,
+    "visibleLimit": 7,
+    "recoveryAmount": 40,
+    "chapterTransitionSupply": 80,
+    "offlineCatchUp": true,
+    "clockPolicy": "utc-high-water"
+  },
+  "scavenging": {
+    "version": 4,
+    "nodeCount": 3,
+    "investigationsPerNode": 1,
+    "movementCost": 1,
+    "investigationCost": 2,
+    "fixedWrongQuantity": 1,
+    "scrapQualities": [30, 55],
+    "intactQualities": [55, 55, 55, 55, 55, 80, 80, 80, 80, 95],
+    "surpriseWeights": {
+      "commonScraps": 50,
+      "intactBase": 25,
+      "containers": 15,
+      "optionalSpecial": 10
+    },
+    "surprisePools": {
+      "commonScraps": ["cloth.rag_piece", "cloth.edge_scrap", "cloth.thread_end", "wood.chip", "wood.sawdust", "paper.scrap", "metal.scrap", "metal.shard", "plastic.scrap"],
+      "intactBase": ["wood.driftwood", "wood.board", "cloth.thread_spool", "metal.sheet", "metal.nail_bundle", "rope.coarse"],
+      "containers": ["container.used_intact", "container.broken_bottle", "container.clean_jar"],
+      "optionalSpecial": ["material.waterproof_coating", "material.mineral_pack", "water.mineral"]
+    },
+    "surpriseTraitPools": {
+      "positive": [
+        {"prefix":"cloth.","id":"intact_fibre","minimumQuality":70}
+      ],
+      "negative": [
+        {"prefix":"cloth.","id":"frayed"},
+        {"prefix":"wood.","id":"cracked"},
+        {"prefix":"wood.","id":"damp"},
+        {"prefix":"paper.","id":"damp"},
+        {"prefix":"metal.","id":"rusted"},
+        {"prefix":"plastic.","id":"brittle"}
+      ],
+      "chancePercent": 20
+    },
+    "itemLabels": {},
+    "fixedLocations": [
+      {"id":"clothing_corner","nodeIndex":0,"name":"衣物回收角","phase":0,"options":[{"item":"cloth.rag_piece","quantity":3},{"item":"cloth.edge_scrap","quantity":3},{"item":"cloth.thread_end","quantity":3},{"item":"cloth.thread_spool","quantity":1,"qualityType":"intact"}]},
+      {"id":"paper_wood_pile","nodeIndex":1,"name":"紙木堆","phase":0,"options":[{"item":"wood.chip","quantity":3},{"item":"wood.sawdust","quantity":3},{"item":"wood.driftwood","quantity":2,"qualityType":"intact"},{"item":"paper.scrap","quantity":3}]},
+      {"id":"container_corner","nodeIndex":2,"name":"容器角","phase":0,"options":[{"item":"container.used_intact","quantity":1,"qualityType":"intact"},{"item":"container.broken_bottle","quantity":1}]},
+      {"id":"metal_recycling_rack","nodeIndex":2,"name":"金屬回收架","phase":1,"options":[{"item":"metal.scrap","quantity":3},{"item":"metal.shard","quantity":3},{"item":"metal.wire","quantity":2},{"item":"metal.nail_bundle","quantity":1},{"item":"metal.sheet","quantity":1,"qualityType":"intact"},{"item":"container.clean","quantity":1},{"item":"wood.board","quantity":1,"qualityType":"intact"}]},
+      {"id":"sorting_shed","nodeIndex":1,"name":"分類棚","phase":1,"options":[{"item":"plastic.scrap","quantity":3},{"item":"adhesive.residue","quantity":2}]},
+      {"id":"waterfront_materials","nodeIndex":0,"name":"水岸材料點","phase":2,"options":[{"item":"wood.driftwood","quantity":2,"qualityType":"intact"},{"item":"cloth.thread_end","quantity":3},{"item":"rope.coarse","quantity":1,"qualityType":"intact"},{"item":"food.scrap","quantity":2}]},
+      {"id":"repair_district","nodeIndex":1,"name":"修繕區","phase":3,"options":[{"item":"material.waterproof_coating","quantity":1},{"item":"fuel.oilcloth","quantity":1},{"item":"fuel.dry","quantity":1}]},
+      {"id":"market_exchange","nodeIndex":0,"name":"菜攤交換區","phase":4,"options":[{"item":"food.greens","quantity":2},{"item":"food.edible","quantity":2},{"item":"food.scrap","quantity":2},{"item":"food.starch","quantity":1},{"item":"herb.wild","quantity":2},{"item":"seasoning.salt","quantity":1}]},
+      {"id":"old_street_exchange","nodeIndex":0,"name":"舊街互助交換點","phase":5,"options":[{"item":"wood.board","quantity":2,"qualityType":"intact"},{"item":"wood.chip","quantity":2},{"item":"wood.driftwood","quantity":2,"qualityType":"intact"},{"item":"material.mineral_pack","quantity":1}]},
+      {"id":"sorting_shed_chapter5","nodeIndex":1,"name":"新街分類棚","phase":5,"options":[{"item":"plastic.scrap","quantity":3},{"item":"adhesive.residue","quantity":2}]}
+    ]
+  },
+  "fishing": {
+    "version": 1,
+    "castCost": 3,
+    "signalsPerCast": 3,
+    "successSignals": 2,
+    "perfectSignals": 3,
+    "signalHoldMilliseconds": 2000,
+    "basePromptWidthPercent": 30,
+    "preciseQualityBonus": 8,
+    "guaranteeAfterFailures": 2,
+    "freeNaturalBait": true,
+    "loanerRodAvailable": true,
+    "spots": [
+      {"id":"dock_entrance","phase":2,"name":"舊碼頭入口"},
+      {"id":"raft_point","phase":3,"name":"浮架釣點","failureRewards":["fish.bone","wood.driftwood"]}
+    ],
+    "failureRewards": ["wood.driftwood", "cloth.thread_end"]
+  },
+  "toolRepairs": [
+    {"id":"repair.rod_basic","tool":"tool.rod_basic","phase":3,"restoreUses":10,"materialOptions":[["toolpart.rig"]]},
+    {"id":"repair.rod_repaired","tool":"tool.rod_repaired","phase":3,"restoreUses":10,"materialOptions":[["toolpart.rig"]]},
+    {"id":"repair.rod_advanced","tool":"tool.rod_advanced","phase":5,"restoreUses":10,"materialOptions":[["toolpart.rig"]]},
+    {"id":"repair.crowbar","tool":"tool.crowbar","phase":3,"restoreUses":10,"materialOptions":[["metal.shard","cloth.binding"]]},
+    {"id":"repair.pliers","tool":"tool.pliers","phase":3,"restoreUses":10,"materialOptions":[["metal.shard","cloth.binding"]]},
+    {"id":"repair.awl","tool":"tool.awl","phase":3,"restoreUses":10,"materialOptions":[["metal.shard"],["fish.bone"]]},
+    {"id":"repair.precision.crowbar","tool":"tool.crowbar","phase":5,"restoreUses":10,"materialOptions":[["content:water.distilled","cloth.edge_scrap"]]},
+    {"id":"repair.precision.pliers","tool":"tool.pliers","phase":5,"restoreUses":10,"materialOptions":[["content:water.distilled","cloth.edge_scrap"]]},
+    {"id":"repair.precision.awl","tool":"tool.awl","phase":5,"restoreUses":10,"materialOptions":[["content:water.distilled","cloth.edge_scrap"]]}
+  ],
+  "notes": [
+    "Success-path dependency audit only; state, quantities, loss, clean containers and runtime transactions require separate validation.",
+    "Item phase means first renewable or tutorial access; water and meal contents do not have independent footprints."
+  ],
+  "terminalUses": {
+    "tool.paper_mould": "固定安裝於木料工作台；form_paperboard 解鎖後由站點提供，不作為背包或棋盤物件。",
+    "adhesive.starch_paste": "階段4起替代 press_rod 的回收膠料，1比1；不替代防水塗料。",
+    "water.distilled": "精密保養：1份加布邊料1，恢復金屬工具10次使用量；空瓶保留。",
+    "water.mineral": "湯品替代開水，1比1，品質+3；普通水仍可完成主線。",
+    "material.mineral_pack": "ss.order.wall：礦物包1與泥料2。",
+    "material.mud": "ss.order.wall，或3份交分類回收。",
+    "material.glass_scrap": "3份交分類回收。",
+    "fish.pack": "ss.order.advanced_fish；也可拆回魚肉2，包材不返還。",
+    "seasoning.blend": "替代料理可選調味包1，品質+3，不與其他調味疊加。",
+    "fuel.efficient_pack": "替代所有乾燥燃料槽，共3個燃料單位，餘額存於原物件。",
+    "container.meal_box_insulated": "可重用裝餐；ss.order.insulated 會連同容器交付。",
+    "bag.weatherproof": "裝備背包6×4，升級一次，不額外占背包格。",
+    "storage.reinforced_chest": "地盤放置容量20，家具位1。",
+    "bait.herb": "釣魚消耗1，精準時額外魚品質+3。",
+    "tool.crowbar": "使用於額外翻找選項，每次扣1耐久；普通翻找不需要。",
+    "tool.kit": "存放並使用原鉗與錐，子物件不重複占格、不洗耐久。",
+    "tool.rod_advanced": "釣魚容錯乘1.2，單次扣1耐久。",
+    "tool.cook_kit": "可選炊具交換單，交1套得10券；收藏記錄首次取得。",
+    "toolpart.rig": "消耗1修復釣竿10次，不超最大耐久。",
+    "toolpart.float": "掛於釣點，基礎竿容錯乘1.05；不與升級竿容錯疊加。",
+    "structure.raft": "放置於碼頭設施位，浮架釣點可在魚骨與漂木的失敗副產物中選一；仍不保證成功魚。",
+    "structure.shelter": "階段5穩定住所任務；地盤家具位1。",
+    "meal.soup_basic": "自用恢復基礎20乘品質，或ss.order.meal交付。",
+    "meal.soup_fish": "自用恢復基礎36乘品質，或ss.order.meal交付。",
+    "meal.soup_vegetable": "自用恢復基礎32乘品質，或ss.order.meal交付。",
+    "meal.shared": "自用恢復基礎45乘品質，或ss.order.advanced_cooking交付。",
+    "meal.failed": "自用恢復4，或3份交回收單，返還原餐盒。",
+    "meal.relief_box": "從信箱消耗1恢復40，不生成可交易餐盒。",
+    "bundle.cloth_scrap": "手動拆回4份cloth.edge_scrap，保留每份品質與來源；不能直接加工。",
+    "bundle.thread_end": "手動拆回4份cloth.thread_end，保留每份品質與來源；不能直接加工。",
+    "bundle.wood_chip": "手動拆回4份wood.chip，保留每份品質與來源；不能直接加工。",
+    "bundle.metal_scrap": "手動拆回4份metal.scrap，保留每份品質與來源；不能直接加工。",
+    "bundle.plastic_scrap": "手動拆回4份plastic.scrap，保留每份品質與來源；不能直接加工。",
+    "bundle.paper_scrap": "手動拆回4份paper.scrap，保留每份品質與來源；不能直接加工。"
+  }
+}

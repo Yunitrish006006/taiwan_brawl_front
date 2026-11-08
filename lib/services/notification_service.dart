@@ -1,193 +1,58 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
 import '../models/app_user.dart';
-import '../models/chat_models.dart';
-import 'api_client.dart';
 import 'auth_service.dart';
-import 'local_chat_repository.dart';
-import 'legacy_chat_store.dart';
 import 'legacy_installation_store.dart';
+import 'legacy_pending_message_adapter.dart';
 import 'messaging_core_service.dart';
 import 'notification_remote_source.dart';
-import 'platform_credential_store.dart';
 import 'pending_notification_source.dart';
 import 'push_provider.dart';
-import 'server_message_transport.dart';
-
-class PushConfiguration {
-  const PushConfiguration({
-    required this.fcmEnabled,
-    required this.fcmDeliveryEnabled,
-    required this.enabledPlatforms,
-    required this.projectId,
-    required this.apiKey,
-    required this.appId,
-    required this.messagingSenderId,
-    required this.webVapidKey,
-    this.authDomain,
-    this.storageBucket,
-    this.measurementId,
-    this.iosBundleId,
-  });
-
-  final bool fcmEnabled;
-  final bool fcmDeliveryEnabled;
-  final List<String> enabledPlatforms;
-  final String? projectId;
-  final String? apiKey;
-  final String? appId;
-  final String? messagingSenderId;
-  final String? webVapidKey;
-  final String? authDomain;
-  final String? storageBucket;
-  final String? measurementId;
-  final String? iosBundleId;
-
-  bool get hasFirebaseOptions {
-    return _hasText(projectId) &&
-        _hasText(apiKey) &&
-        _hasText(appId) &&
-        _hasText(messagingSenderId);
-  }
-
-  bool isEnabledForPlatform(String? platform) {
-    if (!fcmEnabled || !fcmDeliveryEnabled || !hasFirebaseOptions) {
-      return false;
-    }
-    if (platform == null || !enabledPlatforms.contains(platform)) {
-      return false;
-    }
-    if (platform == 'web' && !_hasText(webVapidKey)) {
-      return false;
-    }
-    return true;
-  }
-
-  FirebaseOptions toFirebaseOptions() {
-    return FirebaseOptions(
-      apiKey: apiKey!.trim(),
-      appId: appId!.trim(),
-      messagingSenderId: messagingSenderId!.trim(),
-      projectId: projectId!.trim(),
-      authDomain: _nullIfBlank(authDomain),
-      storageBucket: _nullIfBlank(storageBucket),
-      measurementId: _nullIfBlank(measurementId),
-      iosBundleId: _nullIfBlank(iosBundleId),
-    );
-  }
-
-  PushProviderOptions toPushProviderOptions() {
-    return PushProviderOptions(
-      apiKey: apiKey!.trim(),
-      appId: appId!.trim(),
-      messagingSenderId: messagingSenderId!.trim(),
-      projectId: projectId!.trim(),
-      authDomain: _nullIfBlank(authDomain),
-      storageBucket: _nullIfBlank(storageBucket),
-      measurementId: _nullIfBlank(measurementId),
-      iosBundleId: _nullIfBlank(iosBundleId),
-    );
-  }
-
-  static PushConfiguration? fromJson(Map<String, dynamic>? json) {
-    if (json == null) {
-      return null;
-    }
-
-    final fcm = json['fcm'] is Map<String, dynamic>
-        ? json['fcm'] as Map<String, dynamic>
-        : const <String, dynamic>{};
-    final platforms = json['enabledPlatforms'] is List
-        ? (json['enabledPlatforms'] as List)
-              .whereType<String>()
-              .map((value) => value.trim().toLowerCase())
-              .where((value) => value.isNotEmpty)
-              .toSet()
-              .toList()
-        : const <String>[];
-
-    return PushConfiguration(
-      fcmEnabled: fcm['enabled'] == true,
-      fcmDeliveryEnabled: json['deliveryEnabled'] == true,
-      enabledPlatforms: platforms,
-      projectId: _readString(fcm['projectId']),
-      apiKey: _readString(fcm['apiKey']),
-      appId: _readString(fcm['appId']),
-      messagingSenderId: _readString(fcm['messagingSenderId']),
-      webVapidKey: _readString(fcm['webVapidKey']),
-      authDomain: _readString(fcm['authDomain']),
-      storageBucket: _readString(fcm['storageBucket']),
-      measurementId: _readString(fcm['measurementId']),
-      iosBundleId: _readString(fcm['iosBundleId']),
-    );
-  }
-
-  static bool _hasText(String? value) => (value ?? '').trim().isNotEmpty;
-
-  static String? _readString(Object? value) {
-    final text = (value as String?)?.trim();
-    return (text ?? '').isEmpty ? null : text;
-  }
-
-  static String? _nullIfBlank(String? value) {
-    final text = value?.trim();
-    return (text ?? '').isEmpty ? null : text;
-  }
-}
 
 class NotificationService extends ChangeNotifier {
-  NotificationService(
-    ApiClient apiClient, {
-    LegacyChatStore? localRepository,
-    MessagingCoreService? messagingCore,
-    EventAuthenticator? remoteAuthenticator,
-    MessageRepository? eventRepository,
-    CredentialStore? credentials,
-    LegacyInstallationStore? legacyInstallationStore,
-    PushProvider? pushProvider,
-    PendingNotificationSource? pendingNotificationSource,
-    NotificationRemoteSource? remoteSource,
-  }) : _localRepository = localRepository ?? LocalChatRepository(),
+  NotificationService({
+    required LegacyPendingMessageAdapter legacyPendingMessages,
+    required MessagingCoreService messagingCore,
+    required EventAuthenticator? remoteAuthenticator,
+    required CredentialStore credentials,
+    required LegacyInstallationStore legacyInstallationStore,
+    required NotificationPushProvider pushProvider,
+    required PendingNotificationSource pendingNotificationSource,
+    required NotificationRemoteSource remoteSource,
+  }) : _legacyPendingMessages = legacyPendingMessages,
        _messagingCore = messagingCore,
        _remoteAuthenticator = remoteAuthenticator,
-       _eventRepository = eventRepository,
-       _credentials = credentials ?? PlatformCredentialStore(),
-       _legacyInstallationStore =
-           legacyInstallationStore ?? HiveLegacyInstallationStore(),
-       _pushProvider = pushProvider ?? FirebasePushProvider(),
-       _pendingNotificationSource =
-           pendingNotificationSource ??
-           ServerPendingNotificationSource(apiClient),
-       _remoteSource =
-           remoteSource ?? ServerNotificationRemoteSource(apiClient);
+       _credentials = credentials,
+       _legacyInstallationStore = legacyInstallationStore,
+       _pushProvider = pushProvider,
+       _pendingNotificationSource = pendingNotificationSource,
+       _remoteSource = remoteSource;
 
   static const Duration _pollInterval = Duration(seconds: 2);
   static const String _installationIdKey = 'push.installation_id';
 
   final NotificationRemoteSource _remoteSource;
-  final LegacyChatStore _localRepository;
-  final MessagingCoreService? _messagingCore;
+  final LegacyPendingMessageAdapter _legacyPendingMessages;
+  final MessagingCoreService _messagingCore;
   final EventAuthenticator? _remoteAuthenticator;
-  final MessageRepository? _eventRepository;
   final CredentialStore _credentials;
   final LegacyInstallationStore _legacyInstallationStore;
-  final PushProvider _pushProvider;
+  final NotificationPushProvider _pushProvider;
   final PendingNotificationSource _pendingNotificationSource;
 
   Future<void> _syncQueue = Future.value();
   Timer? _pollTimer;
   bool _pollInFlight = false;
   bool _didSyncLoggedOutState = false;
-  bool _firebaseInitialized = false;
+  bool _pushProviderInitialized = false;
   bool _pushConfigLoaded = false;
   bool _canRequestWebPushPermission = kIsWeb;
-  PushConfiguration? _pushConfiguration;
+  PushProviderConfiguration? _pushConfiguration;
   int? _currentUserId;
   int? _registeredPushUserId;
   int? _activeConversationUserId;
@@ -291,8 +156,8 @@ class NotificationService extends ChangeNotifier {
 
     try {
       final config = await _loadPushConfiguration();
-      if (config != null && config.hasFirebaseOptions) {
-        await _ensureFirebaseInitialized(config);
+      if (config != null && _pushProvider.canDeleteToken(config)) {
+        await _ensurePushProviderInitialized(config);
         await _pushProvider.deleteToken();
       }
     } catch (_) {
@@ -300,20 +165,21 @@ class NotificationService extends ChangeNotifier {
     }
   }
 
-  Future<void> _ensureFirebaseInitialized(PushConfiguration config) async {
-    if (_firebaseInitialized) {
+  Future<void> _ensurePushProviderInitialized(
+    PushProviderConfiguration config,
+  ) async {
+    if (_pushProviderInitialized) {
       return;
     }
 
-    _firebaseInitialized = true;
+    _pushProviderInitialized = true;
     if (kIsWeb) {
       _handleOpenedConversationUserId(
         _readInt(Uri.base.queryParameters['conversationUserId']),
       );
     }
     await _pushProvider.initialize(
-      options: config.toPushProviderOptions(),
-      isWeb: kIsWeb,
+      configuration: config,
       showForegroundNotifications: !kIsWeb,
       onMessageOpened: _handleRemoteMessage,
       onForegroundMessage: _handleRemoteMessage,
@@ -349,19 +215,20 @@ class NotificationService extends ChangeNotifier {
   Future<void> _registerCurrentDevice(AppUser user) async {
     final platform = _currentPushPlatform;
     final config = await _loadPushConfiguration();
-    if (config == null || !config.isEnabledForPlatform(platform)) {
+    if (config == null ||
+        !_pushProvider.isEnabledForPlatform(config, platform)) {
       _setCanRequestWebPushPermission(false);
       return;
     }
 
-    await _ensureFirebaseInitialized(config);
-    final token = await _requestFcmToken(config);
+    await _ensurePushProviderInitialized(config);
+    final token = await _requestPushToken();
     if ((token ?? '').isEmpty) {
       await unregisterCurrentDevice();
       return;
     }
 
-    await _registerFcmToken(
+    await _registerPushToken(
       token!.trim(),
       platform: platform!,
       locale: user.locale,
@@ -375,14 +242,14 @@ class NotificationService extends ChangeNotifier {
       return;
     }
 
-    await _registerFcmToken(
+    await _registerPushToken(
       token.trim(),
       platform: platform,
       locale: _currentUserLocale,
     );
   }
 
-  Future<String?> _requestFcmToken(PushConfiguration config) async {
+  Future<String?> _requestPushToken() async {
     try {
       final permission = await _pushProvider.requestPermission();
       _updateWebPermissionPrompt(permission);
@@ -390,11 +257,9 @@ class NotificationService extends ChangeNotifier {
         return null;
       }
 
-      return _pushProvider.getToken(
-        vapidKey: kIsWeb ? config.webVapidKey?.trim() : null,
-      );
+      return _pushProvider.getToken();
     } catch (error, stackTrace) {
-      debugPrint('FCM registration failed: $error');
+      debugPrint('Push registration failed: $error');
       debugPrintStack(stackTrace: stackTrace);
       return null;
     }
@@ -426,7 +291,7 @@ class NotificationService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _registerFcmToken(
+  Future<void> _registerPushToken(
     String token, {
     required String platform,
     required String? locale,
@@ -446,10 +311,10 @@ class NotificationService extends ChangeNotifier {
         'locale': locale,
         'appVersion': packageInfo,
         'userAgent': _platformUserAgent,
-        'provider': 'fcm',
+        'provider': _pushProvider.providerId,
       });
     } catch (error, stackTrace) {
-      debugPrint('Register FCM device failed: $error');
+      debugPrint('Register push device failed: $error');
       debugPrintStack(stackTrace: stackTrace);
     }
   }
@@ -461,7 +326,7 @@ class NotificationService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<PushConfiguration?> _loadPushConfiguration() async {
+  Future<PushProviderConfiguration?> _loadPushConfiguration() async {
     if (_pushConfigLoaded) {
       return _pushConfiguration;
     }
@@ -469,8 +334,9 @@ class NotificationService extends ChangeNotifier {
 
     try {
       final response = await _remoteSource.loadConfiguration();
-      _pushConfiguration = PushConfiguration.fromJson(
-        response['config'] as Map<String, dynamic>?,
+      final raw = response['config'];
+      _pushConfiguration = _pushProvider.parseConfiguration(
+        raw is Map ? Map<String, dynamic>.from(raw) : null,
       );
     } catch (error, stackTrace) {
       debugPrint('Load push config failed: $error');
@@ -604,25 +470,26 @@ class NotificationService extends ChangeNotifier {
     final type = (item['type'] as String? ?? 'message').trim();
     final ackIds = <int>[];
 
-    final eventRepository = _messagingCore?.repository ?? _eventRepository;
-    final event = eventRepository == null
-        ? null
-        : ServerMessageTransport.eventFromPendingRow(
-            item,
-            selfId: selfId,
-            friendId: senderId,
-          );
+    final event = _pendingNotificationSource.eventFromPendingRow(
+      item,
+      selfId: selfId,
+      friendId: senderId,
+    );
     if (event != null) {
-      if (_messagingCore case final core?) {
-        await core.acceptRemote(event, authenticator: _remoteAuthenticator);
-      } else {
-        await _eventRepository!.acceptRemote(
-          event,
-          authenticator: _remoteAuthenticator,
-        );
+      final accepted = await _messagingCore.acceptRemote(
+        event,
+        authenticator: _remoteAuthenticator,
+      );
+      if (!accepted) {
+        if (_messagingCore.canDurablyRecordConflicts && pendingId != null) {
+          ackIds.add(pendingId);
+        }
+        return ackIds;
       }
       if (event.type != MessageEventType.created) {
-        if (pendingId != null) ackIds.add(pendingId);
+        if (_messagingCore.storageStatus.isDurable && pendingId != null) {
+          ackIds.add(pendingId);
+        }
         return ackIds;
       }
       final hasEnvelope =
@@ -630,29 +497,23 @@ class NotificationService extends ChangeNotifier {
           item['message_id'] != null &&
           item['event_type'] != null;
       if (hasEnvelope) {
-        if (pendingId != null) ackIds.add(pendingId);
+        if (_messagingCore.storageStatus.isDurable && pendingId != null) {
+          ackIds.add(pendingId);
+        }
         _setPendingConversation(senderId);
         return ackIds;
       }
     }
 
-    if (type == 'recall') {
-      final messageKey = (item['text'] as String? ?? '').trim();
-      if (messageKey.isNotEmpty) {
-        await _localRepository.markRecalled(selfId, senderId, messageKey);
-      }
-      if (pendingId != null) ackIds.add(pendingId);
-      return ackIds;
-    }
-
-    final message = ChatMessage.fromJson(item);
-    await _localRepository.saveMessage(selfId, message);
-    if (message.pendingId != null) {
-      ackIds.add(message.pendingId!);
-    } else if (pendingId != null) {
-      ackIds.add(pendingId);
-    }
-    _setPendingConversation(senderId);
+    final legacyResult = await _legacyPendingMessages.apply(
+      item,
+      selfId: selfId,
+      friendId: senderId,
+      type: type,
+      pendingId: pendingId,
+    );
+    ackIds.addAll(legacyResult.acknowledgedIds);
+    if (legacyResult.opensConversation) _setPendingConversation(senderId);
     return ackIds;
   }
 

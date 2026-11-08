@@ -8,6 +8,38 @@ import 'package:taiwan_brawl/services/pending_notification_source.dart';
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
 void main() {
+  test('server source maps event rows through the neutral source contract', () {
+    final source = ServerPendingNotificationSource(
+      ApiClient(
+        client: MockClient((_) async => http.Response('{}', 200)),
+        credentials: _MemoryCredentials(),
+      ),
+    );
+    final PendingNotificationSource neutralSource = source;
+
+    final event = neutralSource.eventFromPendingRow(
+      {
+        'id': 31,
+        'sender_id': 9,
+        'event_id': 'event-31',
+        'message_id': 'message-7',
+        'event_type': 'edited',
+        'revision': 2,
+        'created_at': '2026-10-28T09:00:00.000Z',
+        'text': 'edited body',
+      },
+      selfId: 1,
+      friendId: 9,
+    );
+
+    expect(event, isNotNull);
+    expect(event!.eventId, 'event-31');
+    expect(event.conversationId, '1:9');
+    expect(event.type, MessageEventType.edited);
+    expect(event.body, 'edited body');
+    source.dispose();
+  });
+
   test('delegates rows and acknowledges only handled notifications', () async {
     final requests = <http.Request>[];
     final client = MockClient((request) async {
@@ -42,8 +74,12 @@ void main() {
 
     expect(handled, hasLength(1));
     expect(handled.single['sender_id'], 9);
-    final ack = requests.singleWhere((request) => request.url.path.endsWith('/ack'));
-    expect(jsonDecode(ack.body), {'ids': [1]});
+    final ack = requests.singleWhere(
+      (request) => request.url.path.endsWith('/ack'),
+    );
+    expect(jsonDecode(ack.body), {
+      'ids': [1],
+    });
     source.dispose();
   });
 

@@ -1,0 +1,1877 @@
+{
+  "schemaVersion": 1,
+  "status": "prototype-design-policy",
+  "rules": "Each recipe is governed jointly by this explicit policy, the numeric recipe table, and chapter17 semantics; retained identities are not duplicated outputs.",
+  "defaultFailureResolution": {
+    "mode": "sameOutputsQualityLoss",
+    "qualityLoss": 10,
+    "consumeSelectedInputs": true
+  },
+  "manualCheckpointTemplates": {
+    "wash": [
+      { "prompt": "第 1 個污點如何清理？", "options": ["沿提示覆蓋污點至完整", "只點污點旁邊", "跳過污點"], "correctOption": 0 },
+      { "prompt": "第 2 個污點如何清理？", "options": ["不改變水種，照提示覆蓋", "把污水直接當開水", "略過這一層"], "correctOption": 0 },
+      { "prompt": "完成清洗前要確認什麼？", "options": ["三個污點都完成覆蓋", "只看動畫是否結束", "把可重用工具丟棄"], "correctOption": 0 }
+    ],
+    "strike": [
+      { "prompt": "第 1 次整形應落在哪裡？", "options": ["提示圈中心", "材料外側", "任意位置"], "correctOption": 0 },
+      { "prompt": "第 2 次敲擊如何判定合格？", "options": ["落點仍在提示圈內", "加快速度即可", "偏離提示區也算"], "correctOption": 0 },
+      { "prompt": "最後一次操作要遵守什麼？", "options": ["依提示定位，不靠現實力道判定", "追加未列出的材料", "忽略模具位置"], "correctOption": 0 }
+    ],
+    "cut": [
+      { "prompt": "裁切從哪裡開始？", "options": ["標示起點", "輪廓外任意點", "直接切下終點"], "correctOption": 0 },
+      { "prompt": "轉折處如何操作？", "options": ["沿標示輪廓轉向", "切穿材料中心", "忽略轉折"], "correctOption": 0 },
+      { "prompt": "裁切在哪裡結束？", "options": ["標示終點", "超出輪廓一段", "回到起點重切"], "correctOption": 0 }
+    ],
+    "assemble": [
+      { "prompt": "組裝第一步放置什麼？", "options": ["底件對準影子輪廓", "先放最外側零件", "略過底件定位"], "correctOption": 0 },
+      { "prompt": "連接件應如何放置？", "options": ["對準指定接點", "放在任意空格", "當成消耗材料丟棄"], "correctOption": 0 },
+      { "prompt": "提交前檢查什麼？", "options": ["三件位置與固定提示一致", "只確認物件名稱", "把可重用零件移出棋盤"], "correctOption": 0 }
+    ],
+    "coat": [
+      { "prompt": "左側塗層要達到什麼？", "options": ["依提示覆蓋至少 80%", "完全不覆蓋", "把塗料用在棋盤上"], "correctOption": 0 },
+      { "prompt": "中間區域如何處理？", "options": ["補足提示覆蓋量", "重複消耗額外塗料", "略過並宣告成功"], "correctOption": 0 },
+      { "prompt": "右側完成後如何確認？", "options": ["查看三區覆蓋量", "只看塗料剩餘量", "把塗料瓶當成產物"], "correctOption": 0 }
+    ],
+    "sew": [
+      { "prompt": "第 1 針應穿過哪裡？", "options": ["第 1 個標示孔中心", "孔外任意位置", "跳到最後一孔"], "correctOption": 0 },
+      { "prompt": "第 2 針如何接續？", "options": ["依序穿過第 2 個標示孔", "反向跳過標示孔", "穿過材料邊緣"], "correctOption": 0 },
+      { "prompt": "收線前最後一針放在哪裡？", "options": ["第 3 個標示孔中心", "第 1 孔重複穿刺", "孔外任意位置"], "correctOption": 0 }
+    ],
+    "braid": [
+      { "prompt": "交織第 1 段怎麼放？", "options": ["依箭頭從左側開始", "跳到右側", "任意方向穿過"], "correctOption": 0 },
+      { "prompt": "交織第 2 段放在哪裡？", "options": ["依序穿過中央位置", "跳過中央", "反向拉出材料"], "correctOption": 0 },
+      { "prompt": "最後一段要注意什麼？", "options": ["依箭頭完成右側並維持提示張力", "額外無限補扣線材", "忽略張力提示"], "correctOption": 0 }
+    ],
+    "align": [
+      { "prompt": "先校準哪一處？", "options": ["兩端標記對齊", "只看材料顏色", "把兩端交叉"], "correctOption": 0 },
+      { "prompt": "接縫或直角如何確認？", "options": ["偏差在提示容差內", "任意角度都可", "不看校準標記"], "correctOption": 0 },
+      { "prompt": "完成定位前最後檢查什麼？", "options": ["接合位置與影子輪廓一致", "增加表外材料", "先移除仍需保留的零件"], "correctOption": 0 }
+    ],
+    "mix": [
+      { "prompt": "第 1 次配比調整如何選？", "options": ["選提示標示的滑桿區段", "任意選最小值", "加入未列材料"], "correctOption": 0 },
+      { "prompt": "第 2 次調整以什麼為準？", "options": ["提示的比例／濃稠度目標", "隱藏配方猜測", "把所有材料一次加倍"], "correctOption": 0 },
+      { "prompt": "混合完成何時停止？", "options": ["達到提示目標區段", "無限攪拌到耗盡工具", "忽略目標再補材料"], "correctOption": 0 }
+    ],
+    "heat": [
+      { "prompt": "起火後先控制哪個火力區段？", "options": ["依提示維持穩定加熱", "使用過低火力", "任意拉到最大火力"], "correctOption": 0 },
+      { "prompt": "中段如何維持水溫？", "options": ["把滑桿對準本步提示區", "忽略提示持續升溫", "關火後直接完成"], "correctOption": 0 },
+      { "prompt": "完成煮沸前確認什麼？", "options": ["三段控火都符合提示", "只看水的品質數字", "不檢查煮沸旗標"], "correctOption": 0 }
+    ]
+  },
+  "qualityTraitRules": [
+    {
+      "traitId": "intact_fibre",
+      "polarity": "positive",
+      "inputPrefixes": ["cloth.", "rope.", "line."],
+      "outputPrefixes": ["cloth.", "rope.", "line.", "tool."],
+      "modifier": 3
+    },
+    {
+      "traitId": "frayed",
+      "polarity": "negative",
+      "inputPrefixes": ["cloth.", "rope.", "line."],
+      "outputPrefixes": ["cloth.", "rope.", "line.", "tool."],
+      "modifier": -3
+    },
+    {
+      "traitId": "damp",
+      "polarity": "negative",
+      "inputPrefixes": ["wood.", "paper."],
+      "outputPrefixes": ["wood.", "paper.", "structure.", "storage."],
+      "modifier": -3
+    },
+    {
+      "traitId": "clear",
+      "polarity": "positive",
+      "inputPrefixes": ["water.filtered"],
+      "outputPrefixes": ["paper.pulp"],
+      "recipeIds": ["ss.recipe.mix_pulp"],
+      "modifier": 3
+    },
+    {
+      "traitId": "even_pulp",
+      "polarity": "positive",
+      "inputPrefixes": ["paper.pulp", "paper.board"],
+      "outputPrefixes": ["paper.board", "paper.packaging"],
+      "recipeIds": ["ss.recipe.form_paperboard", "ss.recipe.seal_packaging"],
+      "modifier": 3
+    },
+    {
+      "traitId": "rich_ingredient",
+      "polarity": "positive",
+      "inputPrefixes": ["fish.meat"],
+      "outputPrefixes": ["meal."],
+      "recipeIds": ["ss.recipe.soup_fish", "ss.recipe.shared_meal"],
+      "modifier": 3
+    },
+    {
+      "traitId": "rich_ingredient",
+      "polarity": "positive",
+      "inputPrefixes": ["food.cleaned"],
+      "outputPrefixes": ["meal."],
+      "recipeIds": ["ss.recipe.soup_basic", "ss.recipe.soup_vegetable", "ss.recipe.soup_fish", "ss.recipe.shared_meal"],
+      "modifier": 3
+    },
+    {
+      "traitId": "mineral_rich",
+      "polarity": "positive",
+      "inputPrefixes": ["container.clean", "container.clean_jar", "container.used_intact"],
+      "outputPrefixes": ["meal."],
+      "recipeIds": ["ss.recipe.soup_basic", "ss.recipe.soup_vegetable", "ss.recipe.soup_fish"],
+      "modifier": 3
+    },
+    {
+      "traitId": "rough_cut",
+      "polarity": "negative",
+      "inputPrefixes": ["fish.meat"],
+      "outputPrefixes": ["meal."],
+      "recipeIds": ["ss.recipe.soup_fish", "ss.recipe.shared_meal"],
+      "modifier": -3
+    },
+    {
+      "traitId": "rough_cut",
+      "polarity": "negative",
+      "inputPrefixes": ["food.cleaned"],
+      "outputPrefixes": ["meal."],
+      "recipeIds": ["ss.recipe.soup_basic", "ss.recipe.soup_vegetable", "ss.recipe.soup_fish", "ss.recipe.shared_meal"],
+      "modifier": -3
+    },
+    {
+      "traitId": "smooth_metal",
+      "polarity": "positive",
+      "inputPrefixes": ["metal."],
+      "outputPrefixes": ["tool."],
+      "recipeIds": ["ss.recipe.crowbar", "ss.recipe.pliers", "ss.recipe.basic_rod", "ss.recipe.awl_bone", "ss.recipe.stove", "ss.recipe.condenser"],
+      "modifier": 3
+    },
+    {
+      "traitId": "rusted",
+      "polarity": "negative",
+      "inputPrefixes": ["metal."],
+      "outputPrefixes": ["tool."],
+      "recipeIds": ["ss.recipe.crowbar", "ss.recipe.pliers", "ss.recipe.basic_rod", "ss.recipe.awl_bone", "ss.recipe.stove", "ss.recipe.condenser"],
+      "modifier": -3
+    },
+    {
+      "traitId": "sealed",
+      "polarity": "positive",
+      "inputPrefixes": ["plastic.", "cloth.waterproof"],
+      "outputPrefixes": ["plastic.seal", "structure.tarp", "bag.weatherproof", "tool.condenser"],
+      "recipeIds": ["ss.recipe.seal_part", "ss.recipe.condenser", "ss.recipe.tarp", "ss.recipe.weather_bag"],
+      "modifier": 3
+    },
+    {
+      "traitId": "brittle",
+      "polarity": "negative",
+      "inputPrefixes": ["plastic."],
+      "outputPrefixes": ["plastic.seal", "plastic.float_part"],
+      "recipeIds": ["ss.recipe.seal_part", "ss.recipe.float_part"],
+      "modifier": -3
+    },
+    {
+      "traitId": "smoky",
+      "polarity": "negative",
+      "inputPrefixes": ["fuel."],
+      "outputPrefixes": [""],
+      "operationIds": ["heat", "cook"],
+      "modifier": -3
+    }
+  ],
+  "policies": [
+    {
+      "id": "ss.recipe.unpick_cloth",
+      "station": "recycler",
+      "interaction": "cut",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "cloth.rag_piece"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "capped-at-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.join_thread",
+      "station": "recycler",
+      "interaction": "cut",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "cloth.thread_end"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.sew_strip",
+      "station": "tutorial",
+      "interaction": "sew",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "cloth.rag_piece"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      },
+      "manualCheckpoints": [
+        {
+          "prompt": "先從哪裡起針？",
+          "options": ["直接打結", "沿布邊針孔起針", "從布中央穿入"],
+          "correctOption": 1
+        },
+        {
+          "prompt": "兩片破布如何對接？",
+          "options": ["孔位錯開", "孔位對齊後交替縫合", "只縫其中一側"],
+          "correctOption": 1
+        },
+        {
+          "prompt": "收線時要保持什麼狀態？",
+          "options": ["拉到布面起皺", "平整且不鬆垂", "刻意留一段鬆線"],
+          "correctOption": 1
+        }
+      ]
+    },
+    {
+      "id": "ss.recipe.patch_cloth",
+      "station": "recycler",
+      "interaction": "sew",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "cloth.repair_strip"
+      ],
+      "qualityLoss": 8,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      }
+    },
+    {
+      "id": "ss.recipe.braid_binding",
+      "station": "recycler",
+      "interaction": "braid",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "cloth.edge_scrap"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      }
+    },
+    {
+      "id": "ss.recipe.braid_rope",
+      "station": "recycler",
+      "interaction": "braid",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "cloth.binding"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      }
+    },
+    {
+      "id": "ss.recipe.mix_pulp",
+      "station": "recycler",
+      "interaction": "mix",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "paper.scrap"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      },
+      "stateEffect": {
+        "type": "transformContainers",
+        "containers": [
+          {
+            "containerItemId": "container.clean_jar",
+            "optional": true,
+            "requiredContentItemId": "water.turbid",
+            "successContentItemId": null,
+            "failureContentItemId": null
+          },
+          {
+            "containerItemId": "container.clean_jar",
+            "optional": true,
+            "requiredContentItemId": "water.filtered",
+            "successContentItemId": null,
+            "failureContentItemId": null
+          },
+          {
+            "containerItemId": "container.clean",
+            "optional": true,
+            "requiredContentItemId": "water.turbid",
+            "successContentItemId": null,
+            "failureContentItemId": null
+          },
+          {
+            "containerItemId": "container.clean",
+            "optional": true,
+            "requiredContentItemId": "water.filtered",
+            "successContentItemId": null,
+            "failureContentItemId": null
+          }
+        ]
+      },
+      "traitResolution": {
+        "inherit": [],
+        "polarity": {"even_pulp": "positive"},
+        "success": {},
+        "precise": {"even_pulp": true},
+        "failure": {}
+      }
+    },
+    {
+      "id": "ss.recipe.recycle_glue",
+      "station": "recycler",
+      "interaction": "mix",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "adhesive.residue"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      }
+    },
+    {
+      "id": "ss.recipe.press_rod",
+      "station": "workbench",
+      "interaction": "align",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "wood.chip"
+      ],
+      "qualityLoss": 8,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      },
+      "traitResolution": {
+        "inherit": [{ "inputItemId": "wood.chip", "map": { "cracked": "cracked" } }],
+        "polarity": { "cracked": "negative" },
+        "success": {}, "precise": {}, "failure": {}
+      },
+      "manualCheckpoints": [
+        { "prompt": "壓合前先怎麼排木片？", "options": ["順紋對齊三片碎木", "交叉堆成一團", "只放一片"], "correctOption": 0 },
+        { "prompt": "膠料應塗在哪裡？", "options": ["相鄰木片接觸面", "夾具外側", "木片的單一端面"], "correctOption": 0 },
+        { "prompt": "夾具何時固定？", "options": ["木片排齊並塗膠後均勻壓緊", "先取走膠料再壓", "只壓木條一端"], "correctOption": 0 }
+      ]
+    },
+    {
+      "id": "ss.recipe.nail_board",
+      "station": "workbench",
+      "interaction": "strike",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "wood.rod"
+      ],
+      "qualityLoss": 8,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      },
+      "traitResolution": {
+        "inherit": [],
+        "polarity": {
+          "joint_reinforced": "positive",
+          "joint_skewed": "negative"
+        },
+        "success": {},
+        "precise": { "joint_reinforced": true },
+        "failure": { "joint_skewed": true }
+      },
+      "manualCheckpoints": [
+        { "prompt": "第一個釘點要對準哪裡？", "options": ["木條接合標記中心", "木板邊緣外", "任意位置"], "correctOption": 0 },
+        { "prompt": "敲擊時如何固定木料？", "options": ["用夾具固定並沿標記敲入", "徒手讓木料滑動", "敲在釘件束上"], "correctOption": 0 },
+        { "prompt": "完成後檢查什麼？", "options": ["釘頭平整且接縫穩固", "釘子仍突出", "木條可以鬆動"], "correctOption": 0 }
+      ]
+    },
+    {
+      "id": "ss.recipe.assemble_frame",
+      "station": "workbench",
+      "interaction": "align",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "wood.board"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "traitResolution": {
+        "inherit": [
+          {
+            "inputItemId": "wood.board",
+            "map": {
+              "joint_reinforced": "joint_reinforced",
+              "joint_skewed": "joint_skewed"
+            }
+          }
+        ],
+        "polarity": {
+          "cracked": "negative",
+          "joint_reinforced": "positive",
+          "joint_skewed": "negative"
+        },
+        "success": {},
+        "precise": {},
+        "failure": {}
+      }
+    },
+    {
+      "id": "ss.recipe.form_nails",
+      "station": "workbench",
+      "interaction": "strike",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "metal.bar"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.press_plastic",
+      "station": "workbench",
+      "interaction": "heat",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "plastic.scrap"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "traitResolution": {
+        "inherit": [],
+        "polarity": {"sealed":"positive","brittle":"negative"},
+        "success": {}, "precise": {"sealed":true}, "failure": {"brittle":true}
+      }
+    },
+    {
+      "id": "ss.recipe.form_paperboard",
+      "station": "workbench",
+      "interaction": "align",
+      "durationSeconds": 10,
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      },
+      "primaryInputs": [
+        "paper.pulp"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "traitResolution": {
+        "inherit": [],
+        "polarity": {"even_pulp": "positive"},
+        "success": {},
+        "precise": {"even_pulp": true},
+        "failure": {}
+      }
+    },
+    {
+      "id": "ss.recipe.coat_cloth",
+      "station": "workbench",
+      "interaction": "coat",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "cloth.patchwork"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "traitResolution": {
+        "inherit": [], "polarity": {"sealed":"positive"},
+        "success": {}, "precise": {"sealed":true}, "failure": {}
+      }
+    },
+    {
+      "id": "ss.recipe.wash_container",
+      "station": "recycler",
+      "interaction": "wash",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "container.used_intact"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "preserve-primary",
+      "retainedInputIdentities": [
+        "container.used_intact"
+      ],
+      "stateEffect": {
+        "type": "transformObject",
+        "fromItemId": "container.used_intact",
+        "toItemId": "container.clean",
+        "requireEmptyContainer": true,
+        "applyOnFailure": false,
+        "targetContainerState": {
+          "cleanliness": "clean"
+        }
+      },
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 0,
+        "consumeSelectedInputs": true
+      },
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.recycle_glass",
+      "station": "recycler",
+      "interaction": "sort",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "container.broken_bottle"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.wooden_crate",
+      "station": "workbench",
+      "interaction": "align",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "wood.board"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      },
+      "manualCheckpoints": [
+        { "prompt": "先將底板放到哪裡？", "options": ["對齊木箱底座輪廓", "先放箱角外側", "把底板倒置懸空"], "correctOption": 0 },
+        { "prompt": "釘件和膠料如何固定箱壁？", "options": ["沿接合處定位並均勻固定", "集中釘在單一角", "只把釘件束放入箱內"], "correctOption": 0 },
+        { "prompt": "完成組裝後先檢查什麼？", "options": ["四角穩固且箱體方正", "箱壁可任意晃動", "把材料數量當作容量"], "correctOption": 0 }
+      ]
+    },
+    {
+      "id": "ss.recipe.upgrade_bag",
+      "station": "workbench",
+      "interaction": "sew",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "cloth.patchwork"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "reusableTools": ["tool.needle"],
+      "stateEffect": {
+        "type": "upgradeBackpack",
+        "fromItemId": "bag.basic",
+        "toItemId": "bag.reinforced",
+        "capacity": 24
+      },
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 0,
+        "consumeSelectedInputs": true
+      },
+      "manualCheckpoints": [
+        { "prompt": "拼接布先如何排列？", "options": ["重疊接縫並對齊受力方向", "把布片散開", "只用一片布"], "correctOption": 0 },
+        { "prompt": "綁帶應加在哪裡？", "options": ["背帶與包身受力接點", "袋口中央任意處", "針具上"], "correctOption": 0 },
+        { "prompt": "完成縫補後如何升級？", "options": ["保留原背包與物品，只擴大格盤", "丟棄舊背包並生成第二個", "清空背包再縮小容量"], "correctOption": 0 }
+      ]
+    },
+    {
+      "id": "ss.recipe.settle_muddy",
+      "station": "kitchen",
+      "interaction": "filter",
+      "durationSeconds": 8,
+      "primaryInputs": [
+        "water.muddy"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.filter_turbid",
+      "station": "kitchen",
+      "interaction": "filter",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "container.clean"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 0,
+        "consumeSelectedInputs": true
+      },
+      "stateEffect": {
+        "type": "transformContainers",
+        "containers": [
+          {
+            "containerItemId": "container.clean",
+            "requiredContentItemId": "water.turbid",
+            "successContentItemId": "water.filtered",
+            "failureContentItemId": "water.turbid",
+            "successCleanliness": "utility",
+            "failureCleanliness": "utility",
+            "successRequiresBoiling": false,
+            "failureRequiresBoiling": false,
+            "contentTraitResolution": {"precise": {"clear": true}}
+          }
+        ]
+      },
+      "reusableTools": ["material.filter_cloth"],
+      "manualCheckpoints": [
+        { "prompt": "第一層先如何處理？", "options": ["先讓濾布攔住明顯雜質", "直接倒入木炭後立刻取水", "跳過濾布"], "correctOption": 0 },
+        { "prompt": "木炭層應放在哪裡？", "options": ["置於濾布之後再慢慢過水", "放在接水容器外", "把木炭留到結束後才加入"], "correctOption": 0 },
+        { "prompt": "接水時要確認什麼？", "options": ["水通過完整濾層並流入原容器", "把未過濾水混回去", "丟棄原容器並另造一瓶"], "correctOption": 0 }
+      ]
+    },
+    {
+      "id": "ss.recipe.filter_dirty",
+      "station": "kitchen",
+      "interaction": "filter",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "container.clean"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "inputGroups": [
+        [
+          { "itemId": "container.clean", "quantity": 1 },
+          { "itemId": "material.charcoal", "quantity": 1 }
+        ]
+      ],
+      "reusableTools": ["material.filter_cloth"],
+      "stateEffect": {
+        "type": "transformContainers",
+        "containers": [
+          {
+            "containerItemId": "container.clean",
+            "requiredContentItemId": "water.dirty",
+            "successContentItemId": "water.filtered",
+            "failureContentItemId": "water.dirty",
+            "successCleanliness": "utility",
+            "failureCleanliness": "utility",
+            "successRequiresBoiling": true,
+            "failureRequiresBoiling": false,
+            "preserveContainerContentSource": true,
+            "preserveContainerContentTraits": true,
+            "contentTraitResolution": {"precise": {"clear": true}}
+          }
+        ]
+      },
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 0,
+        "consumeSelectedInputs": true
+      },
+      "manualCheckpoints": [
+        { "prompt": "髒水處理前先確認什麼？", "options": ["選擇有污染內容的原瓶並隔離食用用途", "直接倒進料理鍋", "用乾淨水稀釋就算完成"], "correctOption": 0 },
+        { "prompt": "濾層如何排列？", "options": ["濾布先攔截，再經木炭層", "木炭放在接水瓶外", "跳過濾布與木炭"], "correctOption": 0 },
+        { "prompt": "過濾完成後還要記住什麼？", "options": ["保留同一瓶並標記必須煮沸", "清除污染史即可直接料理", "丟掉瓶子重造水"], "correctOption": 0 }
+      ]
+    },
+    {
+      "id": "ss.recipe.boil_water",
+      "station": "kitchen",
+      "interaction": "heat",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "container.clean",
+        "container.clean_jar"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "stateEffect": {
+        "type": "transformContainers",
+        "containers": [
+          {
+            "containerItemId": "container.clean",
+            "optional": true,
+            "requiredContentItemId": "water.filtered",
+            "successContentItemId": "water.boiled",
+            "failureContentItemId": "water.filtered",
+            "successCleanliness": "utility",
+            "failureCleanliness": "utility",
+            "successRequiresBoiling": false,
+            "failureRequiresBoiling": true,
+            "preserveContainerContentQuality": true,
+            "preserveContainerContentSource": true,
+            "preserveContainerContentTraits": true
+          },
+          {
+            "containerItemId": "container.clean_jar",
+            "optional": true,
+            "requiredContentItemId": "water.filtered",
+            "successContentItemId": "water.boiled",
+            "failureContentItemId": "water.filtered",
+            "successCleanliness": "utility",
+            "failureCleanliness": "utility",
+            "successRequiresBoiling": false,
+            "failureRequiresBoiling": true,
+            "preserveContainerContentQuality": true,
+            "preserveContainerContentSource": true,
+            "preserveContainerContentTraits": true
+          }
+        ]
+      },
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 0,
+        "consumeSelectedInputs": true
+      }
+    },
+    {
+      "id": "ss.recipe.distill_water",
+      "station": "kitchen",
+      "interaction": "heat",
+      "durationSeconds": 15,
+      "primaryInputs": [
+        "container.clean"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "inputGroups": [
+        [
+          { "itemId": "container.clean", "quantity": 1 },
+          { "itemId": "fuel.dry", "quantity": 2 }
+        ]
+      ],
+      "reusableTools": ["tool.condenser"],
+      "stateEffect": {
+        "type": "transformContainerContent",
+        "containerItemId": "container.clean",
+        "fromContentItemId": "water.filtered",
+        "toContentItemId": "water.distilled",
+        "successCleanliness": "utility",
+        "successRequiresBoiling": false,
+        "preserveContainerContentQuality": true
+      },
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 0,
+        "consumeSelectedInputs": true
+      }
+    },
+    {
+      "id": "ss.recipe.wash_filter",
+      "station": "kitchen",
+      "interaction": "wash",
+      "durationSeconds": 6,
+      "primaryInputs": [],
+      "qualityLoss": 0,
+      "qualityMode": "preserve-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.cut_filter",
+      "station": "workbench",
+      "interaction": "sew",
+      "durationSeconds": 8,
+      "primaryInputs": [
+        "cloth.patchwork"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.fillet_fish",
+      "station": "dock",
+      "interaction": "cut",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "fish.raw"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "capped-at-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "traitResolution": {
+        "inherit": [],
+        "polarity": {
+          "rich_ingredient": "positive",
+          "rough_cut": "negative"
+        },
+        "success": {},
+        "precise": {"rich_ingredient": true},
+        "failure": {"rough_cut": true}
+      },
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      },
+      "failureOutputs": [
+        { "item": "fish.meat", "quantity": 1 },
+        { "item": "fish.bone", "quantity": 1 },
+        { "item": "food.scrap", "quantity": 1 }
+      ],
+      "manualCheckpoints": [
+        { "prompt": "下刀從哪裡開始？", "options": ["魚骨標記起點", "魚腹中央", "魚尾外側"], "correctOption": 0 },
+        { "prompt": "刀線如何沿魚身移動？", "options": ["貼著魚骨標記前進", "橫切魚腹", "偏離魚骨切穿魚肉"], "correctOption": 0 },
+        { "prompt": "切分完成前要在哪裡收刀？", "options": ["標示終點", "魚頭外側", "回到起點重切"], "correctOption": 0 }
+      ]
+    },
+    {
+      "id": "ss.recipe.clean_food",
+      "station": "kitchen",
+      "interaction": "wash",
+      "durationSeconds": 8,
+      "primaryInputs": [
+        "food.greens",
+        "food.edible"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 0,
+        "consumeSelectedInputs": true
+      },
+      "failureOutputs": [
+        { "item": "food.cleaned", "quantity": 1 },
+        { "item": "food.scrap", "quantity": 1 }
+      ],
+      "stateEffect": {
+        "type": "transformContainers",
+        "containers": [
+          {
+            "containerItemId": "container.clean",
+            "optional": true,
+            "requiredContentItemId": "water.filtered",
+            "successContentItemId": null,
+            "failureContentItemId": null,
+            "successCleanliness": "utility",
+            "failureCleanliness": "utility"
+          },
+          {
+            "containerItemId": "container.clean_jar",
+            "optional": true,
+            "requiredContentItemId": "water.filtered",
+            "successContentItemId": null,
+            "failureContentItemId": null,
+            "successCleanliness": "utility",
+            "failureCleanliness": "utility"
+          }
+        ]
+      },
+      "traitResolution": {
+        "inherit": [],
+        "polarity": {
+          "rich_ingredient": "positive",
+          "rough_cut": "negative"
+        },
+        "success": {},
+        "precise": { "rich_ingredient": true },
+        "failure": { "rough_cut": true }
+      },
+      "manualCheckpoints": [
+        { "prompt": "先挑除哪一處不可用部位？", "options": ["依標示挑除", "保留變質部位", "丟掉整批食材"], "correctOption": 0 },
+        { "prompt": "沖洗時如何處理食材表面？", "options": ["均勻覆蓋提示區", "只沖洗容器", "略過沖洗"], "correctOption": 0 },
+        { "prompt": "完成清理前檢查什麼？", "options": ["確認部位與沖洗都完成", "把清洗水當成開水", "重複消耗額外食材"], "correctOption": 0 }
+      ]
+    },
+    {
+      "id": "ss.recipe.dry_herb",
+      "station": "kitchen",
+      "interaction": "sort",
+      "durationSeconds": 6,
+      "primaryInputs": [
+        "herb.wild"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.make_bait",
+      "station": "dock",
+      "interaction": "mix",
+      "durationSeconds": 6,
+      "primaryInputs": [
+        "food.scrap"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.herb_bait",
+      "station": "kitchen",
+      "interaction": "mix",
+      "durationSeconds": 6,
+      "primaryInputs": [
+        "bait.basic"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.mix_fuel",
+      "station": "recycler",
+      "interaction": "mix",
+      "durationSeconds": 6,
+      "primaryInputs": [
+        "paper.scrap",
+        "wood.driftwood"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "failureOutputs": [{"item":"fuel.mixed","quantity":2}],
+      "failureResolution": {"mode":"sameOutputsQualityLoss","qualityLoss":10,"consumeSelectedInputs":true},
+      "traitResolution": {
+        "inherit": [], "polarity": {"smoky":"negative"},
+        "success": {}, "precise": {}, "failure": {"smoky":true}
+      }
+    },
+    {
+      "id": "ss.recipe.dry_fuel",
+      "station": "workbench",
+      "interaction": "heat",
+      "durationSeconds": 8,
+      "primaryInputs": [
+        "fuel.mixed"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "failureOutputs": [
+        {"item":"fuel.dry","quantity":1},
+        {"item":"fuel.mixed","quantity":1}
+      ],
+      "failureResolution": {"mode":"sameOutputsQualityLoss","qualityLoss":0,"consumeSelectedInputs":true},
+      "traitResolution": {
+        "inherit": [],
+        "polarity": {"even_burn":"positive","smoky":"negative"},
+        "success": {}, "precise": {"even_burn":true},
+        "failure": {"smoky":true}
+      }
+    },
+    {
+      "id": "ss.recipe.sawdust_fuel",
+      "station": "workbench",
+      "interaction": "mix",
+      "durationSeconds": 8,
+      "primaryInputs": [
+        "wood.sawdust"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "failureOutputs": [{"item":"fuel.mixed","quantity":1}],
+      "failureResolution": {"mode":"sameOutputsQualityLoss","qualityLoss":10,"consumeSelectedInputs":true},
+      "traitResolution": {
+        "inherit": [], "polarity": {"smoky":"negative"},
+        "success": {}, "precise": {}, "failure": {"smoky":true}
+      }
+    },
+    {
+      "id": "ss.recipe.make_charcoal",
+      "station": "kitchen",
+      "interaction": "heat",
+      "durationSeconds": 12,
+      "primaryInputs": [
+        "wood.driftwood"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.starch_glue",
+      "station": "kitchen",
+      "interaction": "mix",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "food.starch"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.soup_basic",
+      "station": "kitchen",
+      "interaction": "cook",
+      "durationSeconds": 12,
+      "primaryInputs": [
+        "food.cleaned"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 0,
+        "consumeSelectedInputs": true
+      },
+      "stateEffect": {
+        "type": "transformContainers",
+        "containers": [
+          {
+            "containerItemId": "container.clean",
+            "requiredContentItemId": "water.boiled",
+            "successContentItemId": null,
+            "failureContentItemId": null,
+            "successCleanliness": "utility",
+            "failureCleanliness": "utility"
+          },
+          {
+            "containerItemId": "container.meal_box",
+            "optional": true,
+            "requiredContentItemId": null,
+            "successContentItemId": "meal.soup_basic",
+            "failureContentItemId": "meal.failed",
+            "successCleanliness": "clean",
+            "failureCleanliness": "clean"
+          },
+          {
+            "containerItemId": "container.meal_box_insulated",
+            "optional": true,
+            "requiredContentItemId": null,
+            "successContentItemId": "meal.soup_basic",
+            "failureContentItemId": "meal.failed",
+            "successCleanliness": "clean",
+            "failureCleanliness": "clean"
+          }
+        ]
+      },
+      "manualCheckpoints": [
+        { "prompt": "食材何時下鍋？", "options": ["先備好食材再下鍋", "空鍋乾燒後再找食材", "跳過食材"], "correctOption": 0 },
+        { "prompt": "控火時看哪個提示？", "options": ["維持在目標火力區", "一直推到最大", "忽略火力提示"], "correctOption": 0 },
+        { "prompt": "起鍋後餐點放在哪裡？", "options": ["放入指定的空餐盒", "丟掉餐盒並生成新瓶", "留在鍋中當額外庫存"], "correctOption": 0 }
+      ]
+    },
+    {
+      "id": "ss.recipe.soup_vegetable",
+      "station": "kitchen",
+      "interaction": "cook",
+      "durationSeconds": 12,
+      "primaryInputs": [
+        "food.cleaned"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "inputGroups": [[
+        { "itemId": "food.cleaned", "quantity": 2 },
+        { "itemId": "container.clean", "quantity": 1 },
+        { "itemId": "fuel.dry", "quantity": 1 },
+        { "itemId": "container.meal_box", "quantity": 1 }
+      ]],
+      "failureResolution": { "mode": "sameOutputsQualityLoss", "qualityLoss": 0, "consumeSelectedInputs": true },
+      "stateEffect": {
+        "type": "transformContainers",
+        "containers": [
+          { "containerItemId": "container.clean", "requiredContentItemId": "water.boiled", "successContentItemId": null, "failureContentItemId": null, "successCleanliness": "utility", "failureCleanliness": "utility" },
+          { "containerItemId": "container.meal_box", "optional": true, "requiredContentItemId": null, "successContentItemId": "meal.soup_vegetable", "failureContentItemId": "meal.failed", "successCleanliness": "clean", "failureCleanliness": "clean" },
+          { "containerItemId": "container.meal_box_insulated", "optional": true, "requiredContentItemId": null, "successContentItemId": "meal.soup_vegetable", "failureContentItemId": "meal.failed", "successCleanliness": "clean", "failureCleanliness": "clean" }
+        ]
+      },
+      "manualCheckpoints": [
+        { "prompt": "野菜先後怎麼分次加入？", "options": ["較硬食材先下、易熟食材後下", "全部關火後才下", "略過食材確認"], "correctOption": 0 },
+        { "prompt": "如何判斷素湯火力？", "options": ["維持穩定小滾並觀察鍋面", "全程最大火", "離鍋後才調火"], "correctOption": 0 },
+        { "prompt": "完成後餐點放哪裡？", "options": ["放入指定的原餐盒", "丟掉原餐盒生成新容器", "退回已消耗食材"], "correctOption": 0 }
+      ]
+    },
+    {
+      "id": "ss.recipe.soup_fish",
+      "station": "kitchen",
+      "interaction": "cook",
+      "durationSeconds": 12,
+      "primaryInputs": [
+        "fish.meat"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "inputGroups": [[
+        { "itemId": "fish.meat", "quantity": 2 },
+        { "itemId": "container.clean", "quantity": 1 },
+        { "itemId": "fuel.dry", "quantity": 1 },
+        { "itemId": "container.meal_box", "quantity": 1 }
+      ]],
+      "failureResolution": { "mode": "sameOutputsQualityLoss", "qualityLoss": 0, "consumeSelectedInputs": true },
+      "stateEffect": {
+        "type": "transformContainers",
+        "containers": [
+          { "containerItemId": "container.clean", "requiredContentItemId": "water.boiled", "successContentItemId": null, "failureContentItemId": null, "successCleanliness": "utility", "failureCleanliness": "utility" },
+          { "containerItemId": "container.meal_box", "optional": true, "requiredContentItemId": null, "successContentItemId": "meal.soup_fish", "failureContentItemId": "meal.failed", "successCleanliness": "clean", "failureCleanliness": "clean" },
+          { "containerItemId": "container.meal_box_insulated", "optional": true, "requiredContentItemId": null, "successContentItemId": "meal.soup_fish", "failureContentItemId": "meal.failed", "successCleanliness": "clean", "failureCleanliness": "clean" }
+        ]
+      },
+      "manualCheckpoints": [
+        { "prompt": "魚料何時加入比較合適？", "options": ["湯底穩定後加入並避免久煮", "冷鍋時全部堆在鍋底", "起鍋後才算煮熟"], "correctOption": 0 },
+        { "prompt": "如何確認魚湯熟度？", "options": ["觀察魚肉熟化提示並維持小滾", "只看鍋子顏色", "忽略熟度直接分裝"], "correctOption": 0 },
+        { "prompt": "完成後餐點放哪裡？", "options": ["放入指定的原餐盒", "丟掉原餐盒生成新容器", "退回魚肉"], "correctOption": 0 }
+      ]
+    },
+    {
+      "id": "ss.recipe.shared_meal",
+      "station": "kitchen",
+      "interaction": "cook",
+      "durationSeconds": 15,
+      "primaryInputs": [
+        "food.cleaned",
+        "fish.meat"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "manualCheckpoints": [
+        { "prompt": "備料時先處理哪一項？", "options": ["依序完成食材準備", "先把燃料加入冷鍋", "略過食材檢查"], "correctOption": 0 },
+        { "prompt": "火力應如何維持？", "options": ["按料理提示維持穩定小火", "全程最大火", "熄火後才加入食材"], "correctOption": 0 },
+        { "prompt": "完成料理後如何收尾？", "options": ["確認熟度並完成出餐", "保留未煮食材當作成品", "丟棄原容器並生成新瓶"], "correctOption": 0 }
+      ],
+      "stateEffect": {
+        "type": "transformContainers",
+        "containers": [
+          {
+            "containerItemId": "container.clean",
+            "optional": true,
+            "requiredContentItemId": "water.boiled",
+            "successContentItemId": null,
+            "failureContentItemId": null,
+            "successCleanliness": "utility",
+            "failureCleanliness": "utility"
+          },
+          {
+            "containerItemId": "container.clean_jar",
+            "optional": true,
+            "requiredContentItemId": "water.boiled",
+            "successContentItemId": null,
+            "failureContentItemId": null,
+            "successCleanliness": "utility",
+            "failureCleanliness": "utility"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ss.recipe.clean_metal",
+      "station": "recycler",
+      "interaction": "wash",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "metal.shard"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.compact_metal",
+      "station": "workbench",
+      "interaction": "strike",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "metal.scrap"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "traitResolution": {
+        "inherit": [{"inputItemId":"metal.scrap","map":{"rusted":"rusted"}}],
+        "polarity": {"smooth_metal":"positive","rusted":"negative"},
+        "success": {}, "precise": {"smooth_metal":true}, "failure": {}
+      }
+    },
+    {
+      "id": "ss.recipe.shape_bar",
+      "station": "workbench",
+      "interaction": "strike",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "metal.sheet"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "traitResolution": {
+        "inherit": [{"inputItemId":"metal.sheet","map":{"rusted":"rusted"}}],
+        "polarity": {"smooth_metal":"positive","rusted":"negative"},
+        "success": {}, "precise": {"smooth_metal":true}, "failure": {}
+      }
+    },
+    {
+      "id": "ss.recipe.cut_wire",
+      "station": "workbench",
+      "interaction": "cut",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "metal.sheet"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.bend_fastener",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "metal.wire"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.bend_ferrule",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "metal.sheet"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.bend_hook",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "metal.wire"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.float_part",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "plastic.sheet"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.seal_part",
+      "station": "workbench",
+      "interaction": "coat",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "plastic.sheet"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "traitResolution": {
+        "inherit": [], "polarity": {"sealed":"positive","brittle":"negative"},
+        "success": {}, "precise": {"sealed":true}, "failure": {}
+      }
+    },
+    {
+      "id": "ss.recipe.seal_packaging",
+      "station": "workbench",
+      "interaction": "coat",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "paper.board"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.insulate_cloth",
+      "station": "workbench",
+      "interaction": "sew",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "cloth.patchwork"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.repair_line",
+      "station": "recycler",
+      "interaction": "braid",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "cloth.thread_end"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.saw_driftwood",
+      "station": "recycler",
+      "interaction": "cut",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "wood.driftwood"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "capped-at-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.salvage_board",
+      "station": "workbench",
+      "interaction": "cut",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "wood.board"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "capped-at-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.tool_handle",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "wood.rod"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "traitResolution": {
+        "inherit": [{ "inputItemId": "wood.rod", "map": { "cracked": "cracked" } }],
+        "polarity": { "cracked": "negative" },
+        "success": {}, "precise": {}, "failure": {}
+      }
+    },
+    {
+      "id": "ss.recipe.crowbar",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "toolpart.handle"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "traitResolution": {
+        "inherit": [{ "inputItemId": "toolpart.handle", "map": { "cracked": "cracked" } }],
+        "polarity": { "cracked": "negative" },
+        "success": {}, "precise": {}, "failure": {}
+      }
+    },
+    {
+      "id": "ss.recipe.pliers",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "metal.sheet"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.toolkit",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "tool.pliers"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "preserve-primary",
+      "retainedInputIdentities": [
+        "tool.pliers",
+        "tool.awl"
+      ],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.basic_rod",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "wood.rod"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "traitResolution": {
+        "inherit": [{ "inputItemId": "wood.rod", "map": { "cracked": "cracked" } }],
+        "polarity": { "cracked": "negative" },
+        "success": {}, "precise": {}, "failure": {}
+      }
+    },
+    {
+      "id": "ss.recipe.upgrade_rod",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "tool.rod_basic"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "preserve-primary",
+      "retainedInputIdentities": [
+        "tool.rod_basic"
+      ],
+      "stateEffect": {
+        "type": "transformObject",
+        "fromItemId": "tool.rod_basic",
+        "toItemId": "tool.rod_repaired",
+        "requireEmptyContainer": true
+      },
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.advanced_rod",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "tool.rod_repaired"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "preserve-primary",
+      "retainedInputIdentities": [
+        "tool.rod_repaired"
+      ],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.rig",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "line.fishing"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.awl_bone",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "fish.bone",
+        "metal.bar",
+        "wood.rod"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "traitResolution": {
+        "inherit": [{ "inputItemId": "wood.rod", "map": { "cracked": "cracked" } }],
+        "polarity": { "cracked": "negative" },
+        "success": {}, "precise": {}, "failure": {}
+      }
+    },
+    {
+      "id": "ss.recipe.float",
+      "station": "recycler",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "container.clean"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "preserve-primary",
+      "retainedInputIdentities": [
+        "container.clean"
+      ],
+      "stateEffect": {
+        "type": "packObjects",
+        "retainedInputIds": ["container.clean"],
+        "toItemId": "toolpart.float",
+        "packingRuleId": "container.clean",
+        "requireEmptyContainerItems": ["container.clean"]
+      },
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.raft",
+      "station": "workbench",
+      "interaction": "align",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "wood.board"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.tarp",
+      "station": "workbench",
+      "interaction": "align",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "cloth.waterproof",
+        "wood.frame"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "traitResolution": {
+        "inherit": [{ "inputItemId": "wood.frame", "map": { "joint_reinforced": "joint_reinforced" } }],
+        "polarity": { "joint_reinforced": "positive" },
+        "success": {}, "precise": {}, "failure": {}
+      }
+    },
+    {
+      "id": "ss.recipe.shelter",
+      "station": "workbench",
+      "interaction": "align",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "structure.tarp",
+        "wood.frame"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1,
+      "traitResolution": {
+        "inherit": [
+          { "inputItemId": "structure.tarp", "map": { "joint_reinforced": "joint_reinforced" } },
+          { "inputItemId": "wood.frame", "map": { "joint_reinforced": "joint_reinforced" } }
+        ],
+        "polarity": { "joint_reinforced": "positive" },
+        "success": {}, "precise": {}, "failure": {}
+      }
+    },
+    {
+      "id": "ss.recipe.pot",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "container.clean_jar"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [
+        "container.clean_jar"
+      ],
+      "stateEffect": {
+        "type": "transformObject",
+        "fromItemId": "container.clean_jar",
+        "toItemId": "tool.pot",
+        "requireEmptyContainer": true,
+        "clearContainerState": true
+      },
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.stove",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "metal.bar"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.cook_kit",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "tool.pot"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "preserve-primary",
+      "retainedInputIdentities": [
+        "tool.pot",
+        "tool.stove"
+      ],
+      "stateEffect": {
+        "type": "packObjects",
+        "retainedInputIds": ["tool.pot", "tool.stove"],
+        "toItemId": "tool.cook_kit",
+        "packingRuleId": "tool.pot"
+      },
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.meal_box",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "outputContainerStates": {
+        "container.meal_box": {
+          "cleanliness": "clean"
+        }
+      },
+      "primaryInputs": [
+        "metal.sheet"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.insulated_box",
+      "station": "workbench",
+      "interaction": "sew",
+      "durationSeconds": 10,
+      "manualCheckpoints": [
+        { "prompt": "第一道隔熱布如何固定？", "options": ["沿餐盒外緣對齊縫合", "遮住盒蓋卡榫", "只縫一個角"], "correctOption": 0 },
+        { "prompt": "接縫如何保持密合？", "options": ["沿整圈保持均勻張力", "只拉緊單側", "留下大段鬆線"], "correctOption": 0 },
+        { "prompt": "封口前最後檢查什麼？", "options": ["盒蓋仍能閉合且隔熱層完整", "把餐盒內容物封死", "剪斷盒蓋卡榫"], "correctOption": 0 }
+      ],
+      "primaryInputs": [
+        "container.meal_box"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [
+        "container.meal_box"
+      ],
+      "stateEffect": {
+        "type": "transformObject",
+        "fromItemId": "container.meal_box",
+        "toItemId": "container.meal_box_insulated",
+        "requireEmptyContainer": true
+      },
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      },
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.fish_pack",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 8,
+      "primaryInputs": [
+        "fish.meat"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "preserve-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.reinforced_chest",
+      "station": "workbench",
+      "interaction": "align",
+      "durationSeconds": 10,
+      "manualCheckpoints": [
+        {
+          "prompt": "加固前要先對齊哪裡？",
+          "options": ["木板邊緣與箱角標記", "箱子外側顏色", "先敲入所有釘件"],
+          "correctOption": 0
+        },
+        {
+          "prompt": "兩塊加固板如何固定？",
+          "options": ["只靠膠料黏住", "沿接縫定位並鎖上釘件", "重疊遮住箱蓋"],
+          "correctOption": 1
+        },
+        {
+          "prompt": "完成後要檢查什麼？",
+          "options": ["四角穩固且箱蓋能開合", "只看外觀顏色", "容量可以任意增加"],
+          "correctOption": 0
+        }
+      ],
+      "primaryInputs": [
+        "storage.wooden_crate"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "preserve-primary",
+      "retainedInputIdentities": [
+        "storage.wooden_crate"
+      ],
+      "stateEffect": {
+        "type": "transformObject",
+        "fromItemId": "storage.wooden_crate",
+        "toItemId": "storage.reinforced_chest",
+        "requireEmptyContainer": true
+      },
+      "failureResolution": {
+        "mode": "sameOutputsQualityLoss",
+        "qualityLoss": 10,
+        "consumeSelectedInputs": true
+      },
+      "masteryRevision": 2
+    },
+    {
+      "id": "ss.recipe.weather_bag",
+      "station": "workbench",
+      "interaction": "sew",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "cloth.waterproof"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.condenser",
+      "station": "workbench",
+      "interaction": "assemble",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "metal.sheet"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [
+        "container.clean_jar"
+      ],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.blend_seasoning",
+      "station": "kitchen",
+      "interaction": "mix",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "seasoning.packet"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    },
+    {
+      "id": "ss.recipe.fuel_pack",
+      "station": "workbench",
+      "interaction": "mix",
+      "durationSeconds": 10,
+      "primaryInputs": [
+        "fuel.dry",
+        "fuel.oilcloth"
+      ],
+      "qualityLoss": 0,
+      "qualityMode": "weighted-primary",
+      "retainedInputIdentities": [],
+      "masteryRevision": 1
+    }
+  ]
+}

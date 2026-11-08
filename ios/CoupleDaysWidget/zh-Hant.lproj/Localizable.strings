@@ -1,0 +1,7 @@
+"widget.name" = "情侶天數";
+"widget.description" = "離線時仍依上次確認的日期持續計算天數。";
+"widget.days" = "第 %ld 天";
+"widget.unbound" = "尚未綁定情侶";
+"widget.signedOut" = "請登入";
+
+"widget.partnerLine" = "與 %@ 交往的";
