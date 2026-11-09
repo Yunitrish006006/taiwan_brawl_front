@@ -1,5 +1,7 @@
 # iPhone couple widget acceptance — 2026-11-09
 
+Status: user-confirmed physical acceptance passed for the behaviors listed below.
+
 Device: iPhone 11, iOS 27.0.1. Development environment: Xcode 27.2 and
 CocoaPods 1.16.2. The user authorized Xcode installation and explicitly approved
 Personal Team provisioning for Runner, CoupleDaysWidget and their existing App
@@ -29,22 +31,37 @@ outside version control.
   physical-device results, not just CI evidence.
 
 The build uses `ENABLE_IOS_COUPLE_WIDGET=true` and the production API URL. The
-global default remains opt-in until physical acceptance is confirmed. This is
+global default remains opt-in; this tested build explicitly enables it. This is
 development provisioning, not an App Store or TestFlight release.
 
 ## Backend prerequisite
 
 The production couple API is active. Seventeen live friend/invite/accept/date/
 end/block checks passed with isolated temporary accounts, which were removed.
-The existing production web files remain verified. Physical iPhone sign-in,
-binding, shared-container synchronization, widget colors/name/day rendering and
-offline behavior still require observed device results.
+The existing production web files remain verified. Real iPhone sign-in and
+production couple binding were subsequently confirmed by the user.
 
-## Current sign-in gate
+## Resolved sign-in gate
 
 The user reached Google sign-in but reported `Invalid Google token`. Backend
 configuration was corrected to declare the App's existing Web/server OAuth
 audience. That first correction alone did not establish successful sign-in;
-credential-free server rejection-stage diagnostics are being used to identify
-the remaining cause. Physical binding, App Group snapshot writes, widget display
-and cold-start behavior remain pending until real sign-in succeeds.
+credential-free server diagnostics identified an audience mismatch. The explicit
+production allowlist now includes the existing Web/server and iOS OAuth clients.
+Signature, issuer, expiry and verified-email checks remain enforced, and tokens
+for unrelated clients remain rejected. The user confirmed successful sign-in.
+
+## User-confirmed physical results
+
+- Google sign-in succeeds on the installed iPhone App.
+- After the other account accepted the production invitation, the App displayed
+  the partner name and relationship day count.
+- The home-screen couple widget displayed the correct partner name and count.
+- Changing the widget color in the App updated the home-screen widget.
+- Tapping the widget returned to the App successfully.
+
+These visible results were reported by the user; they are not inferred from
+installation, simulator tests or App Group file listings. Physical midnight
+rollover, extended offline operation and account/revocation cold-start races
+remain NOT_EVALUATED in this device session. No disruptive end/block test was
+performed on the user's real couple relationship.
