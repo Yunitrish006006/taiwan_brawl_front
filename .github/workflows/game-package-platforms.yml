@@ -379,7 +379,18 @@ jobs:
         if: matrix.platform == 'Linux desktop'
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev xvfb dbus-x11 libgl1-mesa-dri strace gdb
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev xvfb dbus-x11 libgl1-mesa-dri strace gdb pulseaudio pulseaudio-utils
+
+      - name: Start Linux virtual audio device
+        if: matrix.platform == 'Linux desktop'
+        run: |
+          # WebRTC initializes its real audio module during plugin registration.
+          # Hosted runners need an audio server even for a storage-only test.
+          pulseaudio --check || pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=ci_audio
+          pactl set-default-sink ci_audio
+          pactl set-default-source ci_audio.monitor
+          pactl info
 
       - name: Enable Android emulator hardware acceleration
         if: matrix.platform == 'Android emulator'
