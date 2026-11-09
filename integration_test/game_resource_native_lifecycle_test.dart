@@ -1,5 +1,6 @@
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show SizedBox;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -112,6 +113,9 @@ void main() {
   testWidgets(
     'native resource install, rollback, update, restart restore and removal',
     (tester) async {
+      // Desktop hosts reveal their window on the first Flutter frame. Keep the
+      // native surface alive before running the otherwise UI-free I/O scenario.
+      await tester.pumpWidget(const SizedBox.expand());
       await runNativeResourceLifecycle(initializeStorage: Hive.initFlutter);
     },
   );

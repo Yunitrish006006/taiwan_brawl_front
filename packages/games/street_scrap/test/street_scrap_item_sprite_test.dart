@@ -57,7 +57,9 @@ void main() {
   testWidgets('offline material fallback sprites stay visually distinct', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(800, 3400);
+    // Five 160px columns and 120px rows keep bitmap origins on whole pixels.
+    // Fractional grid offsets produce CPU-dependent nearest-neighbor sampling.
+    tester.view.physicalSize = const Size(832, 3400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -196,7 +198,7 @@ void main() {
             padding: const EdgeInsets.all(8),
             crossAxisSpacing: 4,
             mainAxisSpacing: 4,
-            childAspectRatio: 1.3,
+            childAspectRatio: 4 / 3,
             physics: const NeverScrollableScrollPhysics(),
             children: [
               for (final sprite in sprites)
@@ -253,12 +255,12 @@ void main() {
               StreetScrapItemSprite(
                 itemId: 'wood.driftwood',
                 source: 'found_native',
-                size: 280,
+                size: 288,
               ),
               StreetScrapItemSprite(
                 itemId: 'container.broken_bottle',
                 source: 'found_native',
-                size: 280,
+                size: 288,
               ),
             ],
           ),
