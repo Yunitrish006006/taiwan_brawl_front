@@ -115,9 +115,13 @@ void main() {
     (tester) async {
       // Desktop hosts reveal their window on the first Flutter frame. Keep the
       // native surface alive before running the otherwise UI-free I/O scenario.
+      debugPrint('Native lifecycle: rendering host frame');
       await tester.pumpWidget(const SizedBox.expand());
+      debugPrint('Native lifecycle: starting storage scenario');
       await runNativeResourceLifecycle(initializeStorage: Hive.initFlutter);
+      debugPrint('Native lifecycle: storage scenario complete');
     },
+    timeout: const Timeout(Duration(minutes: 2)),
   );
 }
 

@@ -240,7 +240,8 @@ void main() {
   testWidgets('broken bottle and driftwood use detailed bundled fallback art', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(760, 380);
+    // The 1536x1024 sources scale by exactly 1/4 in both directions.
+    tester.view.physicalSize = const Size(832, 448);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -255,12 +256,12 @@ void main() {
               StreetScrapItemSprite(
                 itemId: 'wood.driftwood',
                 source: 'found_native',
-                size: 288,
+                size: 384,
               ),
               StreetScrapItemSprite(
                 itemId: 'container.broken_bottle',
                 source: 'found_native',
-                size: 288,
+                size: 384,
               ),
             ],
           ),

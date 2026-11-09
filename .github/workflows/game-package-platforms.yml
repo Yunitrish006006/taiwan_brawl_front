@@ -446,6 +446,7 @@ jobs:
 
       - name: Run on Linux desktop
         if: matrix.platform == 'Linux desktop'
+        timeout-minutes: 10
         working-directory: taiwan_brawl_front
         shell: bash
         env:
