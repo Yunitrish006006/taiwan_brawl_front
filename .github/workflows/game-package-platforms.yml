@@ -379,7 +379,7 @@ jobs:
         if: matrix.platform == 'Linux desktop'
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev xvfb dbus-x11 libgl1-mesa-dri strace
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev xvfb dbus-x11 libgl1-mesa-dri strace gdb
 
       - name: Enable Android emulator hardware acceleration
         if: matrix.platform == 'Android emulator'
@@ -456,6 +456,16 @@ jobs:
           set -o pipefail
           dbus-run-session -- xvfb-run -a strace -f -e trace=process,signal -o linux-process.log flutter test integration_test/game_resource_native_lifecycle_test.dart -d linux -v 2>&1 | tee linux-lifecycle.log
 
+      - name: Capture Linux native host failure
+        if: failure() && matrix.platform == 'Linux desktop'
+        timeout-minutes: 2
+        working-directory: taiwan_brawl_front
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          GDK_BACKEND: x11
+        run: |
+          timeout 45s dbus-run-session -- xvfb-run -a gdb --batch -ex run -ex 'thread apply all bt' --args build/linux/x64/debug/bundle/taiwan_brawl > linux-host.log 2>&1
+
       - name: Preserve Linux lifecycle diagnostics
         if: failure() && matrix.platform == 'Linux desktop'
         uses: actions/upload-artifact@v4
@@ -464,6 +474,7 @@ jobs:
           path: |
             taiwan_brawl_front/linux-lifecycle.log
             taiwan_brawl_front/linux-process.log
+            taiwan_brawl_front/linux-host.log
           if-no-files-found: ignore
 
   application-builds:
