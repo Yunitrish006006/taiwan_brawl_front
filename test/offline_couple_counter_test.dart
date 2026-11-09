@@ -192,20 +192,40 @@ void main() {
       },
     );
   }
-  test('authoritative identity closes offline-only access', () async {
-    final remote = CounterAuth()..error = null;
-    final auth = AuthService(remoteSource: remote);
-    final service = OfflineCoupleCounterService(CounterSource());
-    service.syncAuth(auth);
-    await service.refresh();
-    expect(service.counter, isNotNull);
-    await auth.init();
-    service.syncAuth(auth);
-    expect(service.counter, isNull);
-    expect(service.allowed, isFalse);
-    service.dispose();
-    auth.dispose();
-  });
+  test(
+    'online identity suspends read-only access; expiry closes it permanently',
+    () async {
+      final remote = CounterAuth()..error = null;
+      final auth = AuthService(remoteSource: remote);
+      final service = OfflineCoupleCounterService(CounterSource());
+      service.syncAuth(auth);
+      await service.refresh();
+      expect(service.counter, isNotNull);
+      await auth.init();
+      service.syncAuth(auth);
+      expect(service.counter, isNull);
+      expect(service.allowed, isFalse);
+      remote.error = const RemoteSourceException('offline');
+      await auth.refreshMe();
+      service.syncAuth(auth);
+      await service.refresh();
+      expect(auth.isLoggedIn, isFalse);
+      expect(service.allowed, isTrue);
+      expect(service.counter, isNotNull);
+      remote.error = const RemoteSourceException('expired', statusCode: 401);
+      await auth.refreshMe();
+      service.syncAuth(auth);
+      expect(service.allowed, isFalse);
+      remote.error = const RemoteSourceException('offline');
+      await auth.refreshMe();
+      service.syncAuth(auth);
+      await service.refresh();
+      expect(service.allowed, isFalse);
+      expect(service.counter, isNull);
+      service.dispose();
+      auth.dispose();
+    },
+  );
   test('counter rejects malformed dates and any identity fields', () {
     expect(
       () => OfflineCoupleCounter.fromJson({

@@ -11,8 +11,9 @@ account scope, relationship ID, credentials, names or photos. Cleared, corrupt
 or unreadable records produce no usable display. No old value is reused after
 a read failure. Android and the gated iOS implementation share this behavior.
 
-`OfflineCoupleCounterService` permits only an initial unresolved-identity window.
-Successful verification, authoritative 401, explicit logout or starting sign-in
+`OfflineCoupleCounterService` permits read-only display while identity is unresolved.
+Successful verification suspends that display; a later network failure may reopen
+it from the native projection. Authoritative 401, explicit logout or starting sign-in
 permanently closes that window for the current App process. Generation checks
 reject delayed reads. A failed sign-in followed by offline refresh cannot reopen
 the old data. Entry and page also directly watch auth to hide days without
@@ -21,8 +22,8 @@ intent, and the widget controller clears its old selection during sign-in.
 
 This is the same display information already available from the home widget,
 not offline account login. Protected App views continue to require normal auth.
-Web has no native projection. iOS remains opt-in pending Xcode, App Group and
-signing verification. A failed disk clear cannot be claimed successful; native
+Web has no native projection. iOS remains opt-in; the tested development build
+explicitly enables it with verified Xcode, App Group and signing. A failed disk clear cannot be claimed successful; native
 crash/power-loss durability and immediate OS repaint are not proved here.
 
 Days derive from the saved Gregorian date and current local date, inclusive of
@@ -39,6 +40,11 @@ also passes real server data through a Dart bridge test double to the read-only
 service without restoring authentication. Android and Swift tests independently
 check minimal and cleared projections. These do not replace phone acceptance.
 
-Actual Android cold-start UI and both platforms' phone/launcher flows remain
-unverified. iOS channel/WidgetKit code still needs an actual Xcode build and
-App Group/provisioning verification before enabling the iOS flag.
+Widget clicks now open the read-only counter directly when bootstrap cannot
+verify identity and a valid native projection exists. The verified widget gate
+also falls back to the same counter if its subsequent identity read goes offline.
+Neither route restores account access or uses the couples account cache.
+
+On 2026-11-09, the user confirmed the corrected iPhone airplane-mode cold-start
+flow displays offline days. See [physical acceptance](couple-widget-iphone-acceptance-2026-11-09.md)
+and [additional verification](couple-widget-additional-verification-2026-11-09.md).

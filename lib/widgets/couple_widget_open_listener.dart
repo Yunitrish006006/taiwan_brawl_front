@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../services/offline_couple_counter_service.dart';
 
 /// A widget intent contains no account or relationship data. Wait until the
 /// normal auth bootstrap settles, then open a route which verifies again.
@@ -61,6 +62,17 @@ class _CoupleWidgetOpenListenerState extends State<CoupleWidgetOpenListener>
       final navigator = widget.navigatorKey.currentState;
       if (navigator == null) return;
       if (!auth.isLoggedIn) {
+        final offline = context.read<OfflineCoupleCounterService?>();
+        if (auth.identityState == AuthIdentityState.unresolved &&
+            !auth.isSigningIn &&
+            offline?.allowed == true &&
+            offline?.counter != null) {
+          _pending = false;
+          // Replace the bootstrap/login stack so a late splash navigation
+          // cannot cover the read-only counter. This grants no account access.
+          navigator.pushNamedAndRemoveUntil('/couple-offline', (_) => false);
+          return;
+        }
         if (!_loginShown) {
           _loginShown = true;
           navigator.pushNamedAndRemoveUntil('/login', (_) => false);
@@ -80,6 +92,7 @@ class _CoupleWidgetOpenListenerState extends State<CoupleWidgetOpenListener>
   @override
   Widget build(BuildContext context) {
     context.watch<AuthService>();
+    context.watch<OfflineCoupleCounterService?>();
     _schedule();
     return widget.child;
   }

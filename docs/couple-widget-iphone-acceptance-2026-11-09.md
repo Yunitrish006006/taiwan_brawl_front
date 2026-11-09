@@ -60,8 +60,14 @@ for unrelated clients remain rejected. The user confirmed successful sign-in.
 - Changing the widget color in the App updated the home-screen widget.
 - Tapping the widget returned to the App successfully.
 
+After additional offline testing exposed login/verification-only navigation,
+both the bootstrap listener and widget gate were corrected to open the minimal
+read-only counter when identity cannot be verified. After installing the second
+corrected Release build, the user confirmed airplane mode with Wi-Fi disabled,
+closing the App and tapping the home widget displays offline days.
+
 These visible results were reported by the user; they are not inferred from
 installation, simulator tests or App Group file listings. Physical midnight
-rollover, extended offline operation and account/revocation cold-start races
+rollover, extended offline operation and real-account/revocation cold-start races
 remain NOT_EVALUATED in this device session. No disruptive end/block test was
 performed on the user's real couple relationship.

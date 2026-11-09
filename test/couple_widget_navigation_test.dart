@@ -9,6 +9,18 @@ import 'package:taiwan_brawl/services/couples_service.dart';
 import 'package:taiwan_brawl/services/remote_source_exception.dart';
 import 'package:taiwan_brawl/pages/social/couple_widget_gate_page.dart';
 import 'package:taiwan_brawl/widgets/couple_widget_open_listener.dart';
+import 'package:taiwan_brawl/services/offline_couple_counter_service.dart';
+import 'package:taiwan_brawl/pages/social/offline_couple_counter_page.dart';
+import 'package:taiwan_brawl/pages/general/splash_page.dart';
+
+class NavigationCounter implements OfflineCoupleCounterSource {
+  @override
+  Future<Map<String, dynamic>?> readCounter() async => {
+    'schemaVersion': 1,
+    'startedOn': '2026-11-01',
+    'lastSyncedAt': '2026-11-04T00:00:00Z',
+  };
+}
 
 class NavigationAuth implements AuthRemoteSource {
   int account = 1;
@@ -63,6 +75,120 @@ class NavigationCouples implements CouplesRemoteSource {
 }
 
 void main() {
+  for (final expired in [false, true]) {
+    testWidgets(
+      'verified widget route handles ${expired ? '401' : 'disconnect'}',
+      (tester) async {
+        final source = NavigationAuth();
+        final auth = AuthService(remoteSource: source);
+        await auth.init();
+        final offline = OfflineCoupleCounterService(
+          NavigationCounter(),
+          clock: () => DateTime(2026, 11, 4),
+        );
+        void sync() => offline.syncAuth(auth);
+        auth.addListener(sync);
+        sync();
+        final couples = CouplesService(NavigationCouples());
+        source.error = RemoteSourceException(
+          'unavailable',
+          statusCode: expired ? 401 : null,
+        );
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider.value(value: auth),
+              ChangeNotifierProvider.value(value: offline),
+              ChangeNotifierProvider.value(value: couples),
+            ],
+            child: MaterialApp(
+              home: const CoupleWidgetGatePage(),
+              routes: {
+                '/couple-offline': (_) => const OfflineCoupleCounterPage(),
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('交往第 4 天'), expired ? findsNothing : findsOneWidget);
+        expect(auth.isLoggedIn, isFalse);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+        auth.removeListener(sync);
+        offline.dispose();
+        couples.dispose();
+        auth.dispose();
+      },
+    );
+  }
+  for (final expired in [false, true]) {
+    testWidgets(
+      'cold widget open routes ${expired ? 'expired session to login' : 'offline identity to read-only days'}',
+      (tester) async {
+        const channel = MethodChannel('taiwan_brawl/couple_widget_open');
+        var requested = true;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (_) async {
+              final result = requested;
+              requested = false;
+              return result;
+            });
+        addTearDown(
+          () => TestDefaultBinaryMessengerBinding
+              .instance
+              .defaultBinaryMessenger
+              .setMockMethodCallHandler(channel, null),
+        );
+        final source = NavigationAuth()
+          ..error = RemoteSourceException(
+            expired ? 'expired' : 'offline',
+            statusCode: expired ? 401 : null,
+          );
+        final auth = AuthService(remoteSource: source);
+        final offline = OfflineCoupleCounterService(
+          NavigationCounter(),
+          clock: () => DateTime(2026, 11, 4),
+        );
+        void sync() => offline.syncAuth(auth);
+        auth.addListener(sync);
+        sync();
+        final key = GlobalKey<NavigatorState>();
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider.value(value: auth),
+              ChangeNotifierProvider.value(value: offline),
+            ],
+            child: MaterialApp(
+              navigatorKey: key,
+              builder: (_, child) =>
+                  CoupleWidgetOpenListener(navigatorKey: key, child: child!),
+              home: const SplashPage(),
+              routes: {
+                '/login': (_) => const Scaffold(body: Text('Login required')),
+                '/couple-offline': (_) => const OfflineCoupleCounterPage(),
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(auth.isLoggedIn, isFalse);
+        expect(find.text('交往第 4 天'), expired ? findsNothing : findsOneWidget);
+        expect(
+          find.text('Login required'),
+          expired ? findsOneWidget : findsNothing,
+        );
+        await tester.pump(const Duration(seconds: 11));
+        await tester.pumpAndSettle();
+        expect(find.text('交往第 4 天'), expired ? findsNothing : findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+        auth.removeListener(sync);
+        offline.dispose();
+        auth.dispose();
+      },
+    );
+  }
   testWidgets(
     'widget click cannot expose cached days when identity verification is offline',
     (tester) async {

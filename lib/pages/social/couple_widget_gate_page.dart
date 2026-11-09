@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/couples_service.dart';
 import '../../services/locale_provider.dart';
+import '../../services/offline_couple_counter_service.dart';
 import '../../widgets/couples_text.dart';
 import 'couples_page.dart';
 
@@ -34,6 +35,21 @@ class _CoupleWidgetGatePageState extends State<CoupleWidgetGatePage> {
       if (!mounted) return;
       final account = auth.user?.id;
       if (account == null) {
+        final offline = context.read<OfflineCoupleCounterService?>();
+        if (auth.identityState == AuthIdentityState.unresolved &&
+            !auth.isSigningIn &&
+            offline != null) {
+          offline.syncAuth(auth);
+          await offline.refresh();
+          if (!mounted) return;
+          if (auth.identityState == AuthIdentityState.unresolved &&
+              !auth.isSigningIn &&
+              offline.allowed &&
+              offline.counter != null) {
+            Navigator.of(context).pushReplacementNamed('/couple-offline');
+            return;
+          }
+        }
         setState(
           () => _error = auth.identityState == AuthIdentityState.signedOut
               ? 'couples.expired'

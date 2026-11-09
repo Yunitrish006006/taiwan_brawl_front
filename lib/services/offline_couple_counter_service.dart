@@ -18,7 +18,9 @@ class NativeOfflineCoupleCounterSource implements OfflineCoupleCounterSource {
   }
 }
 
-/// A cold-start-only read window, never an authentication or mutation service.
+/// A read-only window for unverified identity, never authentication or mutation.
+/// Sign-in attempts, explicit logout and authoritative expiry close it for the
+/// process; successful identity restoration only suspends it while online.
 class OfflineCoupleCounterService extends ChangeNotifier
     with WidgetsBindingObserver {
   OfflineCoupleCounterService(this.source, {DateTime Function()? clock})
@@ -40,7 +42,11 @@ class OfflineCoupleCounterService extends ChangeNotifier
     if (_disposed || !_coldWindow) return;
     if (auth.identityState != AuthIdentityState.unresolved ||
         auth.isSigningIn) {
-      _coldWindow = false;
+      if (auth.identityState == AuthIdentityState.signedOut ||
+          auth.isSigningIn) {
+        _coldWindow = false;
+      }
+      if (!_allowed && _counter == null) return;
       _allowed = false;
       _counter = null;
       _generation++;

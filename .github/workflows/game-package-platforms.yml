@@ -20,6 +20,8 @@ on:
       - 'test/secure_device_identity_test.dart'
       - 'test/peer_trust_service_test.dart'
       - 'test/peer_trust_dialog_test.dart'
+      - 'test/couple_widget_*.dart'
+      - 'test/offline_couple_counter_test.dart'
       - 'integration_test/**'
       - 'lib/**'
       - 'android/**'
@@ -51,6 +53,8 @@ on:
       - 'test/secure_device_identity_test.dart'
       - 'test/peer_trust_service_test.dart'
       - 'test/peer_trust_dialog_test.dart'
+      - 'test/couple_widget_*.dart'
+      - 'test/offline_couple_counter_test.dart'
       - 'integration_test/**'
       - 'lib/**'
       - 'android/**'
@@ -253,6 +257,14 @@ jobs:
           test/street_scrap_progress_store_test.dart
           test/game_player_data_isolation_test.dart
 
+      - name: Verify couple widget offline navigation and identity isolation
+        working-directory: taiwan_brawl_front
+        run: >-
+          flutter test
+          test/couple_widget_navigation_test.dart
+          test/offline_couple_counter_test.dart
+          test/couple_widget_controller_test.dart
+
   shared-package-tests:
     name: Shared Dart packages
     runs-on: ubuntu-latest
@@ -408,7 +420,9 @@ jobs:
           profile: pixel_6
           disable-linux-hw-accel: false
           working-directory: taiwan_brawl_front
-          script: flutter test integration_test/game_resource_native_lifecycle_test.dart -d emulator-5554
+          script: |
+            flutter test integration_test/game_resource_native_lifecycle_test.dart -d emulator-5554
+            flutter test integration_test/couple_widget_native_lifecycle_test.dart -d emulator-5554 --dart-define=COUPLE_WIDGET_DISPOSABLE_TEST=true
 
       - name: Run on iOS Simulator
         if: matrix.platform == 'iOS simulator'
