@@ -1,6 +1,5 @@
-import 'dart:typed_data';
-
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -41,6 +40,7 @@ GameModuleManifest nativeLifecycleManifest(Uint8List payload, String version) {
     packageVersion: '0.1.0',
     minimumShellVersion: '0.132.0',
     dataSchemaVersion: 1,
+    supportedResourceSchemas: const {resourceId: 1},
     resources: [
       GameResourceManifest(
         resourceId: resourceId,
@@ -95,7 +95,14 @@ GameResourceLibraryService _libraryService({
       responsePayload: responsePayload,
     ),
     contentStore: content,
-    resourceMigrations: resourceMigrations,
+    resourceMigrations: {
+      'game.archery:game.archery.rules': (payload) async {
+        if (!listEquals(payload, responsePayload)) {
+          throw const FormatException('Unexpected native fixture payload');
+        }
+      },
+      ...resourceMigrations,
+    },
   );
 }
 
@@ -105,121 +112,121 @@ void main() {
   testWidgets(
     'native resource install, rollback, update, restart restore and removal',
     (tester) async {
-      await Hive.initFlutter();
-      final suffix = DateTime.now().microsecondsSinceEpoch;
-      final libraryBox = 'native_integration_library_$suffix';
-      final contentBox = 'native_integration_content_$suffix';
-      final pointerBox = 'native_integration_pointers_$suffix';
-      const moduleId = 'game.archery';
-      const resourceId = 'game.archery.rules';
-      final versionOne = Uint8List.fromList([0, 10, 127, 128, 255]);
-      final versionTwo = Uint8List.fromList([9, 8, 7, 6, 5, 4]);
-      final manifestOne = nativeLifecycleManifest(versionOne, '1.0.0');
-      final manifestTwo = nativeLifecycleManifest(versionTwo, '2.0.0');
-      final library = HiveGameLibraryStore(boxName: libraryBox);
-      final content = HiveGameResourceContentStore(
-        contentBoxName: contentBox,
-        pointerBoxName: pointerBox,
-      );
-      final controller = GameLibraryController(
-        catalog: GameModuleCatalog([manifestOne]),
-        store: library,
-      );
-      await controller.initialize();
-      await controller.setModuleEnabled(moduleId, true);
-      final installerV1 = _libraryService(
-        controller: controller,
-        content: content,
-        responsePayload: versionOne,
-      );
-      await installerV1.install(moduleId, resourceId);
-
-      expect(await content.readActiveVersion(moduleId, resourceId), '1.0.0');
-      expect(await content.readActive(moduleId, resourceId), versionOne);
-      expect(
-        controller.resourceRecord(moduleId, resourceId)?.status,
-        GameResourceInstallStatus.installed,
-      );
-
-      controller.mergeRemoteManifests([manifestTwo]);
-      final failedUpdate = _libraryService(
-        controller: controller,
-        content: content,
-        responsePayload: versionTwo,
-        resourceMigrations: {
-          '$moduleId:$resourceId': (_) async =>
-              throw StateError('fixture migration failure'),
-        },
-      );
-      await expectLater(
-        failedUpdate.install(moduleId, resourceId),
-        throwsStateError,
-      );
-      expect(await content.readActiveVersion(moduleId, resourceId), '1.0.0');
-      expect(await content.readActive(moduleId, resourceId), versionOne);
-      expect(controller.resourceRecord(moduleId, resourceId)?.version, '1.0.0');
-
-      final successfulUpdate = _libraryService(
-        controller: controller,
-        content: content,
-        responsePayload: versionTwo,
-      );
-      await successfulUpdate.install(moduleId, resourceId);
-      expect(await content.readActiveVersion(moduleId, resourceId), '2.0.0');
-      expect(await content.readActive(moduleId, resourceId), versionTwo);
-      expect(
-        controller.resourceRecord(moduleId, resourceId)?.sha256,
-        sha256.convert(versionTwo).toString(),
-      );
-      await library.writeCachedResourceCatalog(
-        CachedGameResourceCatalog(manifests: [manifestTwo]),
-      );
-
-      // Close and reopen platform-backed Hive before asserting durable state.
-      await Hive.close();
-      await Hive.initFlutter();
-      final restoredLibrary = HiveGameLibraryStore(boxName: libraryBox);
-      final restoredContent = HiveGameResourceContentStore(
-        contentBoxName: contentBox,
-        pointerBoxName: pointerBox,
-      );
-      final restoredController = GameLibraryController(
-        catalog: GameModuleCatalog([manifestTwo]),
-        store: restoredLibrary,
-      );
-      await restoredController.initialize();
-      expect(restoredController.enabledModuleIds, {moduleId});
-      expect(
-        restoredController.resourceRecord(moduleId, resourceId)?.version,
-        '2.0.0',
-      );
-      expect(
-        await restoredContent.readActiveVersion(moduleId, resourceId),
-        '2.0.0',
-      );
-      expect(
-        await restoredContent.readActive(moduleId, resourceId),
-        versionTwo,
-      );
-
-      await _libraryService(
-        controller: restoredController,
-        content: restoredContent,
-        responsePayload: versionTwo,
-      ).remove(moduleId, resourceId);
-      expect(
-        await restoredContent.readActiveVersion(moduleId, resourceId),
-        isNull,
-      );
-      expect(await restoredContent.readActive(moduleId, resourceId), isNull);
-      expect(restoredController.resourceRecord(moduleId, resourceId), isNull);
-      expect(restoredController.isModuleEnabled(moduleId), isTrue);
-      restoredController.dispose();
-      controller.dispose();
-      await Hive.close();
-      await Hive.deleteBoxFromDisk(libraryBox);
-      await Hive.deleteBoxFromDisk(contentBox);
-      await Hive.deleteBoxFromDisk(pointerBox);
+      await runNativeResourceLifecycle(initializeStorage: Hive.initFlutter);
     },
   );
+}
+
+Future<void> runNativeResourceLifecycle({
+  required Future<void> Function() initializeStorage,
+}) async {
+  await initializeStorage();
+  final suffix = DateTime.now().microsecondsSinceEpoch;
+  final libraryBox = 'native_integration_library_$suffix';
+  final contentBox = 'native_integration_content_$suffix';
+  final pointerBox = 'native_integration_pointers_$suffix';
+  const moduleId = 'game.archery';
+  const resourceId = 'game.archery.rules';
+  final versionOne = Uint8List.fromList([0, 10, 127, 128, 255]);
+  final versionTwo = Uint8List.fromList([9, 8, 7, 6, 5, 4]);
+  final manifestOne = nativeLifecycleManifest(versionOne, '1.0.0');
+  final manifestTwo = nativeLifecycleManifest(versionTwo, '2.0.0');
+  final library = HiveGameLibraryStore(boxName: libraryBox);
+  final content = HiveGameResourceContentStore(
+    contentBoxName: contentBox,
+    pointerBoxName: pointerBox,
+  );
+  final controller = GameLibraryController(
+    catalog: GameModuleCatalog([manifestOne]),
+    store: library,
+  );
+  await controller.initialize();
+  await controller.setModuleEnabled(moduleId, true);
+  final installerV1 = _libraryService(
+    controller: controller,
+    content: content,
+    responsePayload: versionOne,
+  );
+  await installerV1.install(moduleId, resourceId);
+
+  expect(await content.readActiveVersion(moduleId, resourceId), '1.0.0');
+  expect(await content.readActive(moduleId, resourceId), versionOne);
+  expect(
+    controller.resourceRecord(moduleId, resourceId)?.status,
+    GameResourceInstallStatus.installed,
+  );
+
+  controller.mergeRemoteManifests([manifestTwo]);
+  final failedUpdate = _libraryService(
+    controller: controller,
+    content: content,
+    responsePayload: versionTwo,
+    resourceMigrations: {
+      '$moduleId:$resourceId': (_) async =>
+          throw StateError('fixture migration failure'),
+    },
+  );
+  await expectLater(
+    failedUpdate.install(moduleId, resourceId),
+    throwsStateError,
+  );
+  expect(await content.readActiveVersion(moduleId, resourceId), '1.0.0');
+  expect(await content.readActive(moduleId, resourceId), versionOne);
+  expect(controller.resourceRecord(moduleId, resourceId)?.version, '1.0.0');
+
+  final successfulUpdate = _libraryService(
+    controller: controller,
+    content: content,
+    responsePayload: versionTwo,
+  );
+  await successfulUpdate.install(moduleId, resourceId);
+  expect(await content.readActiveVersion(moduleId, resourceId), '2.0.0');
+  expect(await content.readActive(moduleId, resourceId), versionTwo);
+  expect(
+    controller.resourceRecord(moduleId, resourceId)?.sha256,
+    sha256.convert(versionTwo).toString(),
+  );
+  await library.writeCachedResourceCatalog(
+    CachedGameResourceCatalog(manifests: [manifestTwo]),
+  );
+
+  // Close and reopen platform-backed Hive before asserting durable state.
+  await Hive.close();
+  await initializeStorage();
+  final restoredLibrary = HiveGameLibraryStore(boxName: libraryBox);
+  final restoredContent = HiveGameResourceContentStore(
+    contentBoxName: contentBox,
+    pointerBoxName: pointerBox,
+  );
+  final restoredController = GameLibraryController(
+    catalog: GameModuleCatalog([manifestTwo]),
+    store: restoredLibrary,
+  );
+  await restoredController.initialize();
+  expect(restoredController.enabledModuleIds, {moduleId});
+  expect(
+    restoredController.resourceRecord(moduleId, resourceId)?.version,
+    '2.0.0',
+  );
+  expect(
+    await restoredContent.readActiveVersion(moduleId, resourceId),
+    '2.0.0',
+  );
+  expect(await restoredContent.readActive(moduleId, resourceId), versionTwo);
+
+  await _libraryService(
+    controller: restoredController,
+    content: restoredContent,
+    responsePayload: versionTwo,
+  ).remove(moduleId, resourceId);
+  expect(await restoredContent.readActiveVersion(moduleId, resourceId), isNull);
+  expect(await restoredContent.readActive(moduleId, resourceId), isNull);
+  expect(restoredController.resourceRecord(moduleId, resourceId), isNull);
+  expect(restoredController.isModuleEnabled(moduleId), isTrue);
+  restoredController.dispose();
+  controller.dispose();
+  await Hive.close();
+  await Hive.deleteBoxFromDisk(libraryBox);
+  await Hive.deleteBoxFromDisk(contentBox);
+  await Hive.deleteBoxFromDisk(pointerBox);
 }

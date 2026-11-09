@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
@@ -42,6 +44,15 @@ const moduleSource = await readFile(
   ),
   'utf8',
 );
+
+test('Windows Git checkout preserves the signed JSON payload bytes', async () => {
+  const path = 'packages/games/street_scrap/resources/art/street-scrap-protagonist-v0.1.0.json';
+  const filtered = execFileSync('git', ['-c', 'core.autocrlf=true', 'cat-file', '--filters', `--path=${path}`, `HEAD:${path}`], {
+    cwd: fileURLToPath(new URL('../', import.meta.url)), maxBuffer: 5 * 1024 * 1024,
+  });
+  assert.deepEqual(filtered, await readFile(protagonistResourcePath));
+  assert.ok(!filtered.includes(Buffer.from('\r\n')), 'signed JSON uses canonical LF on every host');
+});
 
 function assertOptionalPresentation(registration, resourceId, hashName) {
   // The shell consumes package-owned JSON; metadata is no longer duplicated in

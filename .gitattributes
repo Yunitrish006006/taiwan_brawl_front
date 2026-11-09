@@ -1,0 +1,11 @@
+# Signed JSON resources and source checks must keep identical bytes on Windows.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.wasm binary
+*.ttf binary
+*.otf binary
+*.zip binary
