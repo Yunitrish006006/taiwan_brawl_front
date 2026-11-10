@@ -71,3 +71,21 @@ installation, simulator tests or App Group file listings. Physical midnight
 rollover, extended offline operation and real-account/revocation cold-start races
 remain NOT_EVALUATED in this device session. No disruptive end/block test was
 performed on the user's real couple relationship.
+
+## Second iPhone — 2026-11-10
+
+A second physical iPhone running iOS 27.2 was paired with Developer Mode enabled.
+Both Runner and CoupleDaysWidget provisioning profiles include the new device
+and the shared App Group. A signed Release build completed, strict signature
+verification passed and device tooling confirmed installation. The user then
+trusted the developer and confirmed the App opens.
+
+The build enables the iOS widget and connects to the production Cloudflare API.
+The user confirmed Google sign-in, the correct existing partner name/day count,
+the correct home-widget name/count and successful navigation back to the App
+when tapping the widget. No new relationship or date change was needed.
+
+These are user-confirmed physical results on the second phone. Color changes,
+offline cold launch, midnight rollover and battery-saving behavior were not
+separately verified on this second device. Private device/account identifiers
+and provisioning profiles remain outside version control.
