@@ -21,6 +21,8 @@ dependencies:
     path: packages/games/mini_royale
   taiwan_brawl_game_street_scrap:
     path: packages/games/street_scrap
+  taiwan_brawl_minesweeper:
+    path: ../taiwan_brawl_minesweeper
   user_basic_system: ^0.1.1
   cupertino_icons: ^1.0.8
   firebase_core: ^4.9.0

@@ -1,6 +1,7 @@
 import 'archery_game_registration.dart';
 import 'game_module_registration.dart';
 import 'mini_royale_game_registration.dart';
+import 'minesweeper_game_registration.dart';
 import 'street_scrap_game_registration.dart';
 
 /// The only host-level registration point for bundled game adapters.
@@ -10,6 +11,7 @@ final List<GameModuleRegistration> gameModuleRegistrations =
     buildGameModuleRegistrations([
       archeryGameRegistration,
       miniRoyaleGameRegistration,
+      minesweeperGameRegistration,
       streetScrapGameRegistration,
     ]);
 
