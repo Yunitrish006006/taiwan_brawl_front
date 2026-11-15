@@ -73,11 +73,9 @@ class ConversationKeyAgreement {
   ConversationKeyAgreement._({
     required this.conversationId,
     required this.localDeviceId,
-    required X25519 algorithm,
     required KeyExchangeWand wand,
     required String publicKey,
-  }) : _algorithm = algorithm,
-       _wand = wand,
+  }) : _wand = wand,
        offer = ConversationKeyOffer(
          version: 1,
          conversationId: conversationId,
@@ -89,7 +87,6 @@ class ConversationKeyAgreement {
 
   final String conversationId;
   final String localDeviceId;
-  final X25519 _algorithm;
   final KeyExchangeWand _wand;
   final ConversationKeyOffer offer;
 
@@ -104,7 +101,6 @@ class ConversationKeyAgreement {
     return ConversationKeyAgreement._(
       conversationId: conversationId,
       localDeviceId: localDeviceId,
-      algorithm: selected,
       wand: wand,
       publicKey: base64UrlEncode((publicKey as SimplePublicKey).bytes),
     );
