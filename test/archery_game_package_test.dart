@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:provider/provider.dart';
 import 'package:taiwan_brawl/game_modules/bundled_game_catalog.dart';
 import 'package:taiwan_brawl_game_archery/taiwan_brawl_game_archery.dart';
 import 'package:taiwan_brawl/game_modules/archery_hive_progress_backend.dart';
@@ -28,15 +27,19 @@ void main() {
   testWidgets('the separately packaged Archery module opens its game UI', (
     tester,
   ) async {
-    final locale = LocaleProvider(
-      defaultLocale: 'en',
-      translationResolver: (_) => const {},
+    final settings = GameUiSettings(
+      locale: 'en',
+      themeId: 'test-light',
+      themeMode: ThemeMode.light,
+      activeTheme: ThemeData.light(useMaterial3: true),
+      fontScale: 1,
+      disableAnimations: true,
+      accessibleNavigation: true,
     );
-    addTearDown(locale.dispose);
 
     await tester.pumpWidget(
-      ChangeNotifierProvider<LocaleProvider>.value(
-        value: locale,
+      GameUiSettingsScope(
+        settings: settings,
         child: const MaterialApp(home: ArcheryGamePage()),
       ),
     );

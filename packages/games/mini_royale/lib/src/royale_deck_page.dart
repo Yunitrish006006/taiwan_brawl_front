@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'mini_royale_service.dart';
+import 'mini_royale_localizations.dart';
 import 'mini_royale_player_data.dart';
 import 'royale_field_event_info.dart';
 import 'royale_models.dart';
-import 'package:user_ui_settings/user_ui_settings.dart';
 
 class RoyaleDeckPage extends StatefulWidget {
   const RoyaleDeckPage({super.key, this.profileId});
@@ -62,7 +62,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   }
 
   Future<void> _load() async {
-    final t = context.read<LocaleProvider>().translation;
+    final t = MiniRoyaleLocalizations.fromContext(context);
     setState(() {
       _isLoading = true;
       _error = null;
@@ -286,7 +286,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   }
 
   Future<void> _save() async {
-    final t = context.read<LocaleProvider>().translation;
+    final t = MiniRoyaleLocalizations.fromContext(context);
     if (_selectedCardIds.length != 8) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(t.text('Deck must contain exactly 8 cards'))),
@@ -445,7 +445,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     return age < card.unlockAge;
   }
 
-  String _unlockLabel(Map<String, String> t, RoyaleCard card) {
+  String _unlockLabel(MiniRoyaleLocalizations t, RoyaleCard card) {
     if (card.unlockAge <= 0) {
       return t.text('Initially unlocked');
     }
@@ -566,7 +566,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
 
   Widget _buildHeroSection(
     ThemeData theme,
-    Map<String, String> t,
+    MiniRoyaleLocalizations t,
     String locale,
   ) {
     if (_heroes.isEmpty) return const SizedBox.shrink();
@@ -601,7 +601,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   Widget _buildDeckSlotCard(
     int slot,
     ThemeData theme,
-    Map<String, String> t, {
+    MiniRoyaleLocalizations t, {
     required double width,
   }) {
     final deck = _deckForSlot(slot);
@@ -685,7 +685,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     );
   }
 
-  Widget _buildDeckSlotSection(ThemeData theme, Map<String, String> t) {
+  Widget _buildDeckSlotSection(ThemeData theme, MiniRoyaleLocalizations t) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -731,7 +731,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
 
   Widget _buildProgressionSection(
     ThemeData theme,
-    Map<String, String> t,
+    MiniRoyaleLocalizations t,
     String locale,
   ) {
     final progression = _activeProgression;
@@ -858,7 +858,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     );
   }
 
-  Widget _buildCardFilterSection(ThemeData theme, Map<String, String> t) {
+  Widget _buildCardFilterSection(ThemeData theme, MiniRoyaleLocalizations t) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1008,7 +1008,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     }
   }
 
-  String _cardTypeLabel(Map<String, String> t, RoyaleCard card) {
+  String _cardTypeLabel(MiniRoyaleLocalizations t, RoyaleCard card) {
     switch (card.type) {
       case 'tank':
         return t.text('Tank');
@@ -1029,7 +1029,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     }
   }
 
-  String _energyTypeLabel(Map<String, String> t, RoyaleCard card) {
+  String _energyTypeLabel(MiniRoyaleLocalizations t, RoyaleCard card) {
     if (card.usesMoney) {
       return t.text('Money');
     }
@@ -1061,7 +1061,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   }
 
   String _energyCostLabel(
-    Map<String, String> t,
+    MiniRoyaleLocalizations t,
     RoyaleCard card,
     String locale, {
     bool compact = false,
@@ -1072,7 +1072,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     return '${_energyTypeLabel(t, card)} ${card.energyCost}';
   }
 
-  String _jobProfileLabel(Map<String, String> t, RoyaleCard card) {
+  String _jobProfileLabel(MiniRoyaleLocalizations t, RoyaleCard card) {
     switch (card.effectKind) {
       case 'job_delivery':
         return t.text('Delivery Gig');
@@ -1084,7 +1084,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     }
   }
 
-  String _cardSummary(Map<String, String> t, RoyaleCard card) {
+  String _cardSummary(MiniRoyaleLocalizations t, RoyaleCard card) {
     if (card.isJob) {
       return '${_jobProfileLabel(t, card)} · ${t.text('Base Pay')} ${card.effectValue.toInt()}';
     }
@@ -1110,7 +1110,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     return '${t.text('HP')} ${card.hp} / ${t.text('Damage')} ${card.damage}$spawnText';
   }
 
-  String _targetRuleLabel(Map<String, String> t, RoyaleCard card) {
+  String _targetRuleLabel(MiniRoyaleLocalizations t, RoyaleCard card) {
     switch (card.targetRule) {
       case 'ground':
         return t.text('Ground');
@@ -1262,7 +1262,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${_cardTypeLabel(context.read<LocaleProvider>().translation, card)}  •  ${_energyCostLabel(context.read<LocaleProvider>().translation, card, locale, compact: true)}',
+                  '${_cardTypeLabel(MiniRoyaleLocalizations.fromContext(context), card)}  •  ${_energyCostLabel(MiniRoyaleLocalizations.fromContext(context), card, locale, compact: true)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -1279,7 +1279,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
 
   Widget _buildSelectedDeckSection(
     ThemeData theme,
-    Map<String, String> t,
+    MiniRoyaleLocalizations t,
     String locale,
   ) {
     final selectedCards = _selectedCards;
@@ -1314,7 +1314,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
 
   Widget _buildPreviewPanel(
     ThemeData theme,
-    Map<String, String> t,
+    MiniRoyaleLocalizations t,
     String locale,
   ) {
     final card = _previewCard;
@@ -1562,7 +1562,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   Widget _buildAvailableCardTile(
     RoyaleCard card,
     ThemeData theme,
-    Map<String, String> t,
+    MiniRoyaleLocalizations t,
     String locale,
   ) {
     final isSelected = _isSelectedCard(card.id);
@@ -1717,8 +1717,8 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final t = context.watch<LocaleProvider>().translation;
-    final locale = context.watch<LocaleProvider>().locale;
+    final t = MiniRoyaleLocalizations.fromContext(context);
+    final locale = t.locale;
     final activeDeck = _activeDeck;
     final progressionHeroId = activeDeck?.progression?.heroId;
     final activeHero = _heroes
@@ -1884,7 +1884,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
     }
   }
 
-  String _fieldEventCategoryLabel(String category, Map<String, String> t) {
+  String _fieldEventCategoryLabel(String category, MiniRoyaleLocalizations t) {
     switch (category) {
       case 'traffic':
         return t.text('Traffic');
@@ -1908,7 +1908,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   }
 
   Widget _buildFieldEventGrid(ThemeData theme, String locale) {
-    final t = context.read<LocaleProvider>().translation;
+    final t = MiniRoyaleLocalizations.fromContext(context);
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -1927,7 +1927,7 @@ class _RoyaleDeckPageState extends State<RoyaleDeckPage> {
   Widget _buildFieldEventTile(
     RoyaleFieldEventInfo event,
     ThemeData theme,
-    Map<String, String> t,
+    MiniRoyaleLocalizations t,
     String locale,
   ) {
     final baseColor = _fieldEventColor(event.tone, theme.colorScheme);

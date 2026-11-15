@@ -10,6 +10,8 @@ class GameModuleHomeEntry {
     required this.accentColor,
     required this.routeName,
     this.isPrimary = false,
+    this.titleResolver,
+    this.descriptionResolver,
   });
 
   final String moduleId;
@@ -20,6 +22,8 @@ class GameModuleHomeEntry {
   final Color accentColor;
   final String routeName;
   final bool isPrimary;
+  final String Function(String locale)? titleResolver;
+  final String Function(String locale)? descriptionResolver;
 }
 
 class GameModuleHomeCollectionEntry {

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:user_ui_settings/user_ui_settings.dart';
-
 import 'mini_royale_service.dart';
+import 'mini_royale_localizations.dart';
 import 'royale_models.dart';
 
 class MiniRoyaleLobbyPage extends StatefulWidget {
@@ -49,7 +48,11 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
     _service = widget.service ?? context.read<MiniRoyaleService>();
     _roomCodeController.text =
         widget.initialRoomCode?.trim().toUpperCase() ?? '';
-    _loadLobbyData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadLobbyData();
+      }
+    });
   }
 
   @override
@@ -59,7 +62,7 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
   }
 
   Future<void> _loadLobbyData() async {
-    final t = context.read<LocaleProvider>().translation;
+    final t = MiniRoyaleLocalizations.fromContext(context, listen: false);
     setState(() {
       _isLoading = true;
     });
@@ -93,7 +96,7 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
   }
 
   Future<void> _enterRoom(Future<RoyaleRoomSnapshot> Function() action) async {
-    final t = context.read<LocaleProvider>().translation;
+    final t = MiniRoyaleLocalizations.fromContext(context, listen: false);
     if (_selectedDeck == null) {
       _showSnackBar(t.text('Please create a deck first'));
       return;
@@ -142,7 +145,7 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
     }
   }
 
-  String _simulationModeLabel(Map<String, String> t, String mode) {
+  String _simulationModeLabel(MiniRoyaleLocalizations t, String mode) {
     return mode == 'host'
         ? t.text('Host Simulation (Experimental)')
         : t.text('Server Simulation');
@@ -156,7 +159,7 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
     );
   }
 
-  Widget _buildDeckDropdown(Map<String, String> t) {
+  Widget _buildDeckDropdown(MiniRoyaleLocalizations t) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final dropdownTextStyle = theme.textTheme.titleMedium?.copyWith(
@@ -197,20 +200,21 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
 
   String get _heroId => widget.initialHeroId ?? 'ordinary_person';
 
-  Widget _buildSelectedHeroChip(Map<String, String> t) {
+  Widget _buildSelectedHeroChip(MiniRoyaleLocalizations t) {
     final heroName = widget.initialHeroName ?? _heroId;
+    final scheme = Theme.of(context).colorScheme;
     return Row(
       children: [
-        Icon(Icons.person_outlined, size: 16, color: const Color(0xFFFFD166)),
+        Icon(Icons.person_outlined, size: 16, color: scheme.primary),
         const SizedBox(width: 6),
         Text(
           '${t.text('Hero')}: ',
-          style: const TextStyle(color: Colors.white70, fontSize: 13),
+          style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
         ),
         Text(
           heroName,
-          style: const TextStyle(
-            color: Color(0xFFFFD166),
+          style: TextStyle(
+            color: scheme.primary,
             fontWeight: FontWeight.w700,
             fontSize: 13,
           ),
@@ -220,11 +224,11 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
           onTap: () => Navigator.of(context).pushNamed('/royale-deck'),
           child: Text(
             t.text('Change'),
-            style: const TextStyle(
-              color: Colors.white54,
+            style: TextStyle(
+              color: scheme.primary,
               fontSize: 12,
               decoration: TextDecoration.underline,
-              decorationColor: Colors.white54,
+              decorationColor: scheme.primary,
             ),
           ),
         ),
@@ -232,7 +236,8 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
     );
   }
 
-  Widget _buildSimulationModeCard(Map<String, String> t) {
+  Widget _buildSimulationModeCard(MiniRoyaleLocalizations t) {
+    final scheme = Theme.of(context).colorScheme;
     final description = _simulationMode == 'host'
         ? t.text(
             'Host simulation runs on the room host device. This experimental mode locks after battle starts.',
@@ -244,7 +249,7 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -252,8 +257,8 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
         children: [
           Text(
             t.text('Simulation Mode'),
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: scheme.onSurface,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -279,13 +284,16 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
             },
           ),
           const SizedBox(height: 10),
-          Text(description, style: const TextStyle(color: Colors.white70)),
+          Text(description, style: TextStyle(color: scheme.onSurfaceVariant)),
         ],
       ),
     );
   }
 
-  Widget _buildCreateRoomButton(Map<String, String> t, {required bool vsBot}) {
+  Widget _buildCreateRoomButton(
+    MiniRoyaleLocalizations t, {
+    required bool vsBot,
+  }) {
     final label = vsBot ? t.text('Create Bot Match') : t.text('Create Room');
     final icon = vsBot
         ? const Icon(Icons.smart_toy_outlined)
@@ -315,16 +323,17 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
     );
   }
 
-  Widget _buildBotMatchModeHint(Map<String, String> t) {
+  Widget _buildBotMatchModeHint(MiniRoyaleLocalizations t) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
         children: [
-          const Icon(Icons.memory_rounded, color: Colors.white),
+          Icon(Icons.memory_rounded, color: scheme.primary),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -333,8 +342,8 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
               children: [
                 Text(
                   t.text('Host Simulation (Experimental)'),
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: scheme.onSurface,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -343,7 +352,7 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
                   t.text(
                     'Host simulation runs on the room host device. This experimental mode locks after battle starts.',
                   ),
-                  style: const TextStyle(color: Colors.white70),
+                  style: TextStyle(color: scheme.onSurfaceVariant),
                 ),
               ],
             ),
@@ -353,11 +362,12 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
     );
   }
 
-  String _botControllerLabel(Map<String, String> t, String value) {
+  String _botControllerLabel(MiniRoyaleLocalizations t, String value) {
     return value == 'llm' ? t.text('LLM Bot') : t.text('Heuristic Bot');
   }
 
-  Widget _buildBotControllerCard(Map<String, String> t) {
+  Widget _buildBotControllerCard(MiniRoyaleLocalizations t) {
+    final scheme = Theme.of(context).colorScheme;
     final llmConfigured = widget.llmBotConfigured;
     final description = _botController == 'llm'
         ? t.text(
@@ -370,7 +380,7 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -378,8 +388,8 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
         children: [
           Text(
             t.text('Bot Controller'),
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: scheme.onSurface,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -405,15 +415,15 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
             },
           ),
           const SizedBox(height: 10),
-          Text(description, style: const TextStyle(color: Colors.white70)),
+          Text(description, style: TextStyle(color: scheme.onSurfaceVariant)),
           if (_botController == 'llm' && !llmConfigured) ...[
             const SizedBox(height: 10),
             Text(
               t.text(
                 'LLM bot requires a saved API key. Open Profile > Display Settings > LLM Bot Settings first.',
               ),
-              style: const TextStyle(
-                color: Color(0xFFFFD166),
+              style: TextStyle(
+                color: scheme.tertiary,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -425,15 +435,20 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
 
   Widget _buildCreateRoomPanel(
     ThemeData theme,
-    Map<String, String> t,
+    MiniRoyaleLocalizations t,
     String locale,
   ) {
+    final scheme = theme.colorScheme;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF16324F), Color(0xFF294C60), Color(0xFF3E7C59)],
+        gradient: LinearGradient(
+          colors: [
+            scheme.primaryContainer,
+            scheme.secondaryContainer,
+            scheme.tertiaryContainer,
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -444,7 +459,7 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
           Text(
             t.text('Create a 1v1 Room'),
             style: theme.textTheme.headlineSmall?.copyWith(
-              color: Colors.white,
+              color: scheme.onSurface,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -453,7 +468,7 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
             t.text(
               'Choose an 8-card deck. After creating the room, open the drawer inside the room and invite a friend from your friend list.',
             ),
-            style: const TextStyle(color: Colors.white70),
+            style: TextStyle(color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           _buildDeckDropdown(t),
@@ -463,7 +478,7 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
           Text(
             t.text('Create Room'),
             style: theme.textTheme.titleMedium?.copyWith(
-              color: Colors.white,
+              color: scheme.onSurface,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -472,7 +487,7 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
           const SizedBox(height: 16),
           _buildCreateRoomButton(t, vsBot: false),
           const SizedBox(height: 18),
-          Divider(color: Colors.white.withValues(alpha: 0.16), height: 1),
+          Divider(color: scheme.outlineVariant, height: 1),
           const SizedBox(height: 18),
           Text(
             t.text('Create Bot Match'),
@@ -492,7 +507,7 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
     );
   }
 
-  Widget _buildJoinRoomPanel(ThemeData theme, Map<String, String> t) {
+  Widget _buildJoinRoomPanel(ThemeData theme, MiniRoyaleLocalizations t) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -537,8 +552,8 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
     );
   }
 
-  Widget _buildLobbyBody(ThemeData theme, Map<String, String> t) {
-    final locale = context.watch<LocaleProvider>().locale;
+  Widget _buildLobbyBody(ThemeData theme, MiniRoyaleLocalizations t) {
+    final locale = MiniRoyaleLocalizations.fromContext(context).locale;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -558,7 +573,7 @@ class _RoyaleLobbyPageState extends State<MiniRoyaleLobbyPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final t = context.watch<LocaleProvider>().translation;
+    final t = MiniRoyaleLocalizations.fromContext(context);
 
     return Scaffold(
       appBar: AppBar(title: Text(t.text('Mini Royale Lobby'))),

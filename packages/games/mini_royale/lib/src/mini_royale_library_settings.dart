@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:user_ui_settings/user_ui_settings.dart';
 
 import 'battle_animation_cache_service.dart';
+import 'mini_royale_localizations.dart';
 
 /// Mini Royale's optional local asset-cache preference, shown from its
 /// Game Library entry rather than the shell's account settings.
@@ -12,7 +12,7 @@ class MiniRoyaleLibrarySettingsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cacheService = context.watch<BattleAnimationCacheService>();
-    final t = context.watch<LocaleProvider>().translation;
+    final t = MiniRoyaleLocalizations.fromContext(context);
     return SwitchListTile.adaptive(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       secondary: const Icon(Icons.animation_outlined),

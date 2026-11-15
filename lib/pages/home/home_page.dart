@@ -298,9 +298,24 @@ class _HomePageState extends State<HomePage>
       appBar: AppBar(
         title: const Text(AppConstants.appName),
         actions: [
-          if (kIsWeb && notificationService.canRequestWebPushPermission)
+          if ((kIsWeb && notificationService.canRequestWebPushPermission) ||
+              notificationService.canRequestPushPermission)
             IconButton(
-              onPressed: () => notificationService.requestPushPermission(user),
+              onPressed: () async {
+                final enabled = await notificationService.requestPushPermission(
+                  user,
+                );
+                if (!context.mounted || enabled) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      t.text(
+                        'Push notifications are not configured for this app',
+                      ),
+                    ),
+                  ),
+                );
+              },
               icon: const Icon(Icons.notifications_outlined),
               tooltip: t.text('Enable Notifications'),
             ),

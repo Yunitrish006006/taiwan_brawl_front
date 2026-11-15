@@ -22,6 +22,7 @@ abstract interface class PendingNotificationSource {
   Future<void> poll({
     required int selfId,
     required int? activeConversationUserId,
+    String? deviceId,
     required PendingNotificationHandler onItem,
   });
 
@@ -33,9 +34,10 @@ abstract interface class PendingNotificationSource {
 /// HTTP, row parsing, and remote acknowledgement stay here. The notification
 /// service only decides how an already fetched row affects local state.
 class ServerPendingNotificationSource implements PendingNotificationSource {
-  ServerPendingNotificationSource(this._apiClient);
+  ServerPendingNotificationSource(this._apiClient, {this.deviceId});
 
   final ApiClient _apiClient;
+  final String? deviceId;
   bool _disposed = false;
 
   @override
@@ -53,10 +55,19 @@ class ServerPendingNotificationSource implements PendingNotificationSource {
   Future<void> poll({
     required int selfId,
     required int? activeConversationUserId,
+    String? deviceId,
     required PendingNotificationHandler onItem,
   }) async {
     if (_disposed) return;
-    final response = await _apiClient.getJson('/api/chat/dm/pending');
+    final effectiveDeviceId = deviceId ?? this.deviceId;
+    final query = <String, String>{
+      if (effectiveDeviceId != null && effectiveDeviceId.isNotEmpty)
+        'deviceId': effectiveDeviceId,
+    };
+    final queryString = Uri(queryParameters: query).query;
+    final response = await _apiClient.getJson(
+      '/api/chat/dm/pending${queryString.isEmpty ? '' : '?$queryString'}',
+    );
     final rawMessages = response['messages'];
     if (rawMessages is! List || rawMessages.isEmpty) return;
 
@@ -72,6 +83,8 @@ class ServerPendingNotificationSource implements PendingNotificationSource {
     if (ackIds.isNotEmpty && !_disposed) {
       await _apiClient.postJson('/api/chat/dm/ack', {
         'ids': ackIds.toSet().toList(),
+        if (effectiveDeviceId != null && effectiveDeviceId.isNotEmpty)
+          'deviceId': effectiveDeviceId,
       });
     }
   }

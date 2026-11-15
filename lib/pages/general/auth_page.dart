@@ -58,7 +58,11 @@ class _AuthPageState extends State<AuthPage> {
         clientId: kIsWeb
             ? _nonEmptyOrNull(configuration.googleWebClientId)
             : null,
-        serverClientId: _nonEmptyOrNull(configuration.googleServerClientId),
+        // google_sign_in_web rejects serverClientId. The server client ID is
+        // only used by the native Android/iOS implementations.
+        serverClientId: kIsWeb
+            ? null
+            : _nonEmptyOrNull(configuration.googleServerClientId),
       );
       await _googleSignInInitialization;
 

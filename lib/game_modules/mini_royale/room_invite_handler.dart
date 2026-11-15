@@ -4,7 +4,6 @@ import 'package:taiwan_brawl_game_mini_royale/taiwan_brawl_game_mini_royale.dart
 
 import '../../services/friends_service.dart';
 import '../../services/game_library_controller.dart';
-import '../../services/locale_provider.dart';
 import '../../services/royale_service.dart';
 import '../../services/api_client.dart';
 import 'package:taiwan_brawl_game_mini_royale/mini_royale_arena_page.dart'
@@ -72,9 +71,10 @@ class MiniRoyaleRoomInviteHandler implements GameModuleRoomInviteHandler {
     final decks = await royale.fetchDeckSummaries();
     if (decks.isEmpty) {
       if (!context.mounted) return null;
-      final message = context.read<LocaleProvider>().translation.text(
-        'Please create a deck first',
-      );
+      final message = MiniRoyaleLocalizations.fromContext(
+        context,
+        listen: false,
+      ).text('Please create a deck first');
       throw ApiException(message);
     }
     if (decks.length == 1) return decks.first;
@@ -84,7 +84,7 @@ class MiniRoyaleRoomInviteHandler implements GameModuleRoomInviteHandler {
     return showDialog<RoyaleDeck>(
       context: context,
       builder: (dialogContext) {
-        final t = dialogContext.watch<LocaleProvider>().translation;
+        final t = MiniRoyaleLocalizations.fromContext(dialogContext);
         final theme = Theme.of(dialogContext);
         final scheme = theme.colorScheme;
         return AlertDialog(

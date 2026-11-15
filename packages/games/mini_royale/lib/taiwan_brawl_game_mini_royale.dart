@@ -17,6 +17,7 @@ export 'src/battle_animation_cache_service.dart';
 export 'src/battle_animation_cache_store.dart';
 export 'src/battle_animation_remote_source.dart';
 export 'src/mini_royale_library_settings.dart';
+export 'src/mini_royale_localizations.dart';
 export 'src/royale_field_event_info.dart';
 export 'src/arena_field_painter.dart';
 export 'src/mini_royale_arena_preview.dart';

@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
+import 'conversation_key_agreement.dart';
+import 'conversation_key_exchange_coordinator.dart';
 
 import 'api_client.dart';
 import 'dm_peer_role.dart';
@@ -14,6 +18,30 @@ typedef MessageSyncCursorStoreFactory =
     MessageSyncCursorStore Function({
       required int selfId,
       required int friendId,
+    });
+
+typedef ConversationEncryptorFactory =
+    ConversationEncryptor? Function({
+      required int selfId,
+      required int friendId,
+    });
+
+typedef ConversationKeyIdFactory =
+    String? Function({required int selfId, required int friendId});
+
+typedef ConversationKeyOfferVerifierFactory =
+    Future<bool> Function({
+      required int selfId,
+      required int friendId,
+      required ConversationKeyOffer offer,
+    });
+
+typedef ConversationKeyEstablishedFactory =
+    Future<void> Function({
+      required int selfId,
+      required int friendId,
+      required String keyId,
+      required List<int> key,
     });
 
 P2PSignalingFactory _hostedSignalingFactory(ApiClient apiClient) {
@@ -34,6 +62,11 @@ class MessagingTransportFactory {
     this.p2pIceConfiguration = P2PMessageTransport.defaultIceConfiguration,
     this.deviceId,
     this.relayEncryptionReady = false,
+    this.conversationEncryptorFactory,
+    this.conversationKeyIdFactory,
+    this.conversationKeyOfferVerifierFactory,
+    this.conversationKeyEstablishedFactory,
+    this.localDeviceIdentity,
   }) : _signalingFactory =
            signalingFactory ?? _hostedSignalingFactory(_apiClient);
 
@@ -46,6 +79,12 @@ class MessagingTransportFactory {
   final bool p2pEnabled;
   final String? deviceId;
   final bool relayEncryptionReady;
+  final ConversationEncryptorFactory? conversationEncryptorFactory;
+  final ConversationKeyIdFactory? conversationKeyIdFactory;
+  final ConversationKeyOfferVerifierFactory?
+  conversationKeyOfferVerifierFactory;
+  final ConversationKeyEstablishedFactory? conversationKeyEstablishedFactory;
+  final DeviceIdentity? localDeviceIdentity;
   final MessageSyncCursorStoreFactory? syncCursorStoreFactory;
   final Map<String, dynamic> p2pIceConfiguration;
   final P2PSignalingFactory _signalingFactory;
@@ -61,6 +100,14 @@ class MessagingTransportFactory {
       friendId: friendId,
       deviceId: deviceId,
       relayEncryptionReady: relayEncryptionReady,
+      conversationEncryptor: conversationEncryptorFactory?.call(
+        selfId: selfId,
+        friendId: friendId,
+      ),
+      conversationKeyId: conversationKeyIdFactory?.call(
+        selfId: selfId,
+        friendId: friendId,
+      ),
       syncCursorStore: syncCursorStoreFactory?.call(
         selfId: selfId,
         friendId: friendId,
@@ -69,14 +116,55 @@ class MessagingTransportFactory {
     if (!p2pEnabled) return server;
 
     return FallbackMessageTransport(
-      primary: P2PMessageTransport(
+      primary: _createP2p(
+        selfId: selfId,
         friendId: friendId,
-        signalingService: _signalingFactory(selfId: selfId, friendId: friendId),
         isCaller: isCaller,
-        iceConfiguration: p2pIceConfiguration,
       ),
       fallback: server,
     );
+  }
+
+  P2PMessageTransport _createP2p({
+    required int selfId,
+    required int friendId,
+    required bool isCaller,
+  }) {
+    late final P2PMessageTransport transport;
+    StreamSubscription<Map<String, Object?>>? pairingSubscription;
+    final verifier = conversationKeyOfferVerifierFactory;
+    final established = conversationKeyEstablishedFactory;
+    transport = P2PMessageTransport(
+      friendId: friendId,
+      signalingService: _signalingFactory(selfId: selfId, friendId: friendId),
+      isCaller: isCaller,
+      iceConfiguration: p2pIceConfiguration,
+      onConnected: (connectedTransport) async {
+        if (verifier == null || established == null) return;
+        await pairingSubscription?.cancel();
+        final coordinator = ConversationKeyExchangeCoordinator(
+          conversationId:
+              '${selfId < friendId ? selfId : friendId}:${selfId < friendId ? friendId : selfId}',
+          localDeviceId:
+              localDeviceIdentity?.deviceId ?? deviceId ?? 'user:$selfId',
+          localIdentity: localDeviceIdentity,
+          sendControl: connectedTransport.sendControl,
+          verifyRemoteOffer: (offer) =>
+              verifier(selfId: selfId, friendId: friendId, offer: offer),
+          onEstablished: ({required keyId, required key}) => established(
+            selfId: selfId,
+            friendId: friendId,
+            keyId: keyId,
+            key: key,
+          ),
+        );
+        pairingSubscription = connectedTransport.controlMessages.listen(
+          coordinator.handleControl,
+        );
+        await coordinator.start();
+      },
+    );
+    return transport;
   }
 
   P2PMessageTransport createP2P({

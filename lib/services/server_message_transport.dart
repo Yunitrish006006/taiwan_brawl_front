@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
@@ -16,6 +17,8 @@ class ServerMessageTransport implements MessageReceiptTransport {
     required this.friendId,
     this.deviceId,
     this.relayEncryptionReady = false,
+    this.conversationEncryptor,
+    this.conversationKeyId,
     this.pollInterval = const Duration(seconds: 2),
     this.syncCursorStore,
   }) : _apiClient = apiClient;
@@ -25,6 +28,8 @@ class ServerMessageTransport implements MessageReceiptTransport {
   final int friendId;
   final String? deviceId;
   final bool relayEncryptionReady;
+  final ConversationEncryptor? conversationEncryptor;
+  final String? conversationKeyId;
   final Duration pollInterval;
   final MessageSyncCursorStore? syncCursorStore;
   final StreamController<MessageEvent> _events =
@@ -63,8 +68,28 @@ class ServerMessageTransport implements MessageReceiptTransport {
         'Server relay is disabled until end-to-end message encryption is ready',
       );
     }
+    var wireEvent = event;
+    final encryptor = conversationEncryptor;
+    final keyId = conversationKeyId;
+    if ((event.type == MessageEventType.created ||
+            event.type == MessageEventType.edited) &&
+        event.body != null &&
+        (encryptor == null || keyId == null)) {
+      throw StateError(
+        'Encrypted relay requires a conversation key and encryptor',
+      );
+    }
+    if (encryptor != null && keyId != null && event.body != null) {
+      wireEvent = event.withEncryptedBody(
+        await encryptor.encrypt(
+          conversationId: event.conversationId,
+          keyId: keyId,
+          plaintext: event.body!,
+        ),
+      );
+    }
     await _apiClient.postJson('/api/chat/dm/$friendId/event', {
-      'event': event.toJson(),
+      'event': wireEvent.toJson(),
     });
   }
 
@@ -141,7 +166,7 @@ class ServerMessageTransport implements MessageReceiptTransport {
           continue;
         }
         _observedPendingIds.add(pendingId);
-        final event = eventFromPendingRow(
+        var event = eventFromPendingRow(
           Map<String, dynamic>.from(item),
           selfId: selfId,
           friendId: friendId,
@@ -154,6 +179,22 @@ class ServerMessageTransport implements MessageReceiptTransport {
           _acknowledgedPendingIds.add(pendingId);
           await _advanceCursor();
           continue;
+        }
+        final encryptedBody = event.encryptedBody;
+        final encryptor = conversationEncryptor;
+        if (encryptedBody != null && encryptor != null) {
+          try {
+            event = event.withBody(
+              await encryptor.decrypt(
+                conversationId: event.conversationId,
+                body: encryptedBody,
+              ),
+            );
+          } catch (_) {
+            // Do not ACK an event that cannot be decrypted. It remains
+            // retryable on the next polling cycle.
+            continue;
+          }
         }
         _pendingReceipts[event.eventId] = pendingId;
         _events.add(event);
@@ -209,6 +250,22 @@ class ServerMessageTransport implements MessageReceiptTransport {
           .where((candidate) => candidate.name == eventType)
           .firstOrNull;
       if (type == null) return null;
+      final rawText = row['text']?.toString();
+      EncryptedMessageBody? encryptedBody;
+      String? body = rawText;
+      if (rawText != null) {
+        try {
+          final decoded = jsonDecode(rawText);
+          if (decoded is Map && decoded['encryptedBody'] is Map) {
+            encryptedBody = EncryptedMessageBody.fromJson(
+              Map<String, Object?>.from(decoded['encryptedBody'] as Map),
+            );
+            body = null;
+          }
+        } catch (_) {
+          // Legacy text remains a cleartext body.
+        }
+      }
       return MessageEvent(
         eventId: eventId,
         messageId: messageId,
@@ -218,7 +275,8 @@ class ServerMessageTransport implements MessageReceiptTransport {
         type: type,
         revision: _readInt(row['revision']) ?? 0,
         createdAt: createdAt,
-        body: row['text']?.toString(),
+        body: body,
+        encryptedBody: encryptedBody,
         signature: row['signature']?.toString(),
       );
     }

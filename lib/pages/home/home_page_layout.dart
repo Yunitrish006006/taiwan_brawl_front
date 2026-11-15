@@ -765,6 +765,7 @@ extension _HomePageLayout on _HomePageState {
       enabledModuleIds: gameLibrary.enabledModuleIds,
       moduleIdOf: (entry) => entry.moduleId,
     );
+    final locale = context.watch<LocaleProvider>().locale;
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
       children: [
@@ -830,8 +831,12 @@ extension _HomePageLayout on _HomePageState {
             begin: 0.2,
             end: 0.65,
             child: _buildGameModeCard(
-              title: t.text(gameEntries[index].titleKey),
-              subtitle: t.text(gameEntries[index].descriptionKey),
+              title:
+                  gameEntries[index].titleResolver?.call(locale) ??
+                  t.text(gameEntries[index].titleKey),
+              subtitle:
+                  gameEntries[index].descriptionResolver?.call(locale) ??
+                  t.text(gameEntries[index].descriptionKey),
               tag: gameEntries[index].tag,
               icon: gameEntries[index].icon,
               accentColor: gameEntries[index].accentColor,

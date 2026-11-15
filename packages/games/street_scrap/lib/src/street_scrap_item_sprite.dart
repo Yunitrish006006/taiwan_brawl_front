@@ -179,6 +179,8 @@ String? streetScrapOfflineFallbackAssetFor(String itemId) => switch (itemId) {
     'packages/taiwan_brawl_game_street_scrap/assets/fallback/metal_scrap_v1.png',
   'plastic.scrap' =>
     'packages/taiwan_brawl_game_street_scrap/assets/fallback/plastic_scrap_v1.png',
+  'rope.coarse' =>
+    'packages/taiwan_brawl_game_street_scrap/assets/fallback/rope_coarse_v1.png',
   _ => null,
 };
 
@@ -265,7 +267,8 @@ int? streetScrapMaterialAtlasCellFor({
   // Other water variants must use the offline painter so the atlas cannot
   // erase their visibly distinct state.
   if (contentItemId != null && contentItemId.startsWith('water.')) return null;
-  if (normalized == 'container.clean' || normalized == 'container.bottle_clean') {
+  if (normalized == 'container.clean' ||
+      normalized == 'container.bottle_clean') {
     return 12;
   }
   if (normalized == 'container.meal_box') return 14;
@@ -634,7 +637,9 @@ class _StreetScrapPixelPainter extends CustomPainter {
     if (id.startsWith('bag.') || id.startsWith('storage.')) return 'storage';
     if (id.startsWith('structure.')) return 'structure';
     if (id.startsWith('water.') || content.startsWith('water.')) return 'water';
-    if (id.startsWith('food.') || id.startsWith('fish.') || id.contains('soup')) {
+    if (id.startsWith('food.') ||
+        id.startsWith('fish.') ||
+        id.contains('soup')) {
       return 'food';
     }
     if (id.startsWith('herb.') ||

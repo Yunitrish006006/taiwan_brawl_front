@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:taiwan_brawl_minesweeper/taiwan_brawl_minesweeper_flutter.dart';
+import 'package:user_ui_settings/user_ui_settings.dart';
 
 import 'game_module_home_entry.dart';
 import 'game_module_manifest.dart';
 import 'game_module_registration.dart';
 
 const minesweeperGameModuleId = 'game.minesweeper';
+
+String _minesweeperTitle(String locale) =>
+    MinesweeperLocalizations(locale).text('minesweeper.title', 'Minesweeper');
+
+String _minesweeperDescription(String locale) =>
+    MinesweeperLocalizations(locale).text(
+      'minesweeper.description',
+      'Choose a board size and find all the mines.',
+    );
 
 final minesweeperGameRegistration = GameModuleRegistration(
   manifest: GameModuleManifest(
@@ -29,8 +39,11 @@ final minesweeperGameRegistration = GameModuleRegistration(
       icon: Icons.grid_3x3,
       accentColor: Color(0xFFE6BE5B),
       routeName: '/minesweeper',
+      titleResolver: _minesweeperTitle,
+      descriptionResolver: _minesweeperDescription,
     ),
   ],
 );
 
-Widget _minesweeperRoute(BuildContext context) => const MinesweeperHome();
+Widget _minesweeperRoute(BuildContext context) =>
+    MinesweeperHome(settings: GameUiSettingsScope.of(context));

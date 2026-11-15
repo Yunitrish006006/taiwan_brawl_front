@@ -680,6 +680,95 @@ class _EditableDmPageState extends State<EditableDmPage> {
     inputController.dispose();
   }
 
+  Future<void> _showSecurityPairingDialog() async {
+    final relayService = widget.relayFallbackService;
+    var pairing = _connecting;
+    var failed =
+        _connectionFailed ||
+        (relayService?.relayFallbackChoiceRequired ?? false);
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final connected = relayService?.p2pActive ?? false;
+          return AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.lock_outline),
+                SizedBox(width: 8),
+                Text('安全配對'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  connected
+                      ? '已透過 P2P 建立安全連線。'
+                      : pairing
+                      ? '正在等待雙方完成 P2P 配對。'
+                      : failed
+                      ? '自動配對尚未完成，可以重新嘗試。'
+                      : '開啟此頁後，系統會自動嘗試與好友建立 P2P 配對。',
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    connected ? Icons.verified : Icons.lock_clock_outlined,
+                    color: connected ? Colors.green : null,
+                  ),
+                  title: Text(connected ? 'P2P 已配對' : '等待 P2P 配對'),
+                  subtitle: Text(
+                    connected
+                        ? '一般聊天會優先使用直接連線。'
+                        : '雙方開啟聊天頁即可自動協商；任一方都能按鎖頭重試。',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: connected || pairing
+                      ? null
+                      : () async {
+                          setDialogState(() {
+                            pairing = true;
+                            failed = false;
+                          });
+                          await _connectToConversation();
+                          if (!context.mounted) return;
+                          setDialogState(() {
+                            pairing = false;
+                            failed = !(relayService?.p2pActive ?? false);
+                          });
+                        },
+                  icon: const Icon(Icons.lock_open),
+                  label: Text(pairing ? '配對中…' : '開始新版配對'),
+                ),
+                if (widget.manualP2pService?.enabled == true)
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      unawaited(_showManualP2pDialog());
+                    },
+                    icon: const Icon(Icons.tune),
+                    label: const Text('進階：手動交換配對資料'),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('關閉'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _sendMessage() async {
     if (_sendingMessage) return;
     final text = _textController.text.trim();
@@ -933,6 +1022,15 @@ class _EditableDmPageState extends State<EditableDmPage> {
               onPressed: _manageChatDevices,
               icon: const Icon(Icons.devices_other),
             ),
+          IconButton(
+            tooltip: '安全配對',
+            onPressed: _showSecurityPairingDialog,
+            icon: Icon(
+              widget.relayFallbackService?.p2pActive == true
+                  ? Icons.lock
+                  : Icons.lock_outline,
+            ),
+          ),
           if (widget.syncService != null) ...[
             IconButton(
               tooltip: _s.uploadTooltip,

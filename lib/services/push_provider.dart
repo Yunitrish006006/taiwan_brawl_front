@@ -57,7 +57,18 @@ class FirebasePushProviderOptions implements PushProviderConfiguration {
         : const <String>{};
     final projectId = _readString(fcm['projectId']);
     final apiKey = _readString(fcm['apiKey']);
-    final appId = _readString(fcm['appId']);
+    final platform = _currentFirebasePlatform;
+    final platformApps = fcm['apps'] is Map
+        ? Map<String, dynamic>.from(fcm['apps'] as Map)
+        : const <String, dynamic>{};
+    final platformApp = platform == null && platformApps.isEmpty
+        ? null
+        : platformApps[platform];
+    final platformAppMap = platformApp is Map
+        ? Map<String, dynamic>.from(platformApp)
+        : const <String, dynamic>{};
+    final appId = _readString(platformAppMap['appId']) ??
+        _readString(fcm['appId']);
     final messagingSenderId = _readString(fcm['messagingSenderId']);
     if ([projectId, apiKey, appId, messagingSenderId].any((v) => v == null)) {
       return null;
@@ -87,6 +98,16 @@ class FirebasePushProviderOptions implements PushProviderConfiguration {
     if (value is! String) return null;
     final text = value.trim();
     return text.isEmpty ? null : text;
+  }
+
+  static String? get _currentFirebasePlatform {
+    if (kIsWeb) return 'web';
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android => 'android',
+      TargetPlatform.iOS => 'ios',
+      TargetPlatform.macOS => 'macos',
+      _ => null,
+    };
   }
 }
 

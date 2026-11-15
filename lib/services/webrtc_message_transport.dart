@@ -18,6 +18,8 @@ class WebRtcMessageTransport
   final RTCDataChannel _channel;
   final StreamController<MessageEvent> _events =
       StreamController<MessageEvent>.broadcast();
+  final StreamController<Map<String, Object?>> _controlMessages =
+      StreamController<Map<String, Object?>>.broadcast();
   final StreamController<bool> _connectionStates =
       StreamController<bool>.broadcast();
   bool _connected = false;
@@ -25,6 +27,8 @@ class WebRtcMessageTransport
 
   @override
   Stream<MessageEvent> get events => _events.stream;
+
+  Stream<Map<String, Object?>> get controlMessages => _controlMessages.stream;
 
   @override
   Stream<bool> get connectionStateChanges => _connectionStates.stream;
@@ -55,6 +59,18 @@ class WebRtcMessageTransport
     _channel.send(RTCDataChannelMessage(jsonEncode(event.toJson())));
   }
 
+  Future<void> sendControl(Map<String, Object?> message) async {
+    if (!isTransportConnected ||
+        _channel.state != RTCDataChannelState.RTCDataChannelOpen) {
+      throw StateError('WebRTC message transport is not connected');
+    }
+    _channel.send(
+      RTCDataChannelMessage(
+        jsonEncode({'kind': 'control', 'message': message}),
+      ),
+    );
+  }
+
   @override
   Future<void> disconnect() async {
     _setConnected(false);
@@ -64,6 +80,7 @@ class WebRtcMessageTransport
   Future<void> dispose() async {
     await disconnect();
     await _events.close();
+    await _controlMessages.close();
     await _connectionStates.close();
   }
 
@@ -97,6 +114,13 @@ class WebRtcMessageTransport
         final decoded = jsonDecode(message.text);
         if (decoded is! Map) {
           throw const FormatException('Event is not an object');
+        }
+        if (decoded is Map && decoded['kind'] == 'control') {
+          final control = decoded['message'];
+          if (control is! Map)
+            throw const FormatException('Control message is not an object');
+          _controlMessages.add(Map<String, Object?>.from(control));
+          return;
         }
         _events.add(MessageEvent.fromJson(Map<String, Object?>.from(decoded)));
       } catch (error, stackTrace) {

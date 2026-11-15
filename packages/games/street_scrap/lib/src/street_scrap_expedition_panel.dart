@@ -12,6 +12,7 @@ import 'street_scrap_audio.dart';
 import 'street_scrap_item_sprite.dart';
 import 'street_scrap_protagonist_sprite.dart';
 import 'street_scrap_module.dart';
+import 'street_scrap_search_scene_page.dart';
 
 class StreetScrapExpeditionPanel extends StatefulWidget {
   const StreetScrapExpeditionPanel({
@@ -1128,6 +1129,25 @@ class _StreetScrapExpeditionPanelState
               spacing: 8,
               runSpacing: 4,
               children: [
+                OutlinedButton.icon(
+                  key: const Key('street-scrap-open-search-scene'),
+                  onPressed: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => StreetScrapSearchScenePage(
+                        materialAtlasBytes: widget.materialAtlasBytes,
+                        woodBoardSpriteBytes: widget.woodBoardSpriteBytes,
+                        threadSpoolSpriteBytes: widget.threadSpoolSpriteBytes,
+                        toolAtlasBytes: widget.toolAtlasBytes,
+                        materialPackArtBytes: widget.materialPackArtBytes,
+                        mineralPackSpriteBytes: widget.mineralPackSpriteBytes,
+                        woodChipBundleSpriteBytes:
+                            widget.woodChipBundleSpriteBytes,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.travel_explore_outlined),
+                  label: Text(strings.text('search.open')),
+                ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:provider/provider.dart';
 import 'package:taiwan_brawl_game_street_scrap/taiwan_brawl_game_street_scrap.dart'
-    deferred as street_scrap_page;
+    deferred as street_scrap_page
+    hide StreetScrapSearchConcealmentJson;
 import 'package:taiwan_brawl_game_street_scrap/street_scrap_localizations.dart'
     as street_scrap_i18n;
 import 'package:taiwan_brawl_game_street_scrap/street_scrap_content.dart'
@@ -44,6 +46,14 @@ Widget _streetScrapRoute(BuildContext context) {
           street_scrap.streetScrapContentSchemaVersion &&
       record.version.isNotEmpty &&
       RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(record.sha256);
+  // The playable base content is bundled with the APK so a local/debug build
+  // remains playable even when the signed optional download is not published.
+  // A verified installed resource still takes precedence below.
+  const bundledContentAvailable = true;
+  final playableContentAvailable = contentInstalled || bundledContentAvailable;
+  final playableContentVersion = contentInstalled
+      ? record.version
+      : street_scrap.streetScrapContentResourceVersion;
   final chapter5Record = library.resourceRecord(
     street_scrap.streetScrapModuleId,
     street_scrap.streetScrapChapter5ResourceId,
@@ -70,6 +80,8 @@ Widget _streetScrapRoute(BuildContext context) {
           street_scrap.streetScrapArtSchemaVersion &&
       artRecord.version.isNotEmpty &&
       RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(artRecord.sha256);
+  const bundledArtAvailable = true;
+  final playableArtAvailable = artInstalled || bundledArtAvailable;
   final threadSpoolArtRecord = library.resourceRecord(
     street_scrap.streetScrapModuleId,
     street_scrap.streetScrapThreadSpoolArtResourceId,
@@ -204,19 +216,21 @@ Widget _streetScrapRoute(BuildContext context) {
     profileScope: profileId.toString(),
     store: progressStore,
     contentVersions: {
-      if (contentInstalled)
-        street_scrap.streetScrapContentResourceId: record.version,
+      if (playableContentAvailable)
+        street_scrap.streetScrapContentResourceId: playableContentVersion,
       if (chapter5Installed)
         street_scrap.streetScrapChapter5ResourceId: chapter5Record.version,
-      if (contentInstalled)
+      if (playableContentAvailable)
         street_scrap.streetScrapActiveContentVersionKey:
-            '${record.version}+${chapter5Installed ? chapter5Record.version : 'none'}',
+            '$playableContentVersion+${chapter5Installed ? chapter5Record.version : 'none'}',
     },
     compatibleContentVersions: {
-      if (contentInstalled)
+      if (playableContentAvailable)
         street_scrap.streetScrapContentResourceId:
-            street_scrap.streetScrapSaveCompatibleBaseContentVersions[record
-                .version] ??
+            street_scrap
+                .streetScrapSaveCompatibleBaseContentVersions[contentInstalled
+                ? record.version
+                : street_scrap.streetScrapContentResourceVersion] ??
             const <String>{},
     },
     rulesetVersion: street_scrap.streetScrapRulesetVersion,
@@ -229,11 +243,19 @@ Widget _streetScrapRoute(BuildContext context) {
         child: street_scrap_page.StreetScrapProgressEntryPage(
           key: ValueKey('street-scrap:$profileId'),
           session: session,
-          contentInstalled: contentInstalled,
+          contentInstalled: playableContentAvailable,
           chapter5Installed: chapter5Installed,
-          artInstalled: artInstalled,
+          artInstalled: playableArtAvailable,
           readArt: () async {
-            if (!artInstalled) return null;
+            if (!artInstalled) {
+              final data = await rootBundle.load(
+                'packages/taiwan_brawl_game_street_scrap/resources/art/street-scrap-art-v0.1.0.png',
+              );
+              return data.buffer.asUint8List(
+                data.offsetInBytes,
+                data.lengthInBytes,
+              );
+            }
             try {
               return await context
                   .read<GameResourceLibraryService>()
@@ -246,9 +268,18 @@ Widget _streetScrapRoute(BuildContext context) {
               return null;
             }
           },
-          threadSpoolArtInstalled: threadSpoolArtInstalled,
+          threadSpoolArtInstalled:
+              threadSpoolArtInstalled || bundledArtAvailable,
           readThreadSpoolArt: () async {
-            if (!threadSpoolArtInstalled) return null;
+            if (!threadSpoolArtInstalled) {
+              final data = await rootBundle.load(
+                'packages/taiwan_brawl_game_street_scrap/resources/art/street-scrap-art-thread-spool-v0.1.0.png',
+              );
+              return data.buffer.asUint8List(
+                data.offsetInBytes,
+                data.lengthInBytes,
+              );
+            }
             try {
               return await context
                   .read<GameResourceLibraryService>()
@@ -261,9 +292,17 @@ Widget _streetScrapRoute(BuildContext context) {
               return null;
             }
           },
-          materialAtlasInstalled: materialAtlasInstalled,
+          materialAtlasInstalled: materialAtlasInstalled || bundledArtAvailable,
           readMaterialAtlas: () async {
-            if (!materialAtlasInstalled) return null;
+            if (!materialAtlasInstalled) {
+              final data = await rootBundle.load(
+                'packages/taiwan_brawl_game_street_scrap/resources/art/street-scrap-art-material-atlas-v0.3.0.png',
+              );
+              return data.buffer.asUint8List(
+                data.offsetInBytes,
+                data.lengthInBytes,
+              );
+            }
             try {
               return await context
                   .read<GameResourceLibraryService>()
@@ -276,9 +315,17 @@ Widget _streetScrapRoute(BuildContext context) {
               return null;
             }
           },
-          toolAtlasInstalled: toolAtlasInstalled,
+          toolAtlasInstalled: toolAtlasInstalled || bundledArtAvailable,
           readToolAtlas: () async {
-            if (!toolAtlasInstalled) return null;
+            if (!toolAtlasInstalled) {
+              final data = await rootBundle.load(
+                'packages/taiwan_brawl_game_street_scrap/resources/art/street-scrap-art-tool-atlas-v0.1.0.png',
+              );
+              return data.buffer.asUint8List(
+                data.offsetInBytes,
+                data.lengthInBytes,
+              );
+            }
             try {
               return await context
                   .read<GameResourceLibraryService>()
@@ -291,9 +338,18 @@ Widget _streetScrapRoute(BuildContext context) {
               return null;
             }
           },
-          materialPackArtInstalled: materialPackArtInstalled,
+          materialPackArtInstalled:
+              materialPackArtInstalled || bundledArtAvailable,
           readMaterialPackArt: () async {
-            if (!materialPackArtInstalled) return null;
+            if (!materialPackArtInstalled) {
+              final data = await rootBundle.load(
+                'packages/taiwan_brawl_game_street_scrap/resources/art/street-scrap-art-material-pack-v0.1.0.png',
+              );
+              return data.buffer.asUint8List(
+                data.offsetInBytes,
+                data.lengthInBytes,
+              );
+            }
             try {
               return await context
                   .read<GameResourceLibraryService>()
@@ -306,9 +362,18 @@ Widget _streetScrapRoute(BuildContext context) {
               return null;
             }
           },
-          mineralPackArtInstalled: mineralPackArtInstalled,
+          mineralPackArtInstalled:
+              mineralPackArtInstalled || bundledArtAvailable,
           readMineralPackArt: () async {
-            if (!mineralPackArtInstalled) return null;
+            if (!mineralPackArtInstalled) {
+              final data = await rootBundle.load(
+                'packages/taiwan_brawl_game_street_scrap/resources/art/street-scrap-art-mineral-pack-v0.1.0.png',
+              );
+              return data.buffer.asUint8List(
+                data.offsetInBytes,
+                data.lengthInBytes,
+              );
+            }
             try {
               return await context
                   .read<GameResourceLibraryService>()
@@ -321,9 +386,18 @@ Widget _streetScrapRoute(BuildContext context) {
               return null;
             }
           },
-          woodChipBundleArtInstalled: woodChipBundleArtInstalled,
+          woodChipBundleArtInstalled:
+              woodChipBundleArtInstalled || bundledArtAvailable,
           readWoodChipBundleArt: () async {
-            if (!woodChipBundleArtInstalled) return null;
+            if (!woodChipBundleArtInstalled) {
+              final data = await rootBundle.load(
+                'packages/taiwan_brawl_game_street_scrap/resources/art/street-scrap-art-wood-chip-bundle-v0.1.0.png',
+              );
+              return data.buffer.asUint8List(
+                data.offsetInBytes,
+                data.lengthInBytes,
+              );
+            }
             try {
               return await context
                   .read<GameResourceLibraryService>()
@@ -336,9 +410,18 @@ Widget _streetScrapRoute(BuildContext context) {
               return null;
             }
           },
-          fishingSceneArtInstalled: fishingSceneArtInstalled,
+          fishingSceneArtInstalled:
+              fishingSceneArtInstalled || bundledArtAvailable,
           readFishingSceneArt: () async {
-            if (!fishingSceneArtInstalled) return null;
+            if (!fishingSceneArtInstalled) {
+              final data = await rootBundle.load(
+                'packages/taiwan_brawl_game_street_scrap/resources/art/dock-fishing-background-v0.1.0.png',
+              );
+              return data.buffer.asUint8List(
+                data.offsetInBytes,
+                data.lengthInBytes,
+              );
+            }
             try {
               return await context
                   .read<GameResourceLibraryService>()
@@ -351,9 +434,18 @@ Widget _streetScrapRoute(BuildContext context) {
               return null;
             }
           },
-          protagonistArtInstalled: protagonistArtInstalled,
+          protagonistArtInstalled:
+              protagonistArtInstalled || bundledArtAvailable,
           readProtagonistArt: () async {
-            if (!protagonistArtInstalled) return null;
+            if (!protagonistArtInstalled) {
+              final data = await rootBundle.load(
+                'packages/taiwan_brawl_game_street_scrap/resources/art/street-scrap-protagonist-v0.1.0.json',
+              );
+              return data.buffer.asUint8List(
+                data.offsetInBytes,
+                data.lengthInBytes,
+              );
+            }
             try {
               return await context
                   .read<GameResourceLibraryService>()
@@ -368,6 +460,12 @@ Widget _streetScrapRoute(BuildContext context) {
           },
           readContent: () async {
             try {
+              if (!contentInstalled) {
+                final bundled = await rootBundle.loadString(
+                  'packages/taiwan_brawl_game_street_scrap/resources/data/street-scrap-content-chapters-0-4-v1.json',
+                );
+                return Uint8List.fromList(utf8.encode(bundled));
+              }
               final store = context
                   .read<GameResourceLibraryService>()
                   .contentStore;

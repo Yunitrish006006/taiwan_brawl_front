@@ -9,6 +9,12 @@ import 'package:taiwan_brawl_game_archery/taiwan_brawl_game_archery.dart';
 import 'package:user_ui_settings/user_ui_settings.dart';
 
 void main() {
+  test('Archery owns its translations and consumes the host locale', () {
+    expect(ArcheryLocalizations('en').text('Score'), 'Score');
+    expect(ArcheryLocalizations('ja').text('Score'), 'スコア');
+    expect(ArcheryLocalizations('zh-Hant').text('Score'), '分數');
+  });
+
   test(
     'a delayed schema migration cannot overwrite a concurrent save',
     () async {

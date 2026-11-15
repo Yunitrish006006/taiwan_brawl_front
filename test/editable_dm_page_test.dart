@@ -33,6 +33,60 @@ void main() {
     expect(find.byTooltip('P2P connected'), findsOneWidget);
   });
 
+  testWidgets('lock button opens the new security pairing UI', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EditableDmPage(
+          service: _FakeDmService(),
+          relayFallbackService: _FakeRelayFallbackDmService(),
+          friendId: 2,
+          friendName: 'Friend',
+          currentUserId: 1,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('安全配對'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('安全配對'), findsOneWidget);
+    expect(find.text('P2P 已配對'), findsOneWidget);
+    expect(find.text('進階：手動交換配對資料'), findsNothing);
+  });
+
+  testWidgets('new pairing button retries the automatic P2P connection', (
+    tester,
+  ) async {
+    final service = _FakeDmService();
+    final relay = _FakeRelayFallbackDmService()..p2pActive = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EditableDmPage(
+          service: service,
+          relayFallbackService: relay,
+          friendId: 2,
+          friendName: 'Friend',
+          currentUserId: 1,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('安全配對'));
+    await tester.pumpAndSettle();
+    expect(find.text('開始新版配對'), findsOneWidget);
+    expect(
+      find.text('雙方開啟聊天頁即可自動協商；任一方都能按鎖頭重試。'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('開始新版配對'));
+    await tester.pumpAndSettle();
+
+    expect(service.connectCalls.length, greaterThanOrEqualTo(2));
+  });
+
   testWidgets('snapshot sync actions only appear when capability is provided', (
     tester,
   ) async {

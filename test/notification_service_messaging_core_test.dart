@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:taiwan_brawl/models/legacy_chat_record.dart';
 import 'package:taiwan_brawl/services/auth_remote_source.dart';
 import 'package:taiwan_brawl/services/auth_service.dart';
+import 'package:taiwan_brawl/services/aes_gcm_conversation_encryptor.dart';
 import 'package:taiwan_brawl/services/legacy_chat_store.dart';
 import 'package:taiwan_brawl/services/legacy_installation_store.dart';
 import 'package:taiwan_brawl/services/legacy_pending_message_adapter.dart';
@@ -15,6 +16,54 @@ import 'package:taiwan_brawl/services/preview_push_provider.dart';
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
 void main() {
+  test(
+    'decrypts encrypted pending events before storing them locally',
+    () async {
+      final keyResolver = InMemoryConversationKeyResolver({
+        '1:9:conversation-key-v1':
+            InMemoryConversationKeyResolver.deterministicKey(7),
+      });
+      final encryptor = AesGcmConversationEncryptor(keyResolver: keyResolver);
+      final encryptedBody = await encryptor.encrypt(
+        conversationId: '1:9',
+        keyId: 'conversation-key-v1',
+        plaintext: 'background secret',
+      );
+      final core = await MessagingCoreService.restore(_MemoryMessagingStore());
+      final pendingSource = _EncryptedPendingSource(encryptedBody);
+      final auth = AuthService(remoteSource: _AuthSource());
+      await auth.init();
+      final service = NotificationService(
+        legacyPendingMessages: LegacyPendingMessageAdapter(
+          localRepository: _UnusedLegacyPendingMessageStore(),
+        ),
+        messagingCore: core,
+        remoteAuthenticator: null,
+        credentials: _MemoryCredentials(),
+        legacyInstallationStore: _EmptyInstallationStore(),
+        pushProvider: PreviewPushProvider(),
+        pendingNotificationSource: pendingSource,
+        remoteSource: _NotificationSource(),
+        conversationEncryptor: encryptor,
+      );
+
+      service.syncAuth(auth);
+      final acknowledgedIds = await pendingSource.handled.future.timeout(
+        const Duration(seconds: 2),
+      );
+
+      expect(acknowledgedIds, [12]);
+      expect(
+        core.repository.projectionsFor('1:9').single.visibleBody,
+        'background secret',
+      );
+
+      service.dispose();
+      auth.dispose();
+      await core.dispose();
+    },
+  );
+
   test(
     'notification service accepts pending events through messaging core',
     () async {
@@ -198,6 +247,7 @@ class _PendingSource implements PendingNotificationSource {
   Future<void> poll({
     required int selfId,
     required int? activeConversationUserId,
+    String? deviceId,
     required PendingNotificationHandler onItem,
   }) async {
     try {
@@ -218,6 +268,28 @@ class _PendingSource implements PendingNotificationSource {
   void dispose() {}
 }
 
+class _EncryptedPendingSource extends _PendingSource {
+  _EncryptedPendingSource(this.encryptedBody);
+
+  final EncryptedMessageBody encryptedBody;
+
+  @override
+  MessageEvent? eventFromPendingRow(
+    Map<String, dynamic> row, {
+    required int selfId,
+    required int friendId,
+  }) => MessageEvent(
+    eventId: 'pending-event-${row['id']}',
+    messageId: 'message-7',
+    conversationId: '$selfId:$friendId',
+    actorId: '$friendId',
+    type: MessageEventType.created,
+    revision: 0,
+    createdAt: DateTime.utc(2026, 10, 28),
+    encryptedBody: encryptedBody,
+  );
+}
+
 class _LegacyPendingSource implements PendingNotificationSource {
   final handled = Completer<List<int>>();
 
@@ -232,6 +304,7 @@ class _LegacyPendingSource implements PendingNotificationSource {
   Future<void> poll({
     required int selfId,
     required int? activeConversationUserId,
+    String? deviceId,
     required PendingNotificationHandler onItem,
   }) async {
     try {

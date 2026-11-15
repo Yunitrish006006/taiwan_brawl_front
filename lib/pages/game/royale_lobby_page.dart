@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:taiwan_brawl_game_mini_royale/taiwan_brawl_game_mini_royale.dart'
-    show MiniRoyaleServiceException;
+    show MiniRoyaleLocalizations, MiniRoyaleServiceException;
 import 'package:taiwan_brawl_game_mini_royale/royale_lobby_page.dart';
 
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
-import '../../services/locale_provider.dart';
 import '../../services/royale_service.dart';
 import '../../game_modules/mini_royale/arena_host_scope.dart';
 import 'package:taiwan_brawl_game_mini_royale/mini_royale_arena_page.dart'
@@ -14,8 +13,7 @@ import 'package:taiwan_brawl_game_mini_royale/mini_royale_arena_page.dart'
 
 String miniRoyaleLobbyErrorMessage(
   Object error, {
-  String incompatibleMessage =
-      'This game version is incompatible with the room. Update the game and try again.',
+  String? incompatibleMessage,
 }) {
   final String? message;
   if (error is MiniRoyaleServiceException) {
@@ -26,7 +24,7 @@ String miniRoyaleLobbyErrorMessage(
     return error.toString();
   }
   if (message == 'GAME_VERSION_INCOMPATIBLE') {
-    return incompatibleMessage;
+    return incompatibleMessage ?? message;
   }
   return message;
 }
@@ -58,6 +56,7 @@ class RoyaleLobbyPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final llmBotConfigured =
         context.watch<AuthService>().user?.hasLlmApiKey ?? false;
+    final t = MiniRoyaleLocalizations.fromContext(context);
     return MiniRoyaleLobbyPage(
       initialRoomCode: initialRoomCode,
       initialHeroId: initialHeroId,
@@ -66,7 +65,7 @@ class RoyaleLobbyPage extends StatelessWidget {
       llmBotConfigured: llmBotConfigured,
       errorMessage: (error) => miniRoyaleLobbyErrorMessage(
         error,
-        incompatibleMessage: context.read<LocaleProvider>().translation.text(
+        incompatibleMessage: t.text(
           'This game version is incompatible with the room. Update the game and try again.',
         ),
       ),

@@ -1362,16 +1362,18 @@ class _MiniRoyaleArenaPageState extends State<MiniRoyaleArenaPage> {
   Widget build(BuildContext context) {
     final t = context.watch<MiniRoyaleLocalizationPort>();
     final arenaSocial = context.watch<MiniRoyaleArenaSocialPort>();
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final isImmersiveBattle = _room != null && _room!.status != 'lobby';
     return Scaffold(
-      backgroundColor: const Color(0xFF07111F),
+      backgroundColor: theme.scaffoldBackgroundColor,
       drawer: _buildRoomFriendDrawer(arenaSocial),
       appBar: isImmersiveBattle
           ? null
           : AppBar(
               title: Text('${t.text('Room')} ${widget.roomCode}'),
               backgroundColor: Colors.transparent,
-              foregroundColor: Colors.white,
+              foregroundColor: scheme.onSurface,
               elevation: 0,
               actions: [
                 IconButton(
@@ -1383,9 +1385,13 @@ class _MiniRoyaleArenaPageState extends State<MiniRoyaleArenaPage> {
             ),
       extendBodyBehindAppBar: !isImmersiveBattle,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF07111F), Color(0xFF0D1B2A), Color(0xFF14253A)],
+            colors: [
+              scheme.surface,
+              scheme.surfaceContainerHighest,
+              scheme.primaryContainer,
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),

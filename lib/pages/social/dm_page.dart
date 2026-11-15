@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
+import 'package:user_ui_settings/user_ui_settings.dart';
 import 'package:user_basic_system/user_basic_system.dart' as ubs;
 
 import '../../services/direct_message_session.dart';
 import '../../services/direct_message_sync_service.dart';
 import '../../services/api_client.dart';
 import '../../services/chat_device_management_service.dart';
-import '../../services/locale_provider.dart';
 import '../../services/manual_p2p_dm_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/retryable_dm_service.dart';
@@ -53,7 +53,12 @@ class _DmPageState extends State<DmPage> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.watch<LocaleProvider>().translation;
+    // Bundled chat consumes the same host settings boundary as games. Keep
+    // the provider fallback for standalone widget tests and previews.
+    final hostSettings = GameUiSettingsScope.maybeOf(context);
+    final t =
+        hostSettings?.translations ??
+        context.watch<LocaleProvider>().translation;
     final identity = context.read<DeviceIdentity?>();
     return EditableDmPage(
       service: widget.service,

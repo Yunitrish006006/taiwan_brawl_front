@@ -5,6 +5,7 @@ export 'src/message_event.dart';
 export 'src/message_conflict.dart';
 export 'src/device_event_authenticator.dart';
 export 'src/message_commands.dart';
+export 'src/conversation_encryption.dart';
 export 'src/in_memory_transport.dart';
 export 'src/platform_ports.dart';
 export 'src/message_projection.dart';

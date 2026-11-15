@@ -23,6 +23,7 @@ class P2PMessageTransport
     this.isCaller = true,
     this.peerConnectionFactory = createPeerConnection,
     this.iceConfiguration = defaultIceConfiguration,
+    this.onConnected,
   });
 
   final int friendId;
@@ -30,13 +31,17 @@ class P2PMessageTransport
   final bool isCaller;
   final PeerConnectionFactory peerConnectionFactory;
   final Map<String, dynamic> iceConfiguration;
+  final Future<void> Function(P2PMessageTransport transport)? onConnected;
 
   final StreamController<MessageEvent> _events =
       StreamController<MessageEvent>.broadcast();
+  final StreamController<Map<String, Object?>> _controlMessages =
+      StreamController<Map<String, Object?>>.broadcast();
   final StreamController<bool> _connectionStates =
       StreamController<bool>.broadcast();
   StreamSubscription<Map<String, dynamic>>? _signalSub;
   StreamSubscription<MessageEvent>? _channelSub;
+  StreamSubscription<Map<String, Object?>>? _controlSub;
   StreamSubscription<bool>? _channelStateSub;
   Future<void> _signalTail = Future<void>.value();
   RTCPeerConnection? _peerConnection;
@@ -58,6 +63,8 @@ class P2PMessageTransport
 
   @override
   Stream<bool> get connectionStateChanges => _connectionStates.stream;
+
+  Stream<Map<String, Object?>> get controlMessages => _controlMessages.stream;
 
   @override
   bool get isTransportConnected =>
@@ -123,8 +130,7 @@ class P2PMessageTransport
     _peerConnection!.onConnectionState = (state) {
       final peerConnected =
           state == RTCPeerConnectionState.RTCPeerConnectionStateConnected;
-      final channelConnected =
-          _channelTransport?.isTransportConnected ?? false;
+      final channelConnected = _channelTransport?.isTransportConnected ?? false;
       _setConnected(
         isP2PPathReady(
           peerConnected: peerConnected,
@@ -176,6 +182,14 @@ class P2PMessageTransport
     await transport.send(event);
   }
 
+  Future<void> sendControl(Map<String, Object?> message) async {
+    final transport = _channelTransport;
+    if (!_connected || transport == null) {
+      throw StateError('P2P message transport is not connected');
+    }
+    await transport.sendControl(message);
+  }
+
   @override
   Future<void> disconnect() async {
     if (_disposed) return;
@@ -192,8 +206,12 @@ class P2PMessageTransport
     _signalSub = null;
     await _channelSub?.cancel();
     _channelSub = null;
+    await _controlSub?.cancel();
+    _controlSub = null;
     await _channelStateSub?.cancel();
     _channelStateSub = null;
+    await _controlSub?.cancel();
+    _controlSub = null;
     await _channelTransport?.dispose();
     _channelTransport = null;
     await _peerConnection?.close();
@@ -208,6 +226,7 @@ class P2PMessageTransport
     await disconnect();
     _disposed = true;
     await _events.close();
+    await _controlMessages.close();
     await _connectionStates.close();
     signalingService.dispose();
   }
@@ -314,12 +333,17 @@ class P2PMessageTransport
       _events.add,
       onError: _events.addError,
     );
+    // Keep control traffic separate from the chat event stream. There must be
+    // exactly one forwarding subscription per active data channel so a
+    // reconnect cannot process a pairing message twice.
+    _controlSub = transport.controlMessages.listen(_controlMessages.add);
     await transport.connect().timeout(
       const Duration(seconds: 15),
       onTimeout: () =>
           throw TimeoutException('Timed out opening the P2P data channel'),
     );
     _setConnected(true);
+    await onConnected?.call(this);
   }
 
   Future<void> _acceptRemoteDescription(

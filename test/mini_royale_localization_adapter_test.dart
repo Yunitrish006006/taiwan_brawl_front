@@ -6,22 +6,20 @@ void main() {
   test('game localization adapter forwards locale, text, and changes', () {
     final provider = LocaleProvider(
       defaultLocale: 'en',
-      translationResolver: (locale) => {
-        'greeting': locale == 'ja' ? 'こんにちは' : 'Hello',
-      },
+      translationResolver: (_) => const {},
     );
     final adapter = GameMiniRoyaleLocalizationAdapter(provider);
     var notifications = 0;
     adapter.addListener(() => notifications++);
 
     expect(adapter.locale, 'en');
-    expect(adapter.text('greeting'), 'Hello');
+    expect(adapter.text('Mini Royale Lobby'), 'Taiwan Brawl Lobby');
     expect(adapter.text('missing key'), 'missing key');
 
     provider.setLocale('ja');
 
     expect(adapter.locale, 'ja');
-    expect(adapter.text('greeting'), 'こんにちは');
+    expect(adapter.text('Mini Royale Lobby'), 'ゴーストアイランド乱闘 ルームロビー');
     expect(notifications, 1);
 
     adapter.dispose();

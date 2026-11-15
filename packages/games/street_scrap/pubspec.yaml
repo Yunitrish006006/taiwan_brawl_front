@@ -22,3 +22,7 @@ flutter:
   assets:
     - assets/audio/
     - assets/fallback/
+    - assets/search/
+    - assets/search/coastal_warehouse_v1.png
+    - resources/data/street-scrap-content-chapters-0-4-v1.json
+    - resources/art/

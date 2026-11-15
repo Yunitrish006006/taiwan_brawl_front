@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 import 'package:taiwan_brawl/services/api_client.dart';
 import 'package:taiwan_brawl/services/server_message_transport.dart';
+import 'package:taiwan_brawl/services/aes_gcm_conversation_encryptor.dart';
 
 void main() {
   test('converts new pending event rows without losing envelope metadata', () {
@@ -68,6 +69,12 @@ void main() {
 
   test('posts edit and recall events to the shared event endpoint', () async {
     final postedEvents = <Map<String, dynamic>>[];
+    final keyId = 'conversation-key-1';
+    final encryptor = AesGcmConversationEncryptor(
+      keyResolver: InMemoryConversationKeyResolver({
+        '1:2:$keyId': InMemoryConversationKeyResolver.deterministicKey(7),
+      }),
+    );
     final client = MockClient((request) async {
       if (request.method == 'GET') {
         return http.Response(
@@ -88,6 +95,8 @@ void main() {
       selfId: 1,
       friendId: 2,
       relayEncryptionReady: true,
+      conversationEncryptor: encryptor,
+      conversationKeyId: keyId,
     );
     await transport.connect();
 
@@ -113,6 +122,83 @@ void main() {
     ]);
     await transport.dispose();
   });
+
+  test(
+    'encrypted relay posts ciphertext and decrypts it during polling',
+    () async {
+      final keyId = 'conversation-key-1';
+      final encryptor = AesGcmConversationEncryptor(
+        keyResolver: InMemoryConversationKeyResolver({
+          '1:2:$keyId': InMemoryConversationKeyResolver.deterministicKey(7),
+        }),
+      );
+      Map<String, dynamic>? postedEvent;
+      Map<String, dynamic>? pendingRow;
+      final client = MockClient((request) async {
+        if (request.method == 'GET') {
+          return http.Response(
+            jsonEncode({
+              'messages': pendingRow == null ? <Object>[] : [pendingRow],
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        if (request.url.path.endsWith('/event')) {
+          postedEvent = Map<String, dynamic>.from(
+            jsonDecode(request.body)['event'] as Map,
+          );
+          pendingRow = {
+            'id': 11,
+            'sender_id': 2,
+            'receiver_id': 1,
+            'text': jsonEncode({
+              'encryptedBody': postedEvent!['encryptedBody'],
+            }),
+            'created_at': postedEvent!['createdAt'],
+            'type': 'message',
+            'event_id': postedEvent!['eventId'],
+            'message_id': postedEvent!['messageId'],
+            'event_type': postedEvent!['type'],
+            'revision': postedEvent!['revision'],
+            'signature': postedEvent!['signature'],
+            'device_id': postedEvent!['deviceId'],
+          };
+          return http.Response('{}', 201);
+        }
+        return http.Response('{}', 200);
+      });
+      final transport = ServerMessageTransport(
+        apiClient: ApiClient(client: client, credentials: _MemoryCredentials()),
+        selfId: 1,
+        friendId: 2,
+        deviceId: 'device-1',
+        relayEncryptionReady: true,
+        conversationEncryptor: encryptor,
+        conversationKeyId: keyId,
+      );
+      await transport.connect();
+      final eventFuture = transport.events.first;
+      await transport.send(
+        MessageEvent(
+          eventId: 'event-1',
+          messageId: 'message-1',
+          conversationId: '1:2',
+          actorId: '1',
+          deviceId: 'device-1',
+          type: MessageEventType.created,
+          revision: 0,
+          createdAt: DateTime.utc(2026, 11, 12),
+          body: 'secret relay message',
+        ),
+      );
+      expect(postedEvent?['body'], isNull);
+      expect(postedEvent?['encryptedBody'], isA<Map>());
+      await transport.pollNow();
+      expect((await eventFuture).body, 'secret relay message');
+      await transport.dispose();
+    },
+  );
 
   test(
     'blocks relay event writes when end-to-end encryption is not ready',
@@ -156,6 +242,54 @@ void main() {
             contains('end-to-end message encryption'),
           ),
         ),
+      );
+      expect(eventPostCount, 0);
+      await transport.dispose();
+    },
+  );
+
+  test(
+    'never falls back to plaintext when the conversation key is missing',
+    () async {
+      var eventPostCount = 0;
+      final client = MockClient((request) async {
+        if (request.url.path.endsWith('/api/chat/dm/device-register')) {
+          return http.Response('{}', 200);
+        }
+        if (request.url.path.endsWith('/api/chat/dm/pending')) {
+          return http.Response(jsonEncode({'messages': <Object>[]}), 200);
+        }
+        if (request.url.path.endsWith('/event')) eventPostCount++;
+        return http.Response('{}', 200);
+      });
+      final transport = ServerMessageTransport(
+        apiClient: ApiClient(client: client, credentials: _MemoryCredentials()),
+        selfId: 1,
+        friendId: 2,
+        deviceId: 'device-1',
+        relayEncryptionReady: true,
+        conversationEncryptor: AesGcmConversationEncryptor(
+          keyResolver: InMemoryConversationKeyResolver(const {}),
+        ),
+        conversationKeyId: 'conversation-key-v1',
+      );
+      await transport.connect();
+
+      await expectLater(
+        transport.send(
+          MessageEvent(
+            eventId: 'event-missing-key',
+            messageId: 'message-missing-key',
+            conversationId: '1:2',
+            actorId: '1',
+            deviceId: 'device-1',
+            type: MessageEventType.created,
+            revision: 0,
+            createdAt: DateTime.utc(2026, 11, 12),
+            body: 'must not become plaintext',
+          ),
+        ),
+        throwsA(isA<StateError>()),
       );
       expect(eventPostCount, 0);
       await transport.dispose();

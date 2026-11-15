@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import 'package:user_ui_settings/user_ui_settings.dart';
+import 'src/archery_localizations.dart';
 import 'src/archery_rules.dart';
 import 'src/archery_player_data.dart';
 
@@ -186,8 +186,13 @@ class _ArcheryGamePageState extends State<ArcheryGamePage>
 
   @override
   Widget build(BuildContext context) {
-    final t = context.watch<LocaleProvider>().translation;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final t = ArcheryLocalizations(
+      GameUiSettingsScope.maybeOf(context)?.locale ?? 'zh-Hant',
+    );
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(title: Text(t.text('Archery Game'))),
       body: Stack(
         children: [
@@ -200,7 +205,10 @@ class _ArcheryGamePageState extends State<ArcheryGamePage>
                   children: [
                     Text(
                       '${t.text('Score')}: $score',
-                      style: const TextStyle(fontSize: 24),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     Text('${t.text('Best')}: $highScore'),
                     const SizedBox(height: 16),
@@ -332,7 +340,7 @@ class _ArcheryGamePageState extends State<ArcheryGamePage>
                                 width: 200,
                                 height: 18,
                                 decoration: BoxDecoration(
-                                  color: Colors.grey.shade300,
+                                  color: scheme.surfaceContainerHighest,
                                   borderRadius: BorderRadius.circular(9),
                                 ),
                               ),
@@ -342,8 +350,8 @@ class _ArcheryGamePageState extends State<ArcheryGamePage>
                                 height: 18,
                                 decoration: BoxDecoration(
                                   color: stamina > 40
-                                      ? Colors.green
-                                      : Colors.red,
+                                      ? scheme.primary
+                                      : scheme.error,
                                   borderRadius: BorderRadius.circular(9),
                                 ),
                               ),
@@ -375,7 +383,9 @@ class _ArcheryGamePageState extends State<ArcheryGamePage>
                         width: 140,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: isPulling ? Colors.blue.shade200 : Colors.blue,
+                          color: isPulling
+                              ? scheme.secondaryContainer
+                              : scheme.primary,
                           borderRadius: BorderRadius.circular(24),
                         ),
                         alignment: Alignment.center,
@@ -383,10 +393,7 @@ class _ArcheryGamePageState extends State<ArcheryGamePage>
                           isPulling
                               ? '${t.text('Drawing...')} ${(pullAmount * 100).toInt()}%'
                               : t.text('Long press to draw'),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            color: Colors.white,
-                          ),
+                          style: const TextStyle(fontSize: 18),
                         ),
                       ),
                     ),

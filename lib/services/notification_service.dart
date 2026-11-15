@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
@@ -14,7 +15,7 @@ import 'notification_remote_source.dart';
 import 'pending_notification_source.dart';
 import 'push_provider.dart';
 
-class NotificationService extends ChangeNotifier {
+class NotificationService extends ChangeNotifier with WidgetsBindingObserver {
   NotificationService({
     required LegacyPendingMessageAdapter legacyPendingMessages,
     required MessagingCoreService messagingCore,
@@ -24,6 +25,8 @@ class NotificationService extends ChangeNotifier {
     required NotificationPushProvider pushProvider,
     required PendingNotificationSource pendingNotificationSource,
     required NotificationRemoteSource remoteSource,
+    this.conversationEncryptor,
+    this.deviceId,
   }) : _legacyPendingMessages = legacyPendingMessages,
        _messagingCore = messagingCore,
        _remoteAuthenticator = remoteAuthenticator,
@@ -44,6 +47,8 @@ class NotificationService extends ChangeNotifier {
   final LegacyInstallationStore _legacyInstallationStore;
   final NotificationPushProvider _pushProvider;
   final PendingNotificationSource _pendingNotificationSource;
+  final ConversationEncryptor? conversationEncryptor;
+  final String? deviceId;
 
   Future<void> _syncQueue = Future.value();
   Timer? _pollTimer;
@@ -51,6 +56,7 @@ class NotificationService extends ChangeNotifier {
   bool _didSyncLoggedOutState = false;
   bool _pushProviderInitialized = false;
   bool _pushConfigLoaded = false;
+  bool _observingLifecycle = false;
   bool _canRequestWebPushPermission = kIsWeb;
   PushProviderConfiguration? _pushConfiguration;
   int? _currentUserId;
@@ -65,7 +71,30 @@ class NotificationService extends ChangeNotifier {
   bool get canRequestWebPushPermission =>
       kIsWeb && _canRequestWebPushPermission;
 
-  Future<void> initialize() async {}
+  /// Mobile platforms need an explicit in-app entry point to trigger the
+  /// native permission dialog. Web keeps its existing permission prompt flow.
+  bool get canRequestPushPermission => !kIsWeb && _currentUserId != null;
+
+  Future<void> initialize() async {
+    WidgetsBinding.instance.addObserver(this);
+    _observingLifecycle = true;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (_currentUserId != null) {
+        _startPolling();
+        unawaited(_pollPending());
+      }
+      return;
+    }
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _stopPolling();
+    }
+  }
 
   void clearPendingConversationUserId() {
     if (_pendingConversationUserId == null) {
@@ -196,6 +225,7 @@ class NotificationService extends ChangeNotifier {
             message.data['sender_id'],
       ),
     );
+    unawaited(_pollPending());
   }
 
   void _handleOpenedConversationUserId(int? conversationUserId) {
@@ -319,11 +349,18 @@ class NotificationService extends ChangeNotifier {
     }
   }
 
-  Future<void> requestPushPermission(AppUser user) async {
+  Future<bool> requestPushPermission(AppUser user) async {
     _registeredPushUserId = null;
+    final config = await _loadPushConfiguration();
+    if (config == null ||
+        !_pushProvider.isEnabledForPlatform(config, _currentPushPlatform)) {
+      notifyListeners();
+      return false;
+    }
     await _registerCurrentDevice(user);
     _registeredPushUserId = user.id;
     notifyListeners();
+    return true;
   }
 
   Future<PushProviderConfiguration?> _loadPushConfiguration() async {
@@ -449,6 +486,7 @@ class NotificationService extends ChangeNotifier {
       await _pendingNotificationSource.poll(
         selfId: selfId,
         activeConversationUserId: _activeConversationUserId,
+        deviceId: deviceId,
         onItem: (item) => _handlePendingNotificationItem(item, selfId),
       );
     } catch (error, stackTrace) {
@@ -470,12 +508,28 @@ class NotificationService extends ChangeNotifier {
     final type = (item['type'] as String? ?? 'message').trim();
     final ackIds = <int>[];
 
-    final event = _pendingNotificationSource.eventFromPendingRow(
+    var event = _pendingNotificationSource.eventFromPendingRow(
       item,
       selfId: selfId,
       friendId: senderId,
     );
     if (event != null) {
+      final encryptedBody = event.encryptedBody;
+      if (encryptedBody != null) {
+        final encryptor = conversationEncryptor;
+        if (encryptor == null) return ackIds;
+        try {
+          event = event.withBody(
+            await encryptor.decrypt(
+              conversationId: event.conversationId,
+              body: encryptedBody,
+            ),
+          );
+        } catch (_) {
+          // Keep the encrypted row pending until the key is available.
+          return ackIds;
+        }
+      }
       final accepted = await _messagingCore.acceptRemote(
         event,
         authenticator: _remoteAuthenticator,
@@ -535,6 +589,9 @@ class NotificationService extends ChangeNotifier {
 
   @override
   void dispose() {
+    if (_observingLifecycle) {
+      WidgetsBinding.instance.removeObserver(this);
+    }
     _stopPolling();
     _pendingNotificationSource.dispose();
     unawaited(_pushProvider.dispose());

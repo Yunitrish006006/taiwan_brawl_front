@@ -128,15 +128,12 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    const updateMessage = '遊戲版本不相容，請更新後再試。';
-    const libraryAction = '開啟遊戲庫';
+    const updateMessage =
+        'This game version is incompatible with the room. Update the game and try again.';
+    const libraryAction = 'Open Game Library';
     final localeProvider = LocaleProvider(
-      defaultLocale: 'zh-Hant',
-      translationResolver: (_) => <String, String>{
-        'This game version is incompatible with the room. Update the game and try again.':
-            updateMessage,
-        'Open Game Library': libraryAction,
-      },
+      defaultLocale: 'en',
+      translationResolver: (_) => <String, String>{},
     );
     final authService = AuthService(
       remoteSource: ServerAuthRemoteSource(ApiClient()),
@@ -179,7 +176,7 @@ void main() {
 
   testWidgets('Create Bot Match sends vsBot=true', (tester) async {
     final localeProvider = LocaleProvider(
-      defaultLocale: 'zh-Hant',
+      defaultLocale: 'en',
       translationResolver: (_) => <String, String>{},
     );
     final authService = AuthService(

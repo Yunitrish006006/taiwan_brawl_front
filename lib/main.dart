@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
+import 'package:user_ui_settings/user_ui_settings.dart';
 import 'package:taiwan_brawl_game_street_scrap/street_scrap_progress.dart'
     as street_scrap;
 
@@ -61,7 +62,6 @@ import 'services/legacy_chat_remote_source.dart';
 import 'services/legacy_pending_message_adapter.dart';
 import 'services/legacy_installation_store.dart';
 import 'services/local_chat_repository.dart';
-import 'services/locale_provider.dart';
 import 'services/messaging_core_service.dart';
 import 'services/messaging_runtime_bootstrap.dart';
 import 'services/messaging_transport_factory.dart';
@@ -72,6 +72,8 @@ import 'services/push_provider.dart';
 import 'services/llm_bot_service.dart';
 import 'services/llm_bot_remote_source.dart';
 import 'services/platform_credential_store.dart';
+import 'services/aes_gcm_conversation_encryptor.dart';
+import 'services/secure_conversation_key_store.dart';
 import 'services/peer_trust_service.dart';
 import 'services/preview_runtime.dart';
 import 'services/preview_game_resource_http_client.dart';
@@ -79,8 +81,6 @@ import 'services/royale_service.dart';
 import 'services/royale_remote_source.dart';
 import 'services/storage_runtime.dart';
 import 'services/taiwan_brawl_profile_service.dart';
-import 'services/theme_provider.dart';
-import 'services/ui_settings_provider.dart';
 
 final RouteObserver<PageRoute<dynamic>> appRouteObserver =
     RouteObserver<PageRoute<dynamic>>();
@@ -188,6 +188,9 @@ Future<void> main() async {
   );
   await gameLibrary.initialize();
   final messagingRuntime = await restoreMessagingRuntime(credentials);
+  final conversationKeyStore = SecureConversationKeyStore(
+    credentials: credentials,
+  );
   final peerTrust = PeerTrustService(credentials: credentials);
   final remoteAuthenticator =
       configuration.peerVerificationEnabled &&
@@ -223,13 +226,44 @@ Future<void> main() async {
     remoteAuthenticator: remoteAuthenticator,
     remoteSource: notificationRemoteSource,
     pendingNotificationSource: pendingNotificationSource,
+    conversationEncryptor: AesGcmConversationEncryptor(
+      keyResolver: conversationKeyStore,
+    ),
+    deviceId: messagingRuntime.deviceIdentity?.deviceId,
   );
   await notificationService.initialize();
   final messagingTransportFactory = MessagingTransportFactory(
     apiClient,
     p2pEnabled: configuration.p2pChatEnabled,
     deviceId: messagingRuntime.deviceIdentity?.deviceId,
-    relayEncryptionReady: false,
+    relayEncryptionReady: true,
+    localDeviceIdentity: messagingRuntime.deviceIdentity,
+    conversationKeyOfferVerifierFactory:
+        ({required selfId, required friendId, required offer}) async {
+          final signature = offer.signature;
+          if (signature == null || signature.isEmpty) return false;
+          return peerTrust.verifySignedKeyOffer(
+            deviceId: offer.deviceId,
+            payload: offer.canonicalPayload,
+            signature: signature,
+          );
+        },
+    conversationKeyEstablishedFactory:
+        ({
+          required selfId,
+          required friendId,
+          required keyId,
+          required key,
+        }) => conversationKeyStore.save(
+          conversationId:
+              '${selfId < friendId ? selfId : friendId}:${selfId < friendId ? friendId : selfId}',
+          keyId: keyId,
+          key: key,
+        ),
+    conversationEncryptorFactory: ({required selfId, required friendId}) =>
+        AesGcmConversationEncryptor(keyResolver: conversationKeyStore),
+    conversationKeyIdFactory: ({required selfId, required friendId}) =>
+        'conversation-key-v1',
     syncCursorStoreFactory: messagingRuntime.syncCursorStore == null
         ? null
         : ({required selfId, required friendId}) =>
@@ -655,14 +689,28 @@ class MainApp extends StatelessWidget {
           darkTheme: themeProvider.darkTheme,
           themeMode: themeProvider.themeMode,
           builder: (context, child) {
-            final locale = context.watch<LocaleProvider>().locale;
-            final content = street_scrap_i18n.StreetScrapLocalizationsScope(
-              locale: locale,
-              child: MediaQuery(
-                data: MediaQuery.of(
-                  context,
-                ).copyWith(textScaler: TextScaler.linear(uiSettings.fontScale)),
-                child: child!,
+            final localeProvider = context.watch<LocaleProvider>();
+            final mediaQuery = MediaQuery.of(context);
+            final gameSettings = GameUiSettings(
+              locale: localeProvider.locale,
+              themeId: themeProvider.themeId,
+              themeMode: themeProvider.themeMode,
+              activeTheme: Theme.of(context),
+              fontScale: uiSettings.fontScale,
+              disableAnimations: mediaQuery.disableAnimations,
+              accessibleNavigation: mediaQuery.accessibleNavigation,
+              translations: localeProvider.translation,
+            );
+            final content = GameUiSettingsScope(
+              settings: gameSettings,
+              child: street_scrap_i18n.StreetScrapLocalizationsScope(
+                locale: localeProvider.locale,
+                child: MediaQuery(
+                  data: mediaQuery.copyWith(
+                    textScaler: TextScaler.linear(uiSettings.fontScale),
+                  ),
+                  child: child!,
+                ),
               ),
             );
             return NativeCoupleWidgetBridge.supported &&

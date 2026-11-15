@@ -149,4 +149,17 @@ class PeerTrustService {
       directory: _directory,
     );
   }
+
+  /// Verifies a signed conversation-key offer against the already trusted
+  /// Ed25519 identity for [deviceId]. The offer's X25519 public key is covered
+  /// by [payload] and therefore cannot be swapped after this check.
+  Future<bool> verifySignedKeyOffer({
+    required String deviceId,
+    required String payload,
+    required String signature,
+  }) async {
+    final identity = await _directory.resolve(deviceId);
+    if (identity == null) return false;
+    return identity.verify(payload, signature, deviceId);
+  }
 }

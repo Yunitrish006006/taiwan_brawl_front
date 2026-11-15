@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyBxMyXAJ_awO2CF_aQEQHUKddirV66_FnQ</string>
+	<key>GCM_SENDER_ID</key>
+	<string>129772391641</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.yunitrish.taiwanbrawl</string>
+	<key>PROJECT_ID</key>
+	<string>taiwan-brawl</string>
+	<key>STORAGE_BUCKET</key>
+	<string>taiwan-brawl.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:129772391641:ios:1dbcdb7802e3259982c2c8</string>
+</dict>
+</plist>

@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'conversation_encryption.dart';
+
 enum MessageEventType { created, edited, recalled, read }
 
 /// An append-only operation over one logical message.
@@ -18,6 +20,7 @@ class MessageEvent {
     required this.revision,
     required this.createdAt,
     this.body,
+    this.encryptedBody,
     this.signature,
   });
 
@@ -30,6 +33,7 @@ class MessageEvent {
   final int revision;
   final DateTime createdAt;
   final String? body;
+  final EncryptedMessageBody? encryptedBody;
   final String? signature;
 
   bool get changesMessage =>
@@ -60,7 +64,35 @@ class MessageEvent {
     revision: revision,
     createdAt: createdAt,
     body: body,
+    encryptedBody: encryptedBody,
     signature: value,
+  );
+
+  MessageEvent withEncryptedBody(EncryptedMessageBody value) => MessageEvent(
+    eventId: eventId,
+    messageId: messageId,
+    conversationId: conversationId,
+    actorId: actorId,
+    deviceId: deviceId,
+    type: type,
+    revision: revision,
+    createdAt: createdAt,
+    body: null,
+    encryptedBody: value,
+    signature: signature,
+  );
+
+  MessageEvent withBody(String value) => MessageEvent(
+    eventId: eventId,
+    messageId: messageId,
+    conversationId: conversationId,
+    actorId: actorId,
+    deviceId: deviceId,
+    type: type,
+    revision: revision,
+    createdAt: createdAt,
+    body: value,
+    signature: signature,
   );
 
   Map<String, Object?> toJson() => {
@@ -73,6 +105,7 @@ class MessageEvent {
     'revision': revision,
     'createdAt': createdAt.toUtc().toIso8601String(),
     if (body != null) 'body': body,
+    if (encryptedBody != null) 'encryptedBody': encryptedBody!.toJson(),
     if (signature != null) 'signature': signature,
   };
 
@@ -99,6 +132,14 @@ class MessageEvent {
     }
     final deviceId = _optionalString(json, 'deviceId');
     final body = _optionalString(json, 'body');
+    final encryptedBodyValue = json['encryptedBody'];
+    final encryptedBody = encryptedBodyValue == null
+        ? null
+        : encryptedBodyValue is Map
+        ? EncryptedMessageBody.fromJson(
+            Map<String, Object?>.from(encryptedBodyValue),
+          )
+        : throw const FormatException('Message event encryptedBody is invalid');
     final signature = _optionalString(json, 'signature');
     return MessageEvent(
       eventId: _requiredString(json, 'eventId'),
@@ -110,6 +151,7 @@ class MessageEvent {
       revision: revision,
       createdAt: createdAt,
       body: body,
+      encryptedBody: encryptedBody,
       signature: signature,
     );
   }

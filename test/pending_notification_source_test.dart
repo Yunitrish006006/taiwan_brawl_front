@@ -83,6 +83,51 @@ void main() {
     source.dispose();
   });
 
+  test(
+    'passes the current device id to pending and acknowledgement requests',
+    () async {
+      final requests = <http.Request>[];
+      final client = MockClient((request) async {
+        requests.add(request);
+        if (request.url.path.endsWith('/pending')) {
+          return http.Response(
+            jsonEncode({
+              'messages': [
+                {'id': 7, 'sender_id': 9, 'text': 'hello'},
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        return http.Response('{}', 200);
+      });
+      final source = ServerPendingNotificationSource(
+        ApiClient(client: client, credentials: _MemoryCredentials()),
+        deviceId: 'pixel-7a',
+      );
+
+      await source.poll(
+        selfId: 1,
+        activeConversationUserId: null,
+        onItem: (item) async => [item['id'] as int],
+      );
+
+      final pending = requests.singleWhere(
+        (request) => request.url.path.endsWith('/pending'),
+      );
+      expect(pending.url.queryParameters['deviceId'], 'pixel-7a');
+      final ack = requests.singleWhere(
+        (request) => request.url.path.endsWith('/ack'),
+      );
+      expect(jsonDecode(ack.body), {
+        'ids': [7],
+        'deviceId': 'pixel-7a',
+      });
+      source.dispose();
+    },
+  );
+
   test('does not acknowledge rows when the consumer fails', () async {
     var ackCalled = false;
     final client = MockClient((request) async {
