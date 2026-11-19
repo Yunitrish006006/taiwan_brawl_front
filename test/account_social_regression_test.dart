@@ -344,4 +344,56 @@ void main() {
       expect(notifications.pendingConversationUserId, 3);
     },
   );
+  test(
+    'iOS keeps the login session when push config belongs to Android',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      const messaging = MethodChannel('plugins.flutter.io/firebase_messaging');
+      final nativeCalls = <String>[];
+      messenger.setMockMethodCallHandler(messaging, (call) async {
+        nativeCalls.add(call.method);
+        return null;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(messaging, null));
+      final client = MockClient((request) async {
+        switch (request.url.path) {
+          case '/api/google-login':
+            return _json({'session_id': _testSession, 'user': _signedInUser});
+          case '/api/notifications/config':
+            return _json({
+              'config': {
+                'deliveryEnabled': true,
+                'enabledPlatforms': ['android', 'ios'],
+                'fcm': {
+                  'enabled': true,
+                  'projectId': '123',
+                  'apiKey': '123',
+                  'appId': '1:123:android:abc',
+                  'messagingSenderId': '123',
+                },
+              },
+            });
+          case '/api/notifications/unregister':
+            return _json({});
+          default:
+            fail('Unexpected request: ${request.method} ${request.url.path}');
+        }
+      });
+      final api = ApiClient(client: client);
+      final auth = AuthService(api);
+      final notifications = NotificationService(api);
+      addTearDown(client.close);
+      addTearDown(auth.dispose);
+      addTearDown(notifications.dispose);
+
+      await auth.verifyGoogleToken(_testToken);
+      await notifications.requestPushPermission(auth.user!);
+      await notifications.unregisterCurrentDevice();
+      expect(auth.isLoggedIn, isTrue);
+      expect(nativeCalls, isEmpty);
+    },
+  );
 }

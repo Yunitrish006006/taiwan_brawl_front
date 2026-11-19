@@ -21,7 +21,7 @@ void main() {
     expect(config!.hasFirebaseOptions, isTrue);
     expect(config.enabledPlatforms, ['android', 'ios', 'web']);
     expect(config.isEnabledForPlatform('android'), isTrue);
-    expect(config.isEnabledForPlatform('ios'), isTrue);
+    expect(config.isEnabledForPlatform('ios'), isFalse);
     expect(config.isEnabledForPlatform('web'), isTrue);
     expect(config.isEnabledForPlatform('macos'), isFalse);
 
@@ -65,6 +65,42 @@ void main() {
     expect(deliveryOnlyConfig!.isEnabledForPlatform('android'), isTrue);
     expect(deliveryOnlyConfig.isEnabledForPlatform('web'), isFalse);
   });
+
+  test(
+    'Apple uses its own Firebase App ID and rejects Android configuration',
+    () {
+      final fixture = {
+        'enabled': true,
+        'projectId': 'taiwan-brawl',
+        'apiKey': 'api-key',
+        'appId': '1:123:android:abc',
+        'messagingSenderId': '123',
+      };
+      PushConfiguration parse(Map<String, Object?> fcm) =>
+          PushConfiguration.fromJson({
+            'deliveryEnabled': true,
+            'enabledPlatforms': ['android', 'ios'],
+            'fcm': fcm,
+          })!;
+
+      final androidOnly = parse(fixture);
+      expect(androidOnly.isEnabledForPlatform('android'), isTrue);
+      expect(androidOnly.isEnabledForPlatform('ios'), isFalse);
+      expect(
+        () => androidOnly.toFirebaseOptions(platform: 'ios'),
+        throwsStateError,
+      );
+      final both = parse({...fixture, 'iosAppId': '1:123:ios:abc123'});
+      expect(both.isEnabledForPlatform('ios'), isTrue);
+      expect(both.toFirebaseOptions(platform: 'ios').appId, '1:123:ios:abc123');
+      expect(
+        both.toFirebaseOptions(platform: 'android').appId,
+        '1:123:android:abc',
+      );
+      final legacy = parse({...fixture, 'appId': '1:123:ios:abc123'});
+      expect(legacy.isEnabledForPlatform('ios'), isTrue);
+    },
+  );
 
   test('PushConfiguration returns null for missing config', () {
     expect(PushConfiguration.fromJson(null), isNull);

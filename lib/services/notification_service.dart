@@ -28,6 +28,7 @@ class PushConfiguration {
     this.storageBucket,
     this.measurementId,
     this.iosBundleId,
+    this.iosAppId,
   });
 
   final bool fcmEnabled;
@@ -42,6 +43,7 @@ class PushConfiguration {
   final String? storageBucket;
   final String? measurementId;
   final String? iosBundleId;
+  final String? iosAppId;
 
   bool get hasFirebaseOptions {
     return _hasText(projectId) &&
@@ -51,7 +53,7 @@ class PushConfiguration {
   }
 
   bool isEnabledForPlatform(String? platform) {
-    if (!fcmEnabled || !fcmDeliveryEnabled || !hasFirebaseOptions) {
+    if (!fcmEnabled || !fcmDeliveryEnabled || appIdForPlatform(platform) == null) {
       return false;
     }
     if (platform == null || !enabledPlatforms.contains(platform)) {
@@ -63,10 +65,24 @@ class PushConfiguration {
     return true;
   }
 
-  FirebaseOptions toFirebaseOptions() {
+  String? appIdForPlatform(String? platform) {
+    if (!hasFirebaseOptions) return null;
+    if (platform != 'ios' && platform != 'macos') return appId!.trim();
+    final selected = (platform == 'ios' ? iosAppId ?? appId : appId)!.trim();
+    // FirebaseCore raises a native exception for non-iOS app IDs on Apple.
+    return RegExp(r'^1:\d+:ios:[0-9a-fA-F]+$').hasMatch(selected)
+        ? selected
+        : null;
+  }
+
+  FirebaseOptions toFirebaseOptions({String? platform}) {
+    final selectedAppId = appIdForPlatform(platform);
+    if (selectedAppId == null) {
+      throw StateError('Firebase App ID is unavailable for this platform');
+    }
     return FirebaseOptions(
       apiKey: apiKey!.trim(),
-      appId: appId!.trim(),
+      appId: selectedAppId,
       messagingSenderId: messagingSenderId!.trim(),
       projectId: projectId!.trim(),
       authDomain: _nullIfBlank(authDomain),
@@ -106,6 +122,7 @@ class PushConfiguration {
       storageBucket: _readString(fcm['storageBucket']),
       measurementId: _readString(fcm['measurementId']),
       iosBundleId: _readString(fcm['iosBundleId']),
+      iosAppId: _readString(fcm['iosAppId']),
     );
   }
 
@@ -255,8 +272,7 @@ class NotificationService extends ChangeNotifier {
 
     try {
       final config = await _loadPushConfiguration();
-      if (config != null && config.hasFirebaseOptions) {
-        await _ensureFirebaseInitialized(config);
+      if (config != null && await _ensureFirebaseInitialized(config, platform)) {
         await FirebaseMessaging.instance.deleteToken();
       }
     } catch (_) {
@@ -264,13 +280,28 @@ class NotificationService extends ChangeNotifier {
     }
   }
 
-  Future<void> _ensureFirebaseInitialized(PushConfiguration config) async {
-    if (_firebaseInitialized) {
-      return;
-    }
+  Future<bool> _ensureFirebaseInitialized(
+    PushConfiguration config,
+    String platform,
+  ) async {
+    if (_firebaseInitialized) return true;
+    if (config.appIdForPlatform(platform) == null) return false;
 
-    if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(options: config.toFirebaseOptions());
+    final apple = platform == 'ios' || platform == 'macos';
+    try {
+      final expectedBundleId = config.iosBundleId;
+      if (apple && expectedBundleId != null) {
+        final package = await PackageInfo.fromPlatform();
+        if (package.packageName != expectedBundleId) return false;
+      }
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(
+          options: config.toFirebaseOptions(platform: platform),
+        );
+      }
+    } catch (error) {
+      debugPrint('Firebase initialization failed: ${error.runtimeType}');
+      return false;
     }
     _firebaseInitialized = true;
 
@@ -292,6 +323,7 @@ class NotificationService extends ChangeNotifier {
     }
 
     await _ensurePlatformHooksInitialized();
+    return true;
   }
 
   Future<void> _ensurePlatformHooksInitialized() async {
@@ -352,12 +384,12 @@ class NotificationService extends ChangeNotifier {
   Future<void> _registerCurrentDevice(AppUser user) async {
     final platform = _currentPushPlatform;
     final config = await _loadPushConfiguration();
-    if (config == null || !config.isEnabledForPlatform(platform)) {
+    if (config == null || platform == null || !config.isEnabledForPlatform(platform)) {
       _setCanRequestWebPushPermission(false);
       return;
     }
 
-    await _ensureFirebaseInitialized(config);
+    if (!await _ensureFirebaseInitialized(config, platform)) return;
     final token = await _requestFcmToken(config);
     if ((token ?? '').isEmpty) {
       await unregisterCurrentDevice();
@@ -366,7 +398,7 @@ class NotificationService extends ChangeNotifier {
 
     await _registerFcmToken(
       token!.trim(),
-      platform: platform!,
+      platform: platform,
       locale: user.locale,
     );
   }
