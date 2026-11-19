@@ -135,11 +135,13 @@ class _SpeedCameraPageState extends State<SpeedCameraPage> {
     _positionSubscription = null;
     await subscription?.cancel();
     await _tts.stop();
-    if (mounted) setState(() {
-      _tracking = false;
-      _nearest = null;
-      _position = null;
-    });
+    if (mounted) {
+      setState(() {
+        _tracking = false;
+        _nearest = null;
+        _position = null;
+      });
+    }
   }
 
   @override
