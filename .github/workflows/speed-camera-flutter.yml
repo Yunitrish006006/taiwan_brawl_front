@@ -9,12 +9,20 @@ on:
       - '.github/workflows/speed-camera-flutter.yml'
       - 'pubspec.yaml'
       - 'lib/main.dart'
+      - 'lib/pages/home/home_page_layout.dart'
+      - 'lib/pages/general/auth_page.dart'
+      - 'android/app/src/main/AndroidManifest.xml'
+      - 'ios/Runner/Info.plist'
   pull_request:
     paths:
       - 'packages/taiwan_speed_camera/**'
       - '.github/workflows/speed-camera-flutter.yml'
       - 'pubspec.yaml'
       - 'lib/main.dart'
+      - 'lib/pages/home/home_page_layout.dart'
+      - 'lib/pages/general/auth_page.dart'
+      - 'android/app/src/main/AndroidManifest.xml'
+      - 'ios/Runner/Info.plist'
   workflow_dispatch:
 
 permissions:
