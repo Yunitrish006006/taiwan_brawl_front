@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:user_notification_system/user_notification_system.dart';
 
 import '../models/app_user.dart';
 import '../models/chat_models.dart';
@@ -294,7 +295,7 @@ class NotificationService extends ChangeNotifier {
 
     if (kIsWeb) {
       _handleOpenedConversationUserId(
-        _readInt(Uri.base.queryParameters['conversationUserId']),
+        PushConversationIntent.fromUri(Uri.base)?.userId,
       );
     }
 
@@ -322,12 +323,7 @@ class NotificationService extends ChangeNotifier {
       return;
     }
     _handleOpenedConversationUserId(
-      _readInt(
-        message.data['conversationUserId'] ??
-            message.data['senderId'] ??
-            message.data['conversation_user_id'] ??
-            message.data['sender_id'],
-      ),
+      PushConversationIntent.fromPayload(message.data)?.userId,
     );
   }
 

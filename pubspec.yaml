@@ -11,9 +11,22 @@ dependencies:
     sdk: flutter
   user_ui_settings:
     path: ../user_ui_settings
-  user_basic_system: ^0.1.1
+  user_account_core:
+    git:
+      url: https://github.com/Yunitrish006006/user_account_core.git
+      ref: cb510e95e5d41b289215118d4f8536e98b29d5d9
+  user_social_system:
+    git:
+      url: https://github.com/Yunitrish006006/user_social_system.git
+      ref: aa3ea4406f3e3ccda0b7ab0376956cbf7f90bda3
+  user_notification_system:
+    git:
+      url: https://github.com/Yunitrish006006/user_notification_system.git
+      ref: c0c9cce34bd388b214d4570262371149f627561e
   taiwan_speed_camera:
-    path: packages/taiwan_speed_camera
+    git:
+      url: https://github.com/Yunitrish006006/taiwan_speed_camera.git
+      ref: e866cfc39b4737a6d158157ec4251df916aa6dab
   cupertino_icons: ^1.0.8
   firebase_core: ^4.9.0
   firebase_messaging: ^16.2.2

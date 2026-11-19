@@ -3,7 +3,11 @@
 <plist version="1.0">
 <dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>啟動行車模式時需要位置資訊，以在接近公告測速點時提供提醒；停止後不追蹤。</string>
+	<string>行車模式會使用定位提供附近測速點提醒。若選擇鎖定螢幕後繼續，定位會持續到本次行程結束。</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

@@ -206,7 +206,8 @@ class MainApp extends StatelessWidget {
             '/speed-camera': (_) => _DeferredWidget(
               loadLibrary: speed_camera.loadLibrary,
               builder: (_) => speed_camera.SpeedCameraPage(
-                apiBaseUrl: AppConstants.apiBaseUrl,
+                apiBaseUrl: AppConstants.speedCameraApiBaseUrl,
+                backgroundLocationAvailable: true,
               ),
             ),
             '/archery': (_) => _DeferredWidget(

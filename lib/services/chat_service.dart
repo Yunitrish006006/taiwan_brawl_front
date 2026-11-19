@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:hive_flutter/hive_flutter.dart';
 
-import 'package:user_basic_system/user_basic_system.dart' show DmService;
+import 'package:user_social_system/user_social_system.dart' show DmService;
 
 import '../models/chat_models.dart';
 import 'api_client.dart';
