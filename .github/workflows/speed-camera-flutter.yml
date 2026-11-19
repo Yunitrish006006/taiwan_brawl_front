@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: Yunitrish006006/taiwan_brawl_back
-          ref: fb02f5f56092654c53e74b33d508b7e5b0ba26fa
+          ref: 3804d61da8b4a76577f733668c6ad3c34dc4827e
           path: taiwan_brawl_back
       - uses: actions/setup-node@v4
         with:

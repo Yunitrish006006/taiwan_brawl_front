@@ -796,8 +796,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: aa3ea4406f3e3ccda0b7ab0376956cbf7f90bda3
-      resolved-ref: aa3ea4406f3e3ccda0b7ab0376956cbf7f90bda3
+      ref: ba52f61e807c2947e0a78b59132418c9e890c5e1
+      resolved-ref: ba52f61e807c2947e0a78b59132418c9e890c5e1
       url: "https://github.com/Yunitrish006006/user_social_system.git"
     source: git
     version: "0.1.0"
