@@ -12,6 +12,8 @@ dependencies:
   user_ui_settings:
     path: ../user_ui_settings
   user_basic_system: ^0.1.1
+  taiwan_speed_camera:
+    path: packages/taiwan_speed_camera
   cupertino_icons: ^1.0.8
   firebase_core: ^4.9.0
   firebase_messaging: ^16.2.2
