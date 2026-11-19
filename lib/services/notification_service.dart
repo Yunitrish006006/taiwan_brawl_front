@@ -149,6 +149,7 @@ class NotificationService extends ChangeNotifier {
   int? _registeredPushUserId;
   int? _activeConversationUserId;
   int? _pendingConversationUserId;
+  bool _pendingConversationFromPush = false;
   String? _currentUserLocale;
   String? _installationId;
 
@@ -164,6 +165,7 @@ class NotificationService extends ChangeNotifier {
       return;
     }
     _pendingConversationUserId = null;
+    _pendingConversationFromPush = false;
     notifyListeners();
   }
 
@@ -187,6 +189,7 @@ class NotificationService extends ChangeNotifier {
       _registeredPushUserId = null;
       _activeConversationUserId = null;
       _pendingConversationUserId = null;
+      _pendingConversationFromPush = false;
       _stopPolling();
       if (!_didSyncLoggedOutState) {
         await unregisterCurrentDevice();
@@ -202,6 +205,12 @@ class NotificationService extends ChangeNotifier {
     final didSwitchUser = _currentUserId != user.id;
     _currentUserId = user.id;
     _currentUserLocale = user.locale;
+    if (didSwitchUser) {
+      // Registration can read a push tap that launched the app. Clear only
+      // the previous session's navigation before registering this session.
+      _pendingConversationUserId = null;
+      _pendingConversationFromPush = false;
+    }
     _startPolling();
 
     if (_registeredPushUserId != user.id) {
@@ -213,7 +222,6 @@ class NotificationService extends ChangeNotifier {
       return;
     }
 
-    _pendingConversationUserId = null;
     await _pollPending();
   }
 
@@ -224,8 +232,7 @@ class NotificationService extends ChangeNotifier {
 
     _activeConversationUserId = friendId;
     if (friendId != null && _pendingConversationUserId == friendId) {
-      _pendingConversationUserId = null;
-      notifyListeners();
+      clearPendingConversationUserId();
     }
   }
 
@@ -334,6 +341,7 @@ class NotificationService extends ChangeNotifier {
     if (_activeConversationUserId == conversationUserId) {
       return;
     }
+    _pendingConversationFromPush = true;
     if (_pendingConversationUserId == conversationUserId) {
       return;
     }
@@ -625,6 +633,7 @@ class NotificationService extends ChangeNotifier {
       }
 
       if (nextConversationUserId != null &&
+          !_pendingConversationFromPush &&
           _pendingConversationUserId != nextConversationUserId) {
         _pendingConversationUserId = nextConversationUserId;
         notifyListeners();
