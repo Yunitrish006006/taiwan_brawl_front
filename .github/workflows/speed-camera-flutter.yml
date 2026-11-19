@@ -38,3 +38,28 @@ jobs:
         run: flutter analyze
       - name: Run standalone package unit tests
         run: flutter test
+
+  app-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: taiwan_brawl_front
+      - uses: actions/checkout@v4
+        with:
+          repository: Yunitrish006006/user_ui_settings
+          path: user_ui_settings
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Resolve main app dependencies
+        working-directory: taiwan_brawl_front
+        run: flutter pub get
+      - name: Run main app regression tests
+        working-directory: taiwan_brawl_front
+        run: flutter test
+      - name: Build Web with optional road-safety route
+        working-directory: taiwan_brawl_front
+        run: flutter build web --release
