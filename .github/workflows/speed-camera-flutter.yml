@@ -1,0 +1,40 @@
+name: Speed camera Flutter package
+
+on:
+  push:
+    branches:
+      - feature/modular-speed-camera-20261119
+    paths:
+      - 'packages/taiwan_speed_camera/**'
+      - '.github/workflows/speed-camera-flutter.yml'
+      - 'pubspec.yaml'
+      - 'lib/main.dart'
+  pull_request:
+    paths:
+      - 'packages/taiwan_speed_camera/**'
+      - '.github/workflows/speed-camera-flutter.yml'
+      - 'pubspec.yaml'
+      - 'lib/main.dart'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/taiwan_speed_camera
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Analyze standalone package
+        run: flutter analyze
+      - name: Run standalone package unit tests
+        run: flutter test
