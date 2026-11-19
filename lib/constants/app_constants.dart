@@ -8,6 +8,11 @@ class AppConstants {
     defaultValue: 'https://taiwan-brawl-api.yunitrish0419.workers.dev',
   );
 
+  static const String speedCameraApiBaseUrl = String.fromEnvironment(
+    'SPEED_CAMERA_API_BASE_URL',
+    defaultValue: apiBaseUrl,
+  );
+
   // 上線時請替換成自己的 Google OAuth Web Client ID。
   static const String googleWebClientId = String.fromEnvironment(
     'GOOGLE_WEB_CLIENT_ID',

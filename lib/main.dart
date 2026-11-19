@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:taiwan_speed_camera/taiwan_speed_camera.dart' deferred as speed_camera;
 
 import 'constants/app_constants.dart';
 import 'constants/app_theme_catalog.dart';
@@ -201,6 +202,13 @@ class MainApp extends StatelessWidget {
             '/admin/roles': (_) => _DeferredWidget(
               loadLibrary: role_management.loadLibrary,
               builder: (_) => role_management.RoleManagementPage(),
+            ),
+            '/speed-camera': (_) => _DeferredWidget(
+              loadLibrary: speed_camera.loadLibrary,
+              builder: (_) => speed_camera.SpeedCameraPage(
+                apiBaseUrl: AppConstants.speedCameraApiBaseUrl,
+                backgroundLocationAvailable: true,
+              ),
             ),
             '/archery': (_) => _DeferredWidget(
               loadLibrary: archery_page.loadLibrary,

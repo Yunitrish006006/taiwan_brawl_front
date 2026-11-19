@@ -1,0 +1,91 @@
+name: Speed camera Flutter integration
+
+concurrency:
+  group: speed-camera-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [feature/modular-speed-camera-20261119]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  app-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: taiwan_brawl_front
+      - uses: actions/checkout@v4
+        with:
+          repository: Yunitrish006006/user_ui_settings
+          ref: 0646dd48e4cb7a8a3fefbdd912065d2c37db2835
+          path: user_ui_settings
+      - uses: actions/checkout@v4
+        with:
+          repository: Yunitrish006006/taiwan_brawl_back
+          ref: 3804d61da8b4a76577f733668c6ad3c34dc4827e
+          path: taiwan_brawl_back
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.44.0'
+          cache: true
+      - name: Generate fixture using the Worker publication and API code
+        working-directory: taiwan_brawl_front
+        run: node tool/build_speed_camera_contract_fixture.mjs "$RUNNER_TEMP/speed-camera-contract.json"
+      - name: Verify app and backend contract
+        working-directory: taiwan_brawl_front
+        env:
+          SPEED_CAMERA_CONTRACT_FIXTURE: ${{ runner.temp }}/speed-camera-contract.json
+        run: |
+          flutter pub get --enforce-lockfile
+          flutter test --no-pub
+          flutter build web --release --no-pub
+
+  native-build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: Android
+            command: flutter build apk --debug --no-pub
+          - os: macos-15
+            platform: iOS
+            command: flutter build ios --debug --no-codesign --no-pub
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.platform }} build
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: taiwan_brawl_front
+      - uses: actions/checkout@v4
+        with:
+          repository: Yunitrish006006/user_ui_settings
+          ref: 0646dd48e4cb7a8a3fefbdd912065d2c37db2835
+          path: user_ui_settings
+      - uses: actions/setup-java@v4
+        if: matrix.platform == 'Android'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.44.0'
+          cache: true
+      - name: Build host with the locked package graph
+        working-directory: taiwan_brawl_front
+        run: |
+          flutter pub get --enforce-lockfile
+          ${{ matrix.command }}

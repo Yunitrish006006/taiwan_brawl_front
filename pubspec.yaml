@@ -11,7 +11,22 @@ dependencies:
     sdk: flutter
   user_ui_settings:
     path: ../user_ui_settings
-  user_basic_system: ^0.1.1
+  user_account_core:
+    git:
+      url: https://github.com/Yunitrish006006/user_account_core.git
+      ref: cb510e95e5d41b289215118d4f8536e98b29d5d9
+  user_social_system:
+    git:
+      url: https://github.com/Yunitrish006006/user_social_system.git
+      ref: ba52f61e807c2947e0a78b59132418c9e890c5e1
+  user_notification_system:
+    git:
+      url: https://github.com/Yunitrish006006/user_notification_system.git
+      ref: c0c9cce34bd388b214d4570262371149f627561e
+  taiwan_speed_camera:
+    git:
+      url: https://github.com/Yunitrish006006/taiwan_speed_camera.git
+      ref: 1e10a092416df5b94e4c7b3d89916150ed6e5549
   cupertino_icons: ^1.0.8
   firebase_core: ^4.9.0
   firebase_messaging: ^16.2.2
@@ -27,6 +42,7 @@ dependencies:
   google_mobile_ads: ^5.0.0
 
 dev_dependencies:
+  firebase_core_platform_interface: ^7.0.1
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0

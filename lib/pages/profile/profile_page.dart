@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:user_basic_system/user_basic_system.dart' as ubs;
+import 'package:user_account_core/user_account_core.dart' as account;
 
 import '../../services/locale_provider.dart';
 import '../../services/taiwan_brawl_profile_service.dart';
@@ -15,9 +15,9 @@ class ProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final service = context.read<TaiwanBrawlProfileService>();
     final t = context.watch<LocaleProvider>().translation;
-    return ubs.ProfilePage(
+    return account.ProfilePage(
       service: service,
-      strings: ubs.ProfileStrings.fromMap(t),
+      strings: account.ProfileStrings.fromMap(t),
       extraContent: const SettingsPanel(),
     );
   }

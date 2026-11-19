@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:user_notification_system/user_notification_system.dart';
 
 import '../models/app_user.dart';
 import '../models/chat_models.dart';
@@ -27,6 +28,7 @@ class PushConfiguration {
     this.storageBucket,
     this.measurementId,
     this.iosBundleId,
+    this.iosAppId,
   });
 
   final bool fcmEnabled;
@@ -41,6 +43,7 @@ class PushConfiguration {
   final String? storageBucket;
   final String? measurementId;
   final String? iosBundleId;
+  final String? iosAppId;
 
   bool get hasFirebaseOptions {
     return _hasText(projectId) &&
@@ -50,7 +53,7 @@ class PushConfiguration {
   }
 
   bool isEnabledForPlatform(String? platform) {
-    if (!fcmEnabled || !fcmDeliveryEnabled || !hasFirebaseOptions) {
+    if (!fcmEnabled || !fcmDeliveryEnabled || appIdForPlatform(platform) == null) {
       return false;
     }
     if (platform == null || !enabledPlatforms.contains(platform)) {
@@ -62,10 +65,24 @@ class PushConfiguration {
     return true;
   }
 
-  FirebaseOptions toFirebaseOptions() {
+  String? appIdForPlatform(String? platform) {
+    if (!hasFirebaseOptions) return null;
+    if (platform != 'ios' && platform != 'macos') return appId!.trim();
+    final selected = (platform == 'ios' ? iosAppId ?? appId : appId)!.trim();
+    // FirebaseCore raises a native exception for non-iOS app IDs on Apple.
+    return RegExp(r'^1:\d+:ios:[0-9a-fA-F]+$').hasMatch(selected)
+        ? selected
+        : null;
+  }
+
+  FirebaseOptions toFirebaseOptions({String? platform}) {
+    final selectedAppId = appIdForPlatform(platform);
+    if (selectedAppId == null) {
+      throw StateError('Firebase App ID is unavailable for this platform');
+    }
     return FirebaseOptions(
       apiKey: apiKey!.trim(),
-      appId: appId!.trim(),
+      appId: selectedAppId,
       messagingSenderId: messagingSenderId!.trim(),
       projectId: projectId!.trim(),
       authDomain: _nullIfBlank(authDomain),
@@ -105,6 +122,7 @@ class PushConfiguration {
       storageBucket: _readString(fcm['storageBucket']),
       measurementId: _readString(fcm['measurementId']),
       iosBundleId: _readString(fcm['iosBundleId']),
+      iosAppId: _readString(fcm['iosAppId']),
     );
   }
 
@@ -148,6 +166,7 @@ class NotificationService extends ChangeNotifier {
   int? _registeredPushUserId;
   int? _activeConversationUserId;
   int? _pendingConversationUserId;
+  bool _pendingConversationFromPush = false;
   String? _currentUserLocale;
   String? _installationId;
 
@@ -163,6 +182,7 @@ class NotificationService extends ChangeNotifier {
       return;
     }
     _pendingConversationUserId = null;
+    _pendingConversationFromPush = false;
     notifyListeners();
   }
 
@@ -186,6 +206,7 @@ class NotificationService extends ChangeNotifier {
       _registeredPushUserId = null;
       _activeConversationUserId = null;
       _pendingConversationUserId = null;
+      _pendingConversationFromPush = false;
       _stopPolling();
       if (!_didSyncLoggedOutState) {
         await unregisterCurrentDevice();
@@ -201,6 +222,12 @@ class NotificationService extends ChangeNotifier {
     final didSwitchUser = _currentUserId != user.id;
     _currentUserId = user.id;
     _currentUserLocale = user.locale;
+    if (didSwitchUser) {
+      // Registration can read a push tap that launched the app. Clear only
+      // the previous session's navigation before registering this session.
+      _pendingConversationUserId = null;
+      _pendingConversationFromPush = false;
+    }
     _startPolling();
 
     if (_registeredPushUserId != user.id) {
@@ -212,7 +239,6 @@ class NotificationService extends ChangeNotifier {
       return;
     }
 
-    _pendingConversationUserId = null;
     await _pollPending();
   }
 
@@ -223,8 +249,7 @@ class NotificationService extends ChangeNotifier {
 
     _activeConversationUserId = friendId;
     if (friendId != null && _pendingConversationUserId == friendId) {
-      _pendingConversationUserId = null;
-      notifyListeners();
+      clearPendingConversationUserId();
     }
   }
 
@@ -247,8 +272,7 @@ class NotificationService extends ChangeNotifier {
 
     try {
       final config = await _loadPushConfiguration();
-      if (config != null && config.hasFirebaseOptions) {
-        await _ensureFirebaseInitialized(config);
+      if (config != null && await _ensureFirebaseInitialized(config, platform)) {
         await FirebaseMessaging.instance.deleteToken();
       }
     } catch (_) {
@@ -256,13 +280,28 @@ class NotificationService extends ChangeNotifier {
     }
   }
 
-  Future<void> _ensureFirebaseInitialized(PushConfiguration config) async {
-    if (_firebaseInitialized) {
-      return;
-    }
+  Future<bool> _ensureFirebaseInitialized(
+    PushConfiguration config,
+    String platform,
+  ) async {
+    if (_firebaseInitialized) return true;
+    if (config.appIdForPlatform(platform) == null) return false;
 
-    if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(options: config.toFirebaseOptions());
+    final apple = platform == 'ios' || platform == 'macos';
+    try {
+      final expectedBundleId = config.iosBundleId;
+      if (apple && expectedBundleId != null) {
+        final package = await PackageInfo.fromPlatform();
+        if (package.packageName != expectedBundleId) return false;
+      }
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(
+          options: config.toFirebaseOptions(platform: platform),
+        );
+      }
+    } catch (error) {
+      debugPrint('Firebase initialization failed: ${error.runtimeType}');
+      return false;
     }
     _firebaseInitialized = true;
 
@@ -284,6 +323,7 @@ class NotificationService extends ChangeNotifier {
     }
 
     await _ensurePlatformHooksInitialized();
+    return true;
   }
 
   Future<void> _ensurePlatformHooksInitialized() async {
@@ -294,7 +334,7 @@ class NotificationService extends ChangeNotifier {
 
     if (kIsWeb) {
       _handleOpenedConversationUserId(
-        _readInt(Uri.base.queryParameters['conversationUserId']),
+        PushConversationIntent.fromUri(Uri.base)?.userId,
       );
     }
 
@@ -322,12 +362,7 @@ class NotificationService extends ChangeNotifier {
       return;
     }
     _handleOpenedConversationUserId(
-      _readInt(
-        message.data['conversationUserId'] ??
-            message.data['senderId'] ??
-            message.data['conversation_user_id'] ??
-            message.data['sender_id'],
-      ),
+      PushConversationIntent.fromPayload(message.data)?.userId,
     );
   }
 
@@ -338,6 +373,7 @@ class NotificationService extends ChangeNotifier {
     if (_activeConversationUserId == conversationUserId) {
       return;
     }
+    _pendingConversationFromPush = true;
     if (_pendingConversationUserId == conversationUserId) {
       return;
     }
@@ -348,12 +384,12 @@ class NotificationService extends ChangeNotifier {
   Future<void> _registerCurrentDevice(AppUser user) async {
     final platform = _currentPushPlatform;
     final config = await _loadPushConfiguration();
-    if (config == null || !config.isEnabledForPlatform(platform)) {
+    if (config == null || platform == null || !config.isEnabledForPlatform(platform)) {
       _setCanRequestWebPushPermission(false);
       return;
     }
 
-    await _ensureFirebaseInitialized(config);
+    if (!await _ensureFirebaseInitialized(config, platform)) return;
     final token = await _requestFcmToken(config);
     if ((token ?? '').isEmpty) {
       await unregisterCurrentDevice();
@@ -362,7 +398,7 @@ class NotificationService extends ChangeNotifier {
 
     await _registerFcmToken(
       token!.trim(),
-      platform: platform!,
+      platform: platform,
       locale: user.locale,
     );
   }
@@ -629,6 +665,7 @@ class NotificationService extends ChangeNotifier {
       }
 
       if (nextConversationUserId != null &&
+          !_pendingConversationFromPush &&
           _pendingConversationUserId != nextConversationUserId) {
         _pendingConversationUserId = nextConversationUserId;
         notifyListeners();
