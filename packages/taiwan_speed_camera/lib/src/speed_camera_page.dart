@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:geolocator/geolocator.dart';
@@ -81,10 +82,12 @@ class _SpeedCameraPageState extends State<SpeedCameraPage> {
       ).listen(
         _handlePosition,
         onError: (Object error) {
-          if (mounted) setState(() {
-            _message = '定位暫時中斷，請確認 GPS 狀態。';
-            _tracking = false;
-          });
+          if (mounted) {
+            setState(() {
+              _message = '定位暫時中斷，請確認 GPS 狀態。';
+              _tracking = false;
+            });
+          }
           _positionSubscription?.cancel();
           _positionSubscription = null;
         },
@@ -121,7 +124,9 @@ class _SpeedCameraPageState extends State<SpeedCameraPage> {
       await _tts.setSpeechRate(0.47);
       await _tts.speak(message);
     } catch (_) {
-      if (mounted) setState(() { _message = '語音播放失敗，請檢查手機音量。'; });
+      if (mounted) {
+        setState(() { _message = '語音播放失敗，請檢查手機音量。'; });
+      }
     }
   }
 
