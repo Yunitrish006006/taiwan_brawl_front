@@ -39,7 +39,7 @@ void main() {
             'version': 'snapshot-version-1', 'recordCount': 1,
           }), 200);
         }
-        return http.Response(jsonEncode(validSnapshot), 200);
+        return http.Response.bytes(utf8.encode(jsonEncode(validSnapshot)), 200);
       }),
     );
     expect((await online.refresh()).points.length, 1);
@@ -64,7 +64,7 @@ void main() {
             'version': 'snapshot-version-1', 'recordCount': 1,
           }), 200);
         }
-        return http.Response(jsonEncode(validSnapshot), 200);
+        return http.Response.bytes(utf8.encode(jsonEncode(validSnapshot)), 200);
       }),
     );
     await initial.refresh();
@@ -78,7 +78,7 @@ void main() {
             'version': 'snapshot-version-2', 'recordCount': 1,
           }), 200);
         }
-        return http.Response(jsonEncode(validSnapshot), 200);
+        return http.Response.bytes(utf8.encode(jsonEncode(validSnapshot)), 200);
       }),
     );
     await expectLater(invalid.refresh(), throwsFormatException);
