@@ -726,6 +726,48 @@ extension _HomePageLayout on _HomePageState {
     );
   }
 
+  Widget _buildSpeedCameraCard() {
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: () => _openRoute('/speed-camera'),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF64E2C4).withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.speed_rounded,
+                  color: Color(0xFF43C8AC), size: 28),
+            ),
+            const SizedBox(width: 14),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('行車測速提醒', style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 16, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 5),
+                Text('官方測速資料 · GPS 行車模式',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface
+                          .withValues(alpha: 0.60), fontSize: 12)),
+              ],
+            )),
+            Icon(Icons.chevron_right_rounded,
+                color: Theme.of(context).colorScheme.onSurface
+                    .withValues(alpha: 0.50)),
+          ]),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPrimaryActionList(
     AppUser user,
     Map<String, String> t, {
@@ -852,6 +894,23 @@ extension _HomePageLayout on _HomePageState {
           ),
         ),
         const SizedBox(height: 48),
+
+        // 區塊六點五：行車安全工具
+        _animatedSection(
+          begin: 0.55, end: 0.95,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('UTILITIES', style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface
+                      .withValues(alpha: 0.35),
+                  fontSize: 11, fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2)),
+              const SizedBox(height: 12),
+              _buildSpeedCameraCard(),
+            ],
+          ),
+        ),
+        const SizedBox(height: 30),
 
         // 區塊七：廣告 Banner（iOS / Android only）
         _animatedSection(
