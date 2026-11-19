@@ -63,3 +63,29 @@ jobs:
       - name: Build Web with optional road-safety route
         working-directory: taiwan_brawl_front
         run: flutter build web --release
+
+  android-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: taiwan_brawl_front
+      - uses: actions/checkout@v4
+        with:
+          repository: Yunitrish006006/user_ui_settings
+          path: user_ui_settings
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Resolve app dependencies
+        working-directory: taiwan_brawl_front
+        run: flutter pub get
+      - name: Build Android debug APK
+        working-directory: taiwan_brawl_front
+        run: flutter build apk --debug
