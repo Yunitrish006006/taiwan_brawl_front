@@ -12,6 +12,11 @@ class AppConstants {
   /// completed in the target deployment environment.
   static bool get p2pChatEnabled => AppConfiguration.environment.p2pChatEnabled;
 
+  static String get speedCameraApiBaseUrl {
+    const override = String.fromEnvironment('SPEED_CAMERA_API_BASE_URL');
+    return override.isEmpty ? apiBaseUrl : override;
+  }
+
   // 上線時請替換成自己的 Google OAuth Web Client ID。
   static String get googleWebClientId =>
       AppConfiguration.environment.googleWebClientId;

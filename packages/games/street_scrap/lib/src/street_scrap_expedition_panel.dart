@@ -1119,7 +1119,8 @@ class _StreetScrapExpeditionPanelState
     final ragCount = _deliveryCandidates('cloth.rag_piece').length;
 
     return Card(
-      child: Padding(
+      child: SingleChildScrollView(
+        primary: false,
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

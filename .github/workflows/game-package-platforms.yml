@@ -101,6 +101,12 @@ jobs:
           repository: Yunitrish006006/user_ui_settings
           ref: 96e4f1d54f27a4c0fc1c923e1c8c2da9a384d117
           path: user_ui_settings
+      - name: Checkout Minesweeper
+        uses: actions/checkout@v4
+        with:
+          repository: Yunitrish006006/taiwan_brawl_minesweeper
+          ref: 8946409fac6e68a239d01f5ec2cd0f0b1a64dbc1
+          path: taiwan_brawl_minesweeper
 
       - name: Verify Street Scrap Web writer lock bridge
         working-directory: taiwan_brawl_front
@@ -161,6 +167,12 @@ jobs:
           repository: Yunitrish006006/user_ui_settings
           ref: 96e4f1d54f27a4c0fc1c923e1c8c2da9a384d117
           path: user_ui_settings
+      - name: Checkout Minesweeper
+        uses: actions/checkout@v4
+        with:
+          repository: Yunitrish006006/taiwan_brawl_minesweeper
+          ref: 8946409fac6e68a239d01f5ec2cd0f0b1a64dbc1
+          path: taiwan_brawl_minesweeper
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -195,6 +207,12 @@ jobs:
           repository: Yunitrish006006/user_ui_settings
           ref: 96e4f1d54f27a4c0fc1c923e1c8c2da9a384d117
           path: user_ui_settings
+      - name: Checkout Minesweeper
+        uses: actions/checkout@v4
+        with:
+          repository: Yunitrish006006/taiwan_brawl_minesweeper
+          ref: 8946409fac6e68a239d01f5ec2cd0f0b1a64dbc1
+          path: taiwan_brawl_minesweeper
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -232,6 +250,12 @@ jobs:
           repository: Yunitrish006006/user_ui_settings
           ref: 96e4f1d54f27a4c0fc1c923e1c8c2da9a384d117
           path: user_ui_settings
+      - name: Checkout Minesweeper
+        uses: actions/checkout@v4
+        with:
+          repository: Yunitrish006006/taiwan_brawl_minesweeper
+          ref: 8946409fac6e68a239d01f5ec2cd0f0b1a64dbc1
+          path: taiwan_brawl_minesweeper
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -319,6 +343,12 @@ jobs:
           repository: Yunitrish006006/user_ui_settings
           ref: 96e4f1d54f27a4c0fc1c923e1c8c2da9a384d117
           path: user_ui_settings
+      - name: Checkout Minesweeper
+        uses: actions/checkout@v4
+        with:
+          repository: Yunitrish006006/taiwan_brawl_minesweeper
+          ref: 8946409fac6e68a239d01f5ec2cd0f0b1a64dbc1
+          path: taiwan_brawl_minesweeper
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -369,6 +399,12 @@ jobs:
           repository: Yunitrish006006/user_ui_settings
           ref: 96e4f1d54f27a4c0fc1c923e1c8c2da9a384d117
           path: user_ui_settings
+      - name: Checkout Minesweeper
+        uses: actions/checkout@v4
+        with:
+          repository: Yunitrish006006/taiwan_brawl_minesweeper
+          ref: 8946409fac6e68a239d01f5ec2cd0f0b1a64dbc1
+          path: taiwan_brawl_minesweeper
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -538,6 +574,12 @@ jobs:
           repository: Yunitrish006006/user_ui_settings
           ref: 96e4f1d54f27a4c0fc1c923e1c8c2da9a384d117
           path: user_ui_settings
+      - name: Checkout Minesweeper
+        uses: actions/checkout@v4
+        with:
+          repository: Yunitrish006006/taiwan_brawl_minesweeper
+          ref: 8946409fac6e68a239d01f5ec2cd0f0b1a64dbc1
+          path: taiwan_brawl_minesweeper
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2

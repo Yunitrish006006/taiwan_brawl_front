@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:taiwan_brawl/models/legacy_chat_record.dart';
 import 'package:taiwan_brawl/services/auth_remote_source.dart';
@@ -16,6 +17,45 @@ import 'package:taiwan_brawl/services/preview_push_provider.dart';
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
 void main() {
+  test(
+    'a cold-start push keeps its conversation through initial DM polling',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      final core = await MessagingCoreService.restore(_MemoryMessagingStore());
+      final source = _PendingSource();
+      final auth = AuthService(remoteSource: _AuthSource());
+      await auth.init();
+      final service = NotificationService(
+        legacyPendingMessages: LegacyPendingMessageAdapter(
+          localRepository: _UnusedLegacyPendingMessageStore(),
+        ),
+        messagingCore: core,
+        remoteAuthenticator: null,
+        credentials: _MemoryCredentials(),
+        legacyInstallationStore: _EmptyInstallationStore(),
+        pushProvider: _ColdStartPushProvider(),
+        pendingNotificationSource: source,
+        remoteSource: _NotificationSource(),
+        deviceId: 'test-chat-device',
+      );
+      addTearDown(core.dispose);
+      addTearDown(auth.dispose);
+      addTearDown(service.dispose);
+
+      service.syncAuth(auth);
+      expect(await source.handled.future.timeout(const Duration(seconds: 2)), [
+        12,
+      ]);
+      expect(service.pendingConversationUserId, 7);
+      expect(source.polledDeviceId, 'test-chat-device');
+      expect(
+        core.repository.projectionsFor('1:9').single.visibleBody,
+        'received event body',
+      );
+    },
+  );
+
   test(
     'decrypts encrypted pending events before storing them locally',
     () async {
@@ -224,8 +264,43 @@ void main() {
   );
 }
 
+class _ColdStartPushProvider extends PreviewPushProvider {
+  @override
+  PushProviderConfiguration parseConfiguration(Map<String, dynamic>? payload) =>
+      const _ColdStartPushConfiguration();
+
+  @override
+  bool isEnabledForPlatform(
+    PushProviderConfiguration configuration,
+    String? platform,
+  ) => true;
+
+  @override
+  Future<void> initialize({
+    required PushProviderConfiguration configuration,
+    required bool showForegroundNotifications,
+    required void Function(PushMessage message) onMessageOpened,
+    required void Function(PushMessage message) onForegroundMessage,
+    required Future<void> Function(String token) onTokenRefresh,
+  }) async {
+    onMessageOpened(const PushMessage({'conversationUserId': '7'}));
+  }
+
+  @override
+  Future<PushPermissionResult> requestPermission() async =>
+      const PushPermissionResult(PushAuthorizationStatus.authorized);
+
+  @override
+  Future<String?> getToken() async => 'test-token';
+}
+
+class _ColdStartPushConfiguration implements PushProviderConfiguration {
+  const _ColdStartPushConfiguration();
+}
+
 class _PendingSource implements PendingNotificationSource {
   final handled = Completer<List<int>>();
+  String? polledDeviceId;
 
   @override
   MessageEvent? eventFromPendingRow(
@@ -250,6 +325,8 @@ class _PendingSource implements PendingNotificationSource {
     String? deviceId,
     required PendingNotificationHandler onItem,
   }) async {
+    polledDeviceId = deviceId;
+    if (handled.isCompleted) return;
     try {
       final result = await onItem({
         'id': 12,

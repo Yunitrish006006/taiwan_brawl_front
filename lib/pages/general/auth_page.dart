@@ -424,6 +424,21 @@ class _AuthPageState extends State<AuthPage> {
                 frameWidth,
                 useDarkTheme,
               ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      Navigator.of(context).pushNamed('/speed-camera'),
+                  icon: const Icon(Icons.speed_rounded, size: 19),
+                  label: const Text('免登入使用測速提醒'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF64E2C4),
+                    side: const BorderSide(color: Color(0xFF426B70)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
               if (loading) ...[
                 const SizedBox(height: 16),
                 const SizedBox(

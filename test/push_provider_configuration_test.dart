@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:taiwan_brawl/services/push_provider.dart';
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
@@ -31,6 +32,27 @@ void main() {
     expect(config.firebaseOptions.messagingSenderId, '123');
     expect(config.firebaseOptions.authDomain, 'taiwan-brawl.firebaseapp.com');
     expect(provider.canDeleteToken(config), isTrue);
+  });
+
+  test('Apple ignores Android IDs and accepts the matching Apple app ID', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final provider = FirebasePushProvider();
+
+    expect(provider.parseConfiguration(payload), isNull);
+    final matched =
+        provider.parseConfiguration({
+              ...payload,
+              'fcm': {
+                ...payload['fcm'] as Map<String, dynamic>,
+                'apps': {
+                  'ios': {'appId': '1:123:android:abc'},
+                },
+                'iosAppId': '1:123:ios:012abc',
+              },
+            })
+            as FirebasePushProviderOptions;
+    expect(matched.firebaseOptions.appId, '1:123:ios:012abc');
   });
 
   test('Firebase adapter gates delivery by server flags and platform', () {

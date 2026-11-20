@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:taiwan_brawl/game_modules/bundled_game_catalog.dart';
@@ -12,9 +14,29 @@ import 'package:taiwan_brawl/services/game_library_controller.dart';
 import 'package:taiwan_brawl/services/game_library_store.dart';
 import 'package:taiwan_brawl/game_modules/game_module_manifest.dart';
 import 'package:taiwan_brawl_game_street_scrap/street_scrap_content.dart';
+import 'package:taiwan_brawl_game_street_scrap/taiwan_brawl_game_street_scrap.dart'
+    show StreetScrapInventoryPage;
 import 'package:taiwan_brawl_game_street_scrap/street_scrap_progress.dart'
     as progress;
 import 'package:user_ui_settings/user_ui_settings.dart';
+
+const _baseContentAsset =
+    'packages/taiwan_brawl_game_street_scrap/resources/data/street-scrap-content-chapters-0-4-v1.json';
+
+class _BaseContentAssetBundle extends CachingAssetBundle {
+  _BaseContentAssetBundle(this.content);
+
+  final String content;
+
+  @override
+  Future<ByteData> load(String key) => SynchronousFuture(ByteData(0));
+
+  @override
+  Future<String> loadString(String key, {bool cache = true}) {
+    if (key != _baseContentAsset) throw StateError('Unexpected asset: $key');
+    return SynchronousFuture(content);
+  }
+}
 
 class _MemoryStore implements GameLibraryStore {
   _MemoryStore({Map<String, GameResourceInstallRecord> records = const {}})
@@ -273,8 +295,13 @@ void main() {
   });
 
   testWidgets(
-    'enabled route explains missing optional resource and opens Library',
+    'enabled route plays bundled content and reloads after returning from Library',
     (tester) async {
+      final content = await tester.runAsync(
+        () => rootBundle.loadString(_baseContentAsset),
+      );
+      final assets = _BaseContentAssetBundle(content!);
+      final game = find.byType(StreetScrapInventoryPage);
       final authRemote = _AuthRemoteSource();
       final auth = AuthService(remoteSource: authRemote);
       await auth.verifyGoogleToken('test-token');
@@ -313,42 +340,43 @@ void main() {
       addTearDown(locale.dispose);
 
       await tester.pumpWidget(
-        MultiProvider(
-          providers: [
-            ChangeNotifierProvider<GameLibraryController>.value(value: library),
-            ChangeNotifierProvider<AuthService>.value(value: auth),
-            Provider<progress.StreetScrapProgressStore>.value(
-              value: progressStore,
+        DefaultAssetBundle(
+          bundle: assets,
+          child: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<GameLibraryController>.value(
+                value: library,
+              ),
+              ChangeNotifierProvider<AuthService>.value(value: auth),
+              Provider<progress.StreetScrapProgressStore>.value(
+                value: progressStore,
+              ),
+              ChangeNotifierProvider<LocaleProvider>.value(value: locale),
+            ],
+            child: MaterialApp(
+              initialRoute: '/street-scrap',
+              routes: {
+                ...gameModuleRoutes,
+                '/game-library': (_) =>
+                    const Scaffold(body: Text('Library destination')),
+              },
             ),
-            ChangeNotifierProvider<LocaleProvider>.value(value: locale),
-          ],
-          child: MaterialApp(
-            initialRoute: '/street-scrap',
-            routes: {
-              ...gameModuleRoutes,
-              '/game-library': (_) =>
-                  const Scaffold(body: Text('Library destination')),
-            },
           ),
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Local save loaded'), findsOneWidget);
-      expect(
-        find.textContaining('Neighborhood content is not installed'),
-        findsOneWidget,
-      );
+      expect(game, findsOneWidget);
       expect(progressStore.readKeys, hasLength(1));
       locale.setLocale('zh-Hant');
       await tester.pumpAndSettle();
-      expect(find.text('本機存檔已載入'), findsOneWidget);
-      expect(find.textContaining('街區內容尚未安裝'), findsOneWidget);
+      expect(game, findsOneWidget);
+      expect(find.text('街角拾荒'), findsWidgets);
       authRemote.userId = 43;
       await auth.verifyGoogleToken('switch-profile');
       await tester.pumpAndSettle();
       expect(progressStore.readKeys, hasLength(2));
       expect(progressStore.readKeys.first, isNot(progressStore.readKeys.last));
-      await tester.tap(find.text('前往遊戲庫'));
+      tester.widget<StreetScrapInventoryPage>(game).onOpenLibrary!();
       await tester.pumpAndSettle();
       expect(find.text('Library destination'), findsOneWidget);
       await library.recordResourceState(
@@ -376,6 +404,11 @@ void main() {
   testWidgets(
     'formal game route is read-only in a second tab and writable after reopen',
     (tester) async {
+      final content = await tester.runAsync(
+        () => rootBundle.loadString(_baseContentAsset),
+      );
+      final assets = _BaseContentAssetBundle(content!);
+      final game = find.byType(StreetScrapInventoryPage);
       final auth = AuthService(remoteSource: _AuthRemoteSource());
       await auth.verifyGoogleToken('test-token');
       addTearDown(auth.dispose);
@@ -393,55 +426,60 @@ void main() {
       addTearDown(locale.dispose);
 
       await tester.pumpWidget(
-        MultiProvider(
-          providers: [
-            ChangeNotifierProvider<GameLibraryController>.value(value: library),
-            ChangeNotifierProvider<AuthService>.value(value: auth),
-            Provider<progress.StreetScrapProgressStore>.value(
-              value: progressStore,
-            ),
-            ChangeNotifierProvider<LocaleProvider>.value(value: locale),
-          ],
-          child: MaterialApp(
-            home: Scaffold(
-              body: Builder(
-                builder: (context) => TextButton(
-                  onPressed: () =>
-                      Navigator.of(context).pushNamed('/street-scrap'),
-                  child: const Text('Open Street Scrap'),
+        DefaultAssetBundle(
+          bundle: assets,
+          child: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<GameLibraryController>.value(
+                value: library,
+              ),
+              ChangeNotifierProvider<AuthService>.value(value: auth),
+              Provider<progress.StreetScrapProgressStore>.value(
+                value: progressStore,
+              ),
+              ChangeNotifierProvider<LocaleProvider>.value(value: locale),
+            ],
+            child: MaterialApp(
+              home: Scaffold(
+                body: Builder(
+                  builder: (context) => TextButton(
+                    onPressed: () =>
+                        Navigator.of(context).pushNamed('/street-scrap'),
+                    child: const Text('Open Street Scrap'),
+                  ),
                 ),
               ),
+              routes: gameModuleRoutes,
             ),
-            routes: gameModuleRoutes,
           ),
         ),
       );
 
       await tester.tap(find.text('Open Street Scrap'));
       await tester.pumpAndSettle();
-      expect(find.text('Local save loaded'), findsOneWidget);
+      expect(game, findsOneWidget);
       expect(
-        find.text('This save is open in another tab and is read-only.'),
-        findsNothing,
+        tester.widget<StreetScrapInventoryPage>(game).session.isReadOnly,
+        isFalse,
       );
 
-      final firstPageContext = tester.element(find.text('Local save loaded'));
+      final firstPageContext = tester.element(game);
       Navigator.of(firstPageContext).pushNamed('/street-scrap');
       await tester.pumpAndSettle();
       expect(
-        find.text('Local save loaded', skipOffstage: false),
+        find.byType(StreetScrapInventoryPage, skipOffstage: false),
         findsNWidgets(2),
       );
       expect(
-        find.text('This save is open in another tab and is read-only.'),
-        findsOneWidget,
+        tester.widget<StreetScrapInventoryPage>(game).session.isReadOnly,
+        isTrue,
       );
 
       await tester.pageBack();
       await tester.pumpAndSettle();
       expect(
-        find.text('This save is open in another tab and is read-only.'),
-        findsNothing,
+        tester.widget<StreetScrapInventoryPage>(game).session.isReadOnly,
+        isFalse,
       );
       await tester.pageBack();
       await tester.pumpAndSettle();
@@ -449,10 +487,10 @@ void main() {
 
       await tester.tap(find.text('Open Street Scrap'));
       await tester.pumpAndSettle();
-      expect(find.text('Local save loaded'), findsOneWidget);
+      expect(game, findsOneWidget);
       expect(
-        find.text('This save is open in another tab and is read-only.'),
-        findsNothing,
+        tester.widget<StreetScrapInventoryPage>(game).session.isReadOnly,
+        isFalse,
       );
       await tester.pumpWidget(const SizedBox.shrink());
     },

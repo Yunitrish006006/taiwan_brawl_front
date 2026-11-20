@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
+import 'package:user_notification_system/user_notification_system.dart';
 
 import '../models/app_user.dart';
 import 'auth_service.dart';
@@ -63,6 +64,7 @@ class NotificationService extends ChangeNotifier with WidgetsBindingObserver {
   int? _registeredPushUserId;
   int? _activeConversationUserId;
   int? _pendingConversationUserId;
+  bool _pendingConversationFromPush = false;
   String? _currentUserLocale;
   String? _installationId;
 
@@ -101,6 +103,7 @@ class NotificationService extends ChangeNotifier with WidgetsBindingObserver {
       return;
     }
     _pendingConversationUserId = null;
+    _pendingConversationFromPush = false;
     notifyListeners();
   }
 
@@ -124,6 +127,7 @@ class NotificationService extends ChangeNotifier with WidgetsBindingObserver {
       _registeredPushUserId = null;
       _activeConversationUserId = null;
       _pendingConversationUserId = null;
+      _pendingConversationFromPush = false;
       _stopPolling();
       if (!_didSyncLoggedOutState) {
         await unregisterCurrentDevice();
@@ -139,6 +143,10 @@ class NotificationService extends ChangeNotifier with WidgetsBindingObserver {
     final didSwitchUser = _currentUserId != user.id;
     _currentUserId = user.id;
     _currentUserLocale = user.locale;
+    if (didSwitchUser) {
+      _pendingConversationUserId = null;
+      _pendingConversationFromPush = false;
+    }
     _startPolling();
 
     if (_registeredPushUserId != user.id) {
@@ -150,7 +158,6 @@ class NotificationService extends ChangeNotifier with WidgetsBindingObserver {
       return;
     }
 
-    _pendingConversationUserId = null;
     await _pollPending();
   }
 
@@ -161,8 +168,7 @@ class NotificationService extends ChangeNotifier with WidgetsBindingObserver {
 
     _activeConversationUserId = friendId;
     if (friendId != null && _pendingConversationUserId == friendId) {
-      _pendingConversationUserId = null;
-      notifyListeners();
+      clearPendingConversationUserId();
     }
   }
 
@@ -201,10 +207,9 @@ class NotificationService extends ChangeNotifier with WidgetsBindingObserver {
       return;
     }
 
-    _pushProviderInitialized = true;
     if (kIsWeb) {
       _handleOpenedConversationUserId(
-        _readInt(Uri.base.queryParameters['conversationUserId']),
+        PushConversationIntent.fromUri(Uri.base)?.userId,
       );
     }
     await _pushProvider.initialize(
@@ -214,16 +219,12 @@ class NotificationService extends ChangeNotifier with WidgetsBindingObserver {
       onForegroundMessage: _handleRemoteMessage,
       onTokenRefresh: _handleTokenRefresh,
     );
+    _pushProviderInitialized = true;
   }
 
   void _handleRemoteMessage(PushMessage message) {
     _handleOpenedConversationUserId(
-      _readInt(
-        message.data['conversationUserId'] ??
-            message.data['senderId'] ??
-            message.data['conversation_user_id'] ??
-            message.data['sender_id'],
-      ),
+      PushConversationIntent.fromPayload(message.data)?.userId,
     );
     unawaited(_pollPending());
   }
@@ -235,6 +236,7 @@ class NotificationService extends ChangeNotifier with WidgetsBindingObserver {
     if (_activeConversationUserId == conversationUserId) {
       return;
     }
+    _pendingConversationFromPush = true;
     if (_pendingConversationUserId == conversationUserId) {
       return;
     }
@@ -251,7 +253,12 @@ class NotificationService extends ChangeNotifier with WidgetsBindingObserver {
       return;
     }
 
-    await _ensurePushProviderInitialized(config);
+    try {
+      await _ensurePushProviderInitialized(config);
+    } on Object catch (error) {
+      debugPrint('Push provider initialization failed: ${error.runtimeType}');
+      return;
+    }
     final token = await _requestPushToken();
     if ((token ?? '').isEmpty) {
       await unregisterCurrentDevice();
@@ -572,7 +579,10 @@ class NotificationService extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void _setPendingConversation(int senderId) {
-    if (_pendingConversationUserId == senderId) return;
+    if (_pendingConversationFromPush ||
+        _pendingConversationUserId == senderId) {
+      return;
+    }
     _pendingConversationUserId = senderId;
     notifyListeners();
   }

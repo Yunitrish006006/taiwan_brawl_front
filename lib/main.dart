@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 import 'package:user_ui_settings/user_ui_settings.dart';
+import 'package:taiwan_speed_camera/taiwan_speed_camera.dart'
+    deferred as speed_camera;
 import 'package:taiwan_brawl_game_street_scrap/street_scrap_progress.dart'
     as street_scrap;
 
@@ -731,6 +733,13 @@ class MainApp extends StatelessWidget {
             '/couple-widget': (_) => const CoupleWidgetGatePage(),
             '/couple-offline': (_) => const OfflineCoupleCounterPage(),
             '/game-library': (_) => const GameLibraryPage(),
+            '/speed-camera': (_) => _DeferredWidget(
+              loadLibrary: speed_camera.loadLibrary,
+              builder: (_) => speed_camera.SpeedCameraPage(
+                apiBaseUrl: AppConstants.speedCameraApiBaseUrl,
+                backgroundLocationAvailable: true,
+              ),
+            ),
             '/profile': (_) => _DeferredWidget(
               loadLibrary: profile_page.loadLibrary,
               builder: (_) => profile_page.ProfilePage(),

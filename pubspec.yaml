@@ -23,7 +23,26 @@ dependencies:
     path: packages/games/street_scrap
   taiwan_brawl_minesweeper:
     path: ../taiwan_brawl_minesweeper
-  user_basic_system: ^0.1.1
+  user_basic_system:
+    git:
+      url: https://github.com/Yunitrish006006/user_basic_system.git
+      ref: d27762c17393da1a10aac6915d0c75ff872543c0
+  user_social_system:
+    git:
+      url: https://github.com/Yunitrish006006/user_social_system.git
+      ref: d3d8e60857d5f92fdb55ae8236ea0533fa54033b
+  user_account_core:
+    git:
+      url: https://github.com/Yunitrish006006/user_account_core.git
+      ref: cb510e95e5d41b289215118d4f8536e98b29d5d9
+  user_notification_system:
+    git:
+      url: https://github.com/Yunitrish006006/user_notification_system.git
+      ref: c0c9cce34bd388b214d4570262371149f627561e
+  taiwan_speed_camera:
+    git:
+      url: https://github.com/Yunitrish006006/taiwan_speed_camera.git
+      ref: 1e10a092416df5b94e4c7b3d89916150ed6e5549
   cupertino_icons: ^1.0.8
   firebase_core: ^4.9.0
   firebase_messaging: ^16.2.2

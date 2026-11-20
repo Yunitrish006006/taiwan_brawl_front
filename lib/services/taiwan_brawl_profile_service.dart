@@ -1,12 +1,12 @@
 import 'package:flutter/foundation.dart';
-import 'package:user_basic_system/user_basic_system.dart';
+import 'package:user_account_core/user_account_core.dart';
 
 import '../models/app_user.dart';
 import 'api_client.dart';
 import 'auth_service.dart';
 
 /// Bridges [AuthService] to the [ProfileService] interface
-/// required by `user_basic_system`'s [ProfilePage].
+/// required by `user_account_core`'s [ProfilePage].
 ///
 /// Forwards all [AuthService] change notifications so the UI reacts
 /// to login/logout and remote refreshes automatically.

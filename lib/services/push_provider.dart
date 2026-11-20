@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
 /// Application adapter boundary for resolving remote notification settings.
@@ -67,8 +68,16 @@ class FirebasePushProviderOptions implements PushProviderConfiguration {
     final platformAppMap = platformApp is Map
         ? Map<String, dynamic>.from(platformApp)
         : const <String, dynamic>{};
-    final appId = _readString(platformAppMap['appId']) ??
-        _readString(fcm['appId']);
+    final apple = platform == 'ios' || platform == 'macos';
+    final appId =
+        [
+              _readString(platformAppMap['appId']),
+              if (platform == 'ios') _readString(fcm['iosAppId']),
+              _readString(fcm['appId']),
+            ]
+            .whereType<String>()
+            .where((id) => !apple || _isAppleAppId(id))
+            .firstOrNull;
     final messagingSenderId = _readString(fcm['messagingSenderId']);
     if ([projectId, apiKey, appId, messagingSenderId].any((v) => v == null)) {
       return null;
@@ -91,6 +100,9 @@ class FirebasePushProviderOptions implements PushProviderConfiguration {
       webVapidKey: _readString(fcm['webVapidKey']),
     );
   }
+
+  static bool _isAppleAppId(String id) =>
+      RegExp(r'^1:\d+:ios:[0-9a-fA-F]+$').hasMatch(id);
 
   static bool _hasText(String? value) => (value ?? '').trim().isNotEmpty;
 
@@ -162,6 +174,18 @@ class FirebasePushProvider implements NotificationPushProvider {
         'configuration',
         'FirebasePushProviderOptions are required',
       );
+    }
+    final platform = FirebasePushProviderOptions._currentFirebasePlatform;
+    if (platform == 'ios' || platform == 'macos') {
+      final options = configuration.firebaseOptions;
+      if (!FirebasePushProviderOptions._isAppleAppId(options.appId) ||
+          (options.iosBundleId != null &&
+              options.iosBundleId !=
+                  (await PackageInfo.fromPlatform()).packageName)) {
+        throw StateError(
+          'Firebase configuration does not match this Apple app',
+        );
+      }
     }
     _webVapidKey = configuration.webVapidKey;
     if (Firebase.apps.isEmpty) {
