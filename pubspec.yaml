@@ -42,7 +42,7 @@ dependencies:
   taiwan_speed_camera:
     git:
       url: https://github.com/Yunitrish006006/taiwan_speed_camera.git
-      ref: 1e10a092416df5b94e4c7b3d89916150ed6e5549
+      ref: bcfa10cdf6446b5257ca8709d14efc69bb123fb3
   cupertino_icons: ^1.0.8
   firebase_core: ^4.9.0
   firebase_messaging: ^16.2.2

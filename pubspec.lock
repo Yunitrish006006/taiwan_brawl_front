@@ -954,8 +954,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "1e10a092416df5b94e4c7b3d89916150ed6e5549"
-      resolved-ref: "1e10a092416df5b94e4c7b3d89916150ed6e5549"
+      ref: bcfa10cdf6446b5257ca8709d14efc69bb123fb3
+      resolved-ref: bcfa10cdf6446b5257ca8709d14efc69bb123fb3
       url: "https://github.com/Yunitrish006006/taiwan_speed_camera.git"
     source: git
     version: "0.1.0"

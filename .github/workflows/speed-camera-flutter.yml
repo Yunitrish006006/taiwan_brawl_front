@@ -6,7 +6,7 @@ concurrency:
 
 on:
   push:
-    branches: [feature/modular-speed-camera-20261119, feature/modular-speed-camera-integration-20261120]
+    branches: [feature/modular-speed-camera-20261119, feature/modular-speed-camera-integration-20261120, feature/speed-camera-device-feedback-20261120]
   pull_request:
   workflow_dispatch:
 
