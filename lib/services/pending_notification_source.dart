@@ -1,6 +1,7 @@
 import 'package:taiwan_brawl_messaging/taiwan_brawl_messaging.dart';
 
 import 'api_client.dart';
+import 'chat_device_management_service.dart';
 import 'server_message_transport.dart';
 
 /// Returns the pending-row ids that were durably handled by the consumer.
@@ -39,6 +40,8 @@ class ServerPendingNotificationSource implements PendingNotificationSource {
   final ApiClient _apiClient;
   final String? deviceId;
   bool _disposed = false;
+  (int, String)? _registeredDevice;
+  (int, String)? _revokedDevice;
 
   @override
   MessageEvent? eventFromPendingRow(
@@ -60,6 +63,26 @@ class ServerPendingNotificationSource implements PendingNotificationSource {
   }) async {
     if (_disposed) return;
     final effectiveDeviceId = deviceId ?? this.deviceId;
+    if (effectiveDeviceId != null && effectiveDeviceId.isNotEmpty) {
+      final registration = (selfId, effectiveDeviceId);
+      if (_revokedDevice == registration) return;
+      if (_registeredDevice != registration) {
+        try {
+          await ServerChatDeviceManagementService(
+            _apiClient,
+          ).registerCurrentDevice(effectiveDeviceId);
+        } on ApiException catch (error) {
+          if (error.statusCode == 403 &&
+              error.message == 'Device was revoked') {
+            _revokedDevice = registration;
+            return;
+          }
+          rethrow;
+        }
+        if (_disposed) return;
+        _registeredDevice = registration;
+      }
+    }
     final query = <String, String>{
       if (effectiveDeviceId != null && effectiveDeviceId.isNotEmpty)
         'deviceId': effectiveDeviceId,

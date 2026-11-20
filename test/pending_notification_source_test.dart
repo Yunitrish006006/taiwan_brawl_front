@@ -84,7 +84,7 @@ void main() {
   });
 
   test(
-    'passes the current device id to pending and acknowledgement requests',
+    'registers the current device before the first pending poll and ACK',
     () async {
       final requests = <http.Request>[];
       final client = MockClient((request) async {
@@ -113,6 +113,9 @@ void main() {
         onItem: (item) async => [item['id'] as int],
       );
 
+      expect(requests.first.method, 'POST');
+      expect(requests.first.url.path, '/api/chat/dm/device-register');
+      expect(jsonDecode(requests.first.body), {'deviceId': 'pixel-7a'});
       final pending = requests.singleWhere(
         (request) => request.url.path.endsWith('/pending'),
       );
@@ -124,9 +127,55 @@ void main() {
         'ids': [7],
         'deviceId': 'pixel-7a',
       });
+      await source.poll(
+        selfId: 1,
+        activeConversationUserId: null,
+        onItem: (_) async => [],
+      );
+      expect(
+        requests.where((r) => r.url.path.endsWith('/device-register')),
+        hasLength(1),
+      );
+      await source.poll(
+        selfId: 2,
+        activeConversationUserId: null,
+        onItem: (_) async => [],
+      );
+      expect(
+        requests.where((r) => r.url.path.endsWith('/device-register')),
+        hasLength(2),
+      );
       source.dispose();
     },
   );
+
+  test('a revoked device is never polled or repeatedly registered', () async {
+    final requests = <http.Request>[];
+    final source = ServerPendingNotificationSource(
+      ApiClient(
+        client: MockClient((request) async {
+          requests.add(request);
+          return http.Response(
+            jsonEncode({'error': 'Device was revoked'}),
+            403,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+        credentials: _MemoryCredentials(),
+      ),
+      deviceId: 'revoked-device',
+    );
+
+    for (var attempt = 0; attempt < 2; attempt++) {
+      await source.poll(
+        selfId: 1,
+        activeConversationUserId: null,
+        onItem: (_) async => throw StateError('revoked device received a row'),
+      );
+    }
+    expect(requests.single.url.path, '/api/chat/dm/device-register');
+    source.dispose();
+  });
 
   test('does not acknowledge rows when the consumer fails', () async {
     var ackCalled = false;
