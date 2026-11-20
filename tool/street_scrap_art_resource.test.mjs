@@ -157,7 +157,7 @@ test('mineral-pack art stays optional end-to-end and the built-in fallback remai
   ]);
   assertOptionalPresentation(registration, 'streetScrapMineralPackArtResourceId', 'streetScrapMineralPackArtSha256');
   assert.match(registration, /validateStreetScrapArtBytes/);
-  assert.match(routes, /if \(!mineralPackArtInstalled\) return null/);
+  assert.match(routes, /if \(!mineralPackArtInstalled\) \{\s*final (?:data|source|bundled) = await assets\.load(?:String)?\(/);
   assert.match(entryPage, /validateStreetScrapArtBytes\(mineralPackArtBytes\)/);
   assert.match(entryPage, /on Object\s*\{\s*mineralPackArtBytes = null;/);
   assert.match(sprite, /itemId == 'material\.mineral_pack'[\s\S]*?mineralPackSpriteBytes != null/);
@@ -173,7 +173,7 @@ test('wood-chip bundle art stays optional end-to-end and falls back offline', as
     readFile(new URL('packages/games/street_scrap/lib/src/street_scrap_item_sprite.dart', root), 'utf8'),
   ]);
   assertOptionalPresentation(registration, 'streetScrapWoodChipBundleArtResourceId', 'streetScrapWoodChipBundleArtSha256');
-  assert.match(routes, /if \(!woodChipBundleArtInstalled\) return null/);
+  assert.match(routes, /if \(!woodChipBundleArtInstalled\) \{\s*final (?:data|source|bundled) = await assets\.load(?:String)?\(/);
   assert.match(entryPage, /validateStreetScrapArtBytes\(woodChipBundleArtBytes\)/);
   assert.match(entryPage, /on Object\s*\{\s*woodChipBundleArtBytes = null;/);
   assert.match(sprite, /itemId == 'bundle\.wood_chip'[\s\S]*?woodChipBundleSpriteBytes != null/);
@@ -202,7 +202,7 @@ test('fishing scene art stays optional, versioned and keeps its offline fallback
     readFile(new URL('packages/games/street_scrap/lib/src/street_scrap_fishing_panel.dart', root), 'utf8'),
   ]);
   assertOptionalPresentation(registration, 'streetScrapFishingSceneArtResourceId', 'streetScrapFishingSceneArtSha256');
-  assert.match(routes, /if \(!fishingSceneArtInstalled\) return null/);
+  assert.match(routes, /if \(!fishingSceneArtInstalled\) \{\s*final (?:data|source|bundled) = await assets\.load(?:String)?\(/);
   assert.match(entryPage, /validateStreetScrapFishingSceneArtBytes\(fishingSceneArtBytes\)/);
   assert.match(entryPage, /on Object\s*\{\s*fishingSceneArtBytes = null;/);
   assert.match(panel, /if \(artBytes case final bytes\?\)[\s\S]*?Image\.memory/);
@@ -219,7 +219,7 @@ test('tool atlas is registered as an optional presentation pack with safe fallba
   ]);
   assertOptionalPresentation(registration, 'streetScrapToolAtlasResourceId', 'streetScrapToolAtlasSha256');
   assert.match(registration, /streetScrapToolAtlasResourceId[\s\S]*?validateStreetScrapToolAtlasBytes/);
-  assert.match(routes, /if \(!toolAtlasInstalled\) return null/);
+  assert.match(routes, /if \(!toolAtlasInstalled\) \{\s*final (?:data|source|bundled) = await assets\.load(?:String)?\(/);
   assert.match(entryPage, /validateStreetScrapToolAtlasBytes\(toolAtlasBytes\)/);
   assert.match(entryPage, /on Object\s*\{\s*toolAtlasBytes = null;/);
   assert.match(sprite, /toolAtlasBytes != null && _toolAtlasCell != null/);
@@ -255,7 +255,7 @@ test('protagonist art is a versioned optional pack with a lightweight shell fall
   assertOptionalPresentation(registration, 'streetScrapProtagonistArtResourceId', 'streetScrapProtagonistArtSha256');
   assert.match(registration, /validateStreetScrapProtagonistArtBytes/);
   assert.match(routes, /protagonistArtInstalled/);
-  assert.match(routes, /if \(!protagonistArtInstalled\) return null/);
+  assert.match(routes, /if \(!protagonistArtInstalled\) \{\s*final (?:data|source|bundled) = await assets\.load(?:String)?\(/);
   assert.match(entryPage, /StreetScrapProtagonistArt\.fromPayload/);
   assert.match(entryPage, /protagonistArt = null;/);
   assert.match(sprite, /Image\.memory/);
