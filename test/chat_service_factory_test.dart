@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:taiwan_brawl/services/aes_gcm_conversation_encryptor.dart';
 import 'package:taiwan_brawl/services/api_client.dart';
 import 'package:taiwan_brawl/services/chat_service.dart';
 import 'package:taiwan_brawl/services/chat_service_factory.dart';
@@ -1098,6 +1099,8 @@ void main() {
                       selfId: selfId,
                       friendId: friendId,
                       relayEncryptionReady: true,
+                      conversationEncryptor: _relayTestEncryptor(),
+                      conversationKeyId: _relayTestKeyId,
                       syncCursorStore: restoredStore,
                     ),
                   ),
@@ -1118,6 +1121,8 @@ void main() {
           await restoredService.useRelayFallback();
           expect(postedEvents, hasLength(1));
           expect(postedEvents.single['eventId'], pending.eventId);
+          expect(postedEvents.single['body'], isNull);
+          expect(postedEvents.single['encryptedBody'], isA<Map>());
           expect(restoredCore.repository.pendingOutbox, isEmpty);
 
           await restoredService.useRelayFallback();
@@ -1813,6 +1818,16 @@ class _ReceiptEventTransport implements MessageReceiptTransport {
   Future<void> disconnect() async {}
 }
 
+const _relayTestKeyId = 'relay-test-key';
+
+AesGcmConversationEncryptor _relayTestEncryptor() =>
+    AesGcmConversationEncryptor(
+      keyResolver: InMemoryConversationKeyResolver({
+        '1:2:$_relayTestKeyId':
+            InMemoryConversationKeyResolver.deterministicKey(7),
+      }),
+    );
+
 class _FakeRelayBackend {
   final pendingRows = <int, List<Map<String, dynamic>>>{};
   var _nextPendingId = 1;
@@ -1822,6 +1837,8 @@ class _FakeRelayBackend {
     int friendId,
   ) => ServerMessageTransport(
     relayEncryptionReady: true,
+    conversationEncryptor: _relayTestEncryptor(),
+    conversationKeyId: _relayTestKeyId,
     apiClient: ApiClient(
       client: MockClient((request) async {
         if (request.method == 'GET' &&
@@ -1844,11 +1861,18 @@ class _FakeRelayBackend {
           final event = Map<String, dynamic>.from(
             jsonDecode(request.body)['event'] as Map,
           );
+          final encryptedBody = event['encryptedBody'];
+          if (event['type'] == 'created' || event['type'] == 'edited') {
+            expect(event['body'], isNull);
+            expect(encryptedBody, isA<Map>());
+          }
           pendingRows.putIfAbsent(receiverId, () => []).add({
             'id': _nextPendingId++,
             'sender_id': int.parse(event['actorId'] as String),
             'receiver_id': receiverId,
-            'text': event['body'] ?? '',
+            'text': encryptedBody == null
+                ? event['body'] ?? ''
+                : jsonEncode({'encryptedBody': encryptedBody}),
             'created_at': event['createdAt'],
             'type': 'message',
             'event_id': event['eventId'],

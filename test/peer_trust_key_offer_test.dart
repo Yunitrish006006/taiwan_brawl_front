@@ -10,10 +10,6 @@ void main() {
     () async {
       final localCredentials = _MemoryCredentials();
       final peerCredentials = _MemoryCredentials();
-      final local = await SecureDeviceIdentity.restore(
-        credentials: localCredentials,
-        keyPrefix: 'local.',
-      );
       final peer = await SecureDeviceIdentity.restore(
         credentials: peerCredentials,
         keyPrefix: 'peer.',

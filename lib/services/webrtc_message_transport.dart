@@ -115,10 +115,11 @@ class WebRtcMessageTransport
         if (decoded is! Map) {
           throw const FormatException('Event is not an object');
         }
-        if (decoded is Map && decoded['kind'] == 'control') {
+        if (decoded['kind'] == 'control') {
           final control = decoded['message'];
-          if (control is! Map)
+          if (control is! Map) {
             throw const FormatException('Control message is not an object');
+          }
           _controlMessages.add(Map<String, Object?>.from(control));
           return;
         }

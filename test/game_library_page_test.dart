@@ -215,9 +215,13 @@ void main() {
       of: resourceTitle,
       matching: find.byType(ListTile),
     );
-    await tester.tap(
-      find.descendant(of: resourceTile, matching: find.byIcon(Icons.download)),
+    final download = find.descendant(
+      of: resourceTile,
+      matching: find.byIcon(Icons.download),
     );
+    await tester.ensureVisible(download);
+    await tester.pumpAndSettle();
+    await tester.tap(download);
     await tester.pumpAndSettle();
 
     expect(
@@ -333,12 +337,13 @@ void main() {
         of: resourceTitle,
         matching: find.byType(ListTile),
       );
-      await tester.tap(
-        find.descendant(
-          of: resourceTile,
-          matching: find.byIcon(Icons.download),
-        ),
+      final download = find.descendant(
+        of: resourceTile,
+        matching: find.byIcon(Icons.download),
       );
+      await tester.ensureVisible(download);
+      await tester.pumpAndSettle();
+      await tester.tap(download);
       await tester.pumpAndSettle();
 
       expect(
