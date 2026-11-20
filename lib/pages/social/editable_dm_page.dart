@@ -38,11 +38,14 @@ class EditableDmPage extends StatefulWidget {
     this.connectionP2pLabel = 'P2P connected',
     this.connectionRelayLabel = 'Using server relay',
     this.allowServerRelay = true,
+    this.serverRelayLabel = 'Server relay',
+    this.serverRelayChangeFailedLabel =
+        'Could not change server relay. Check secure pairing and try again.',
     this.deviceManagementService,
     this.currentDeviceId,
     this.deviceLabels = const {},
     this.connectionActiveLabel = 'Connection active',
-    this.connectionWaitingLabel = 'Waiting for connection choice',
+    this.connectionWaitingLabel = 'Waiting for P2P',
     this.connectionFailedLabel = 'Connection failed',
   });
 
@@ -60,6 +63,8 @@ class EditableDmPage extends StatefulWidget {
   final String connectionP2pLabel;
   final String connectionRelayLabel;
   final bool allowServerRelay;
+  final String serverRelayLabel;
+  final String serverRelayChangeFailedLabel;
   final ChatDeviceManagementService? deviceManagementService;
   final String? currentDeviceId;
   final Map<String, String> deviceLabels;
@@ -92,7 +97,7 @@ class _EditableDmPageState extends State<EditableDmPage> {
   bool _connecting = true;
   bool _waitingForConnectionChoice = false;
   bool _connectionFailed = false;
-  bool _connectionChoiceDialogOpen = false;
+  bool _switchingRelay = false;
   String? _error;
   MessageHistoryCursor? _nextHistoryCursor;
 
@@ -138,7 +143,7 @@ class _EditableDmPageState extends State<EditableDmPage> {
           _connectionFailed = !_waitingForConnectionChoice;
         });
       }
-      await _showRelayFallbackChoiceIfRequired();
+      _handleConnectionStateChange(null);
     }
   }
 
@@ -301,8 +306,10 @@ class _EditableDmPageState extends State<EditableDmPage> {
 
   void _handleConnectionStateChange(void _) {
     final relayService = widget.relayFallbackService;
-    if (!mounted || relayService == null) return;
-    if (relayService.p2pActive) {
+    if (!mounted || relayService == null || _switchingRelay || _connecting) {
+      return;
+    }
+    if (relayService.p2pActive || relayService.relayFallbackActive) {
       _p2pRetryTimer?.cancel();
       _p2pRetryTimer = null;
       _p2pRetryAttempt = 0;
@@ -311,20 +318,15 @@ class _EditableDmPageState extends State<EditableDmPage> {
         _waitingForConnectionChoice = false;
         _connectionFailed = false;
       });
-      if (_connectionChoiceDialogOpen) {
-        unawaited(Navigator.of(context, rootNavigator: true).maybePop(false));
-      }
       return;
     }
     if (relayService.relayFallbackChoiceRequired) {
-      final shouldPrompt =
-          !_waitingForConnectionChoice && !_connectionChoiceDialogOpen;
       setState(() {
         _connecting = false;
         _waitingForConnectionChoice = true;
         _connectionFailed = false;
       });
-      if (shouldPrompt) unawaited(_showRelayFallbackChoiceIfRequired());
+      _scheduleP2PRetry();
       return;
     }
     setState(() {});
@@ -722,14 +724,15 @@ class _EditableDmPageState extends State<EditableDmPage> {
                   ),
                   title: Text(connected ? 'P2P 已配對' : '等待 P2P 配對'),
                   subtitle: Text(
-                    connected
-                        ? '一般聊天會優先使用直接連線。'
-                        : '雙方開啟聊天頁即可自動協商；任一方都能按鎖頭重試。',
+                    connected ? '一般聊天會優先使用直接連線。' : '雙方開啟聊天頁即可自動協商；任一方都能按鎖頭重試。',
                   ),
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
-                  onPressed: connected || pairing
+                  onPressed:
+                      connected ||
+                          pairing ||
+                          (relayService?.relayFallbackEnabled ?? false)
                       ? null
                       : () async {
                           setDialogState(() {
@@ -770,7 +773,7 @@ class _EditableDmPageState extends State<EditableDmPage> {
   }
 
   Future<void> _sendMessage() async {
-    if (_sendingMessage) return;
+    if (_sendingMessage || _switchingRelay) return;
     final text = _textController.text.trim();
     if (text.isEmpty) return;
     setState(() => _sendingMessage = true);
@@ -791,95 +794,53 @@ class _EditableDmPageState extends State<EditableDmPage> {
         );
         setState(() => _retryingFailedDraft = widget.retryService != null);
         _showSnack('Message send failed. Draft preserved. $error');
-        unawaited(_showRelayFallbackChoiceIfRequired());
+        _handleConnectionStateChange(null);
       }
     } finally {
       if (mounted) setState(() => _sendingMessage = false);
     }
   }
 
-  Future<void> _showRelayFallbackChoiceIfRequired() async {
-    final relayService = widget.relayFallbackService;
-    if (!mounted ||
-        relayService?.relayFallbackChoiceRequired != true ||
-        _connectionChoiceDialogOpen) {
-      return;
-    }
-    _connectionChoiceDialogOpen = true;
-    setState(() {
-      _connecting = false;
-      _waitingForConnectionChoice = true;
-      _connectionFailed = false;
-    });
-    final bool? useRelay;
-    try {
-      useRelay = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Connection unavailable'),
-          content: Text(
-            widget.allowServerRelay
-                ? 'Your message stays on this device. Use or retry the server relay? The relay can process message content.'
-                : 'Your message stays on this device. Server relay is unavailable until end-to-end encryption is ready. Keep waiting and retry P2P.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Keep waiting'),
-            ),
-            if (widget.allowServerRelay)
-              FilledButton(
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text('Use server relay'),
-              ),
-          ],
-        ),
-      );
-    } finally {
-      _connectionChoiceDialogOpen = false;
-    }
-    if (!mounted) return;
-    if (useRelay != true) {
-      _startP2PRetryLoop();
-      return;
-    }
+  Future<void> _setServerRelay(bool enabled) async {
+    final service = widget.relayFallbackService;
+    if (!mounted || service == null || _switchingRelay) return;
     _p2pRetryTimer?.cancel();
     _p2pRetryTimer = null;
+    setState(() => _switchingRelay = true);
     try {
-      setState(() {
-        _connecting = true;
-        _waitingForConnectionChoice = false;
-      });
-      await relayService!.useRelayFallback();
-      if (mounted) {
-        setState(() {
-          _connecting = false;
-          _waitingForConnectionChoice = false;
-          _connectionFailed = false;
-        });
+      if (enabled) {
+        await service.useRelayFallback();
+      } else {
+        await service.disableRelayFallback();
       }
-    } catch (error) {
+    } catch (_) {
+      if (mounted) _showSnack(widget.serverRelayChangeFailedLabel);
+    } finally {
       if (mounted) {
         setState(() {
-          _connecting = false;
-          _waitingForConnectionChoice = true;
+          _switchingRelay = false;
+          _waitingForConnectionChoice = service.relayFallbackChoiceRequired;
+          _connectionFailed =
+              !service.relayFallbackActive &&
+              !service.p2pActive &&
+              !service.relayFallbackChoiceRequired;
         });
-        _showSnack('Relay connection failed. Message kept locally. $error');
-        unawaited(_showRelayFallbackChoiceIfRequired());
+        if (!service.relayFallbackEnabled && !service.p2pActive) {
+          _scheduleP2PRetry();
+        }
       }
     }
-  }
-
-  void _startP2PRetryLoop() {
-    final relayService = widget.relayFallbackService;
-    if (relayService == null || _p2pRetryTimer != null) return;
-    _p2pRetryAttempt = 0;
-    unawaited(_retryP2PConnection());
   }
 
   void _scheduleP2PRetry() {
     final relayService = widget.relayFallbackService;
-    if (!mounted || relayService == null || _p2pRetryTimer != null) return;
+    if (!mounted ||
+        relayService == null ||
+        relayService.relayFallbackEnabled ||
+        _switchingRelay ||
+        _p2pRetryTimer != null) {
+      return;
+    }
     final delay = P2PRetryBackoff.delay(
       baseDelay: relayService.p2pRetryInterval,
       failedAttempts: _p2pRetryAttempt,
@@ -893,7 +854,13 @@ class _EditableDmPageState extends State<EditableDmPage> {
 
   Future<void> _retryP2PConnection() async {
     final relayService = widget.relayFallbackService;
-    if (!mounted || relayService == null || _connecting) return;
+    if (!mounted ||
+        relayService == null ||
+        _connecting ||
+        _switchingRelay ||
+        relayService.relayFallbackEnabled) {
+      return;
+    }
     setState(() => _connecting = true);
     var connected = false;
     try {
@@ -954,7 +921,7 @@ class _EditableDmPageState extends State<EditableDmPage> {
       } catch (error) {
         if (mounted) {
           _showSnack('Recall was not delivered to the other device: $error');
-          unawaited(_showRelayFallbackChoiceIfRequired());
+          _handleConnectionStateChange(null);
         }
       }
     }
@@ -972,7 +939,7 @@ class _EditableDmPageState extends State<EditableDmPage> {
     } catch (error) {
       if (mounted) {
         _showSnack('Edit was not delivered to the other device: $error');
-        unawaited(_showRelayFallbackChoiceIfRequired());
+        _handleConnectionStateChange(null);
       }
     }
   }
@@ -997,6 +964,19 @@ class _EditableDmPageState extends State<EditableDmPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        bottom: widget.allowServerRelay && widget.relayFallbackService != null
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(56),
+                child: SwitchListTile(
+                  key: const Key('dm-server-relay-switch'),
+                  title: Text(widget.serverRelayLabel),
+                  value: widget.relayFallbackService!.relayFallbackEnabled,
+                  onChanged: _switchingRelay || _sendingMessage
+                      ? null
+                      : _setServerRelay,
+                ),
+              )
+            : null,
         title: Row(
           children: [
             Flexible(
@@ -1052,12 +1032,6 @@ class _EditableDmPageState extends State<EditableDmPage> {
             onPressed: _syncing ? null : _syncFromServer,
             icon: const Icon(Icons.sync),
           ),
-          if (widget.manualP2pService?.enabled == true)
-            IconButton(
-              tooltip: 'Serverless P2P',
-              onPressed: _showManualP2pDialog,
-              icon: const Icon(Icons.link),
-            ),
         ],
       ),
       body: Column(
@@ -1070,23 +1044,25 @@ class _EditableDmPageState extends State<EditableDmPage> {
   }
 
   String _connectionStatusLabel(RelayFallbackDmService service) {
-    if (_connecting) return widget.connectionConnectingLabel;
+    if (_connecting || _switchingRelay) return widget.connectionConnectingLabel;
+    if (service.relayFallbackActive) return widget.connectionRelayLabel;
+    if (service.relayFallbackEnabled) return widget.connectionFailedLabel;
     if (_waitingForConnectionChoice || service.relayFallbackChoiceRequired) {
       return widget.connectionWaitingLabel;
     }
     if (_connectionFailed) return widget.connectionFailedLabel;
-    if (service.relayFallbackActive) return widget.connectionRelayLabel;
     if (service.p2pActive) return widget.connectionP2pLabel;
     return widget.connectionActiveLabel;
   }
 
   IconData _connectionStatusIcon(RelayFallbackDmService service) {
-    if (_connecting) return Icons.sync;
+    if (_connecting || _switchingRelay) return Icons.sync;
+    if (service.relayFallbackActive) return Icons.cloud_done;
+    if (service.relayFallbackEnabled) return Icons.cloud_off;
     if (_waitingForConnectionChoice || service.relayFallbackChoiceRequired) {
       return Icons.wifi_off;
     }
     if (_connectionFailed) return Icons.error_outline;
-    if (service.relayFallbackActive) return Icons.cloud_done;
     if (service.p2pActive) return Icons.link;
     return Icons.cloud_done;
   }
@@ -1095,12 +1071,17 @@ class _EditableDmPageState extends State<EditableDmPage> {
     BuildContext context,
     RelayFallbackDmService service,
   ) {
-    if (_waitingForConnectionChoice ||
+    final colors = Theme.of(context).colorScheme;
+    if (_connecting || _switchingRelay || service.relayFallbackActive) {
+      return colors.primary;
+    }
+    if (service.relayFallbackEnabled ||
+        _waitingForConnectionChoice ||
         service.relayFallbackChoiceRequired ||
         _connectionFailed) {
-      return Theme.of(context).colorScheme.error;
+      return colors.error;
     }
-    return Theme.of(context).colorScheme.primary;
+    return colors.primary;
   }
 
   Widget _buildMessageList() {

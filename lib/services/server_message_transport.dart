@@ -19,6 +19,7 @@ class ServerMessageTransport implements MessageReceiptTransport {
     this.relayEncryptionReady = false,
     this.conversationEncryptor,
     this.conversationKeyId,
+    this.conversationKeyResolver,
     this.pollInterval = const Duration(seconds: 2),
     this.syncCursorStore,
   }) : _apiClient = apiClient;
@@ -30,12 +31,14 @@ class ServerMessageTransport implements MessageReceiptTransport {
   final bool relayEncryptionReady;
   final ConversationEncryptor? conversationEncryptor;
   final String? conversationKeyId;
+  final ConversationKeyResolver? conversationKeyResolver;
   final Duration pollInterval;
   final MessageSyncCursorStore? syncCursorStore;
   final StreamController<MessageEvent> _events =
       StreamController<MessageEvent>.broadcast();
   Timer? _pollTimer;
   Future<void>? _pollInFlight;
+  int _pollGeneration = 0;
   bool _connected = false;
   final Map<String, int> _pendingReceipts = <String, int>{};
   final Set<int> _observedPendingIds = <int>{};
@@ -44,6 +47,23 @@ class ServerMessageTransport implements MessageReceiptTransport {
 
   @override
   Stream<MessageEvent> get events => _events.stream;
+
+  Future<void> ensureRelayEncryptionReady() async {
+    final keyId = conversationKeyId;
+    if (!relayEncryptionReady ||
+        conversationEncryptor == null ||
+        keyId == null) {
+      throw StateError('Encrypted server relay is unavailable.');
+    }
+    final resolver = conversationKeyResolver;
+    if (resolver == null) return;
+    final low = selfId < friendId ? selfId : friendId;
+    final high = selfId < friendId ? friendId : selfId;
+    final key = await resolver.resolve('$low:$high', keyId);
+    if (key == null || key.length != 32) {
+      throw StateError('Complete secure pairing before enabling server relay.');
+    }
+  }
 
   @override
   Future<void> connect() async {
@@ -96,6 +116,8 @@ class ServerMessageTransport implements MessageReceiptTransport {
   @override
   Future<void> disconnect() async {
     _connected = false;
+    _pollGeneration++;
+    _pollInFlight = null;
     _pollTimer?.cancel();
     _pollTimer = null;
     _pendingReceipts.clear();
@@ -136,17 +158,21 @@ class ServerMessageTransport implements MessageReceiptTransport {
     if (inFlight != null) return inFlight;
 
     late Future<void> run;
-    run = _pollOnce().whenComplete(() {
+    run = _pollOnce(_pollGeneration).whenComplete(() {
       if (identical(_pollInFlight, run)) _pollInFlight = null;
     });
     _pollInFlight = run;
     return run;
   }
 
-  Future<void> _pollOnce() async {
-    if (!_connected) return;
+  bool _isCurrentPoll(int generation) =>
+      _connected && generation == _pollGeneration;
+
+  Future<void> _pollOnce(int generation) async {
+    if (!_isCurrentPoll(generation)) return;
     try {
       final cursor = await syncCursorStore?.loadSyncCursor(_cursorScope);
+      if (!_isCurrentPoll(generation)) return;
       _cursorValue ??= _parseCursor(cursor) ?? 0;
       final query = <String, String>{
         'friendId': '$friendId',
@@ -157,9 +183,11 @@ class ServerMessageTransport implements MessageReceiptTransport {
       final response = await _apiClient.getJson(
         '/api/chat/dm/pending?${Uri(queryParameters: query).query}',
       );
+      if (!_isCurrentPoll(generation)) return;
       final raw = response['messages'];
       if (raw is! List) return;
       for (final item in raw.whereType<Map>()) {
+        if (!_isCurrentPoll(generation)) return;
         final senderId = _readInt(item['sender_id']);
         final pendingId = _readInt(item['id']);
         if (senderId != friendId || pendingId == null) {
@@ -176,6 +204,7 @@ class ServerMessageTransport implements MessageReceiptTransport {
             'ids': [pendingId],
             'deviceId': ?deviceId,
           });
+          if (!_isCurrentPoll(generation)) return;
           _acknowledgedPendingIds.add(pendingId);
           await _advanceCursor();
           continue;
@@ -196,6 +225,7 @@ class ServerMessageTransport implements MessageReceiptTransport {
             continue;
           }
         }
+        if (!_isCurrentPoll(generation)) return;
         _pendingReceipts[event.eventId] = pendingId;
         _events.add(event);
       }

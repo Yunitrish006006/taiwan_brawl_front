@@ -64,6 +64,7 @@ class MessagingTransportFactory {
     this.relayEncryptionReady = false,
     this.conversationEncryptorFactory,
     this.conversationKeyIdFactory,
+    this.conversationKeyResolver,
     this.conversationKeyOfferVerifierFactory,
     this.conversationKeyEstablishedFactory,
     this.localDeviceIdentity,
@@ -81,6 +82,7 @@ class MessagingTransportFactory {
   final bool relayEncryptionReady;
   final ConversationEncryptorFactory? conversationEncryptorFactory;
   final ConversationKeyIdFactory? conversationKeyIdFactory;
+  final ConversationKeyResolver? conversationKeyResolver;
   final ConversationKeyOfferVerifierFactory?
   conversationKeyOfferVerifierFactory;
   final ConversationKeyEstablishedFactory? conversationKeyEstablishedFactory;
@@ -100,6 +102,7 @@ class MessagingTransportFactory {
       friendId: friendId,
       deviceId: deviceId,
       relayEncryptionReady: relayEncryptionReady,
+      conversationKeyResolver: conversationKeyResolver,
       conversationEncryptor: conversationEncryptorFactory?.call(
         selfId: selfId,
         friendId: friendId,

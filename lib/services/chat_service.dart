@@ -12,6 +12,7 @@ import 'legacy_chat_sync_snapshot_adapter.dart';
 import 'manual_p2p_dm_service.dart';
 import 'messaging_core_service.dart';
 import 'fallback_message_transport.dart';
+import 'server_message_transport.dart';
 import 'relay_fallback_dm_service.dart';
 import 'remote_source_exception.dart';
 import 'retryable_dm_service.dart';
@@ -115,6 +116,12 @@ class ChatService
   bool get relayFallbackActive {
     final transport = _activeTransport;
     return transport is FallbackMessageTransport && transport.relayActive;
+  }
+
+  @override
+  bool get relayFallbackEnabled {
+    final transport = _activeTransport;
+    return transport is FallbackMessageTransport && transport.relaySelected;
   }
 
   @override
@@ -267,13 +274,32 @@ class ChatService
     if (transport is! FallbackMessageTransport || engine == null) {
       throw StateError('Relay fallback is unavailable for this conversation');
     }
-    transport.selectRelayFallback();
-    if (engine.started) {
-      await transport.connect();
-      await engine.syncNow();
-    } else {
-      await engine.start();
+    if (transport.relayActive) return;
+    if (transport.fallback case final ServerMessageTransport server) {
+      await server.ensureRelayEncryptionReady();
     }
+    if (engine.started) await engine.stop();
+    transport.selectRelayFallback();
+    try {
+      await engine.start();
+    } catch (_) {
+      transport.selectPrimary();
+      rethrow;
+    }
+  });
+
+  @override
+  Future<void> disableRelayFallback() => _enqueueLifecycle(() async {
+    final transport = _activeTransport;
+    final engine = _syncEngine;
+    if (transport is! FallbackMessageTransport ||
+        engine == null ||
+        !transport.relaySelected) {
+      return;
+    }
+    await engine.stop();
+    transport.selectPrimary();
+    await engine.start();
   });
 
   /// Prepares a serverless P2P transport without waiting for its DataChannel.
@@ -614,12 +640,14 @@ class ChatService
   Future<bool> _tryFlushEvent(MessageEvent event) async {
     final engine = _syncEngine;
     if (engine == null || !engine.started) return false;
+    final relayWasEnabled = relayFallbackEnabled;
     try {
       await engine.syncNow();
       return !_messagingCore.repository.pendingOutbox.any(
         (pending) => pending.eventId == event.eventId,
       );
     } on RemoteSourceException catch (error) {
+      if (relayWasEnabled || relayFallbackEnabled) rethrow;
       if (error.statusCode == 404 || error.statusCode == 405) return false;
       rethrow;
     }

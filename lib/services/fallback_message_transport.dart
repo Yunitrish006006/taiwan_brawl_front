@@ -53,6 +53,8 @@ class FallbackMessageTransport implements MessageReceiptTransport {
         (transport as ConnectionAwareMessageTransport).isTransportConnected;
   }
 
+  bool get relaySelected => _relaySelected;
+
   bool get relayActive => identical(_active, fallback);
 
   /// Retries only the primary P2P transport while relay has not been chosen.
@@ -106,6 +108,7 @@ class FallbackMessageTransport implements MessageReceiptTransport {
 
   @override
   Future<void> send(MessageEvent event) async {
+    if (_active == null && _relaySelected) await connect();
     final active = _active;
     if (active == null) throw StateError('Message transport is not connected');
     try {
@@ -116,6 +119,7 @@ class FallbackMessageTransport implements MessageReceiptTransport {
       _subscription = null;
       _active = null;
       _relayChoiceRequired = true;
+      _notifyConnectionChanged();
       if (identical(active, primary)) {
         throw RelayFallbackChoiceRequired(error);
       }
@@ -126,14 +130,12 @@ class FallbackMessageTransport implements MessageReceiptTransport {
   /// Records the player's explicit consent. The sync engine then reconnects
   /// this transport so its listener is installed before the relay's first poll.
   void selectRelayFallback() {
-    if (_relaySelected) {
-      _relayChoiceRequired = false;
-      return;
-    }
-    if (!_relayChoiceRequired && !_relaySelected) {
-      throw StateError('Relay fallback was not requested');
-    }
     _relaySelected = true;
+    _relayChoiceRequired = false;
+  }
+
+  void selectPrimary() {
+    _relaySelected = false;
     _relayChoiceRequired = false;
   }
 
@@ -166,6 +168,8 @@ class FallbackMessageTransport implements MessageReceiptTransport {
     );
     try {
       await transport.connect();
+      _relayChoiceRequired = false;
+      _notifyConnectionChanged();
     } catch (_) {
       await _subscription?.cancel();
       _subscription = null;

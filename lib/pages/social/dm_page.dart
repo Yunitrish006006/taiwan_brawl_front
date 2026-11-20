@@ -97,10 +97,12 @@ class _DmPageState extends State<DmPage> {
       connectionConnectingLabel: t['Connecting P2P'] ?? 'Connecting P2P',
       connectionP2pLabel: t['P2P connected'] ?? 'P2P connected',
       connectionRelayLabel: t['Using server relay'] ?? 'Using server relay',
-      allowServerRelay: false,
+      serverRelayLabel: t['Server relay'] ?? 'Server relay',
+      serverRelayChangeFailedLabel:
+          t['Could not change server relay. Check secure pairing and try again.'] ??
+          'Could not change server relay. Check secure pairing and try again.',
       connectionActiveLabel: t['Connection active'] ?? 'Connection active',
-      connectionWaitingLabel:
-          t['Waiting for connection choice'] ?? 'Waiting for connection choice',
+      connectionWaitingLabel: t['Waiting for P2P'] ?? 'Waiting for P2P',
       connectionFailedLabel: t['Connection failed'] ?? 'Connection failed',
       onActiveConversationChanged: _notificationService.setActiveConversation,
     );

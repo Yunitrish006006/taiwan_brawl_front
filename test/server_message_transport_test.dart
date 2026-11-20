@@ -10,6 +10,71 @@ import 'package:taiwan_brawl/services/server_message_transport.dart';
 import 'package:taiwan_brawl/services/aes_gcm_conversation_encryptor.dart';
 
 void main() {
+  test('explicit relay requires a key for the current conversation', () async {
+    const keyId = 'v1';
+    ServerMessageTransport create(
+      ConversationKeyResolver resolver,
+    ) => ServerMessageTransport(
+      apiClient: ApiClient(
+        client: MockClient((_) async {
+          fail('Checking the conversation key must not make a server request');
+        }),
+      ),
+      selfId: 2,
+      friendId: 1,
+      relayEncryptionReady: true,
+      conversationKeyId: keyId,
+      conversationKeyResolver: resolver,
+      conversationEncryptor: AesGcmConversationEncryptor(keyResolver: resolver),
+    );
+    final missing = create(
+      InMemoryConversationKeyResolver({'1:3:$keyId': List.filled(32, 7)}),
+    );
+    final paired = create(
+      InMemoryConversationKeyResolver({'1:2:$keyId': List.filled(32, 7)}),
+    );
+    addTearDown(missing.dispose);
+    addTearDown(paired.dispose);
+
+    await expectLater(missing.ensureRelayEncryptionReady(), throwsStateError);
+    await paired.ensureRelayEncryptionReady();
+  });
+
+  test('ignores a pending response received after relay disconnects', () async {
+    final response = Completer<http.Response>();
+    final requested = Completer<void>();
+    var requests = 0;
+    final transport = ServerMessageTransport(
+      apiClient: ApiClient(
+        client: MockClient((_) async {
+          if (requests++ == 0) return http.Response('{"messages":[]}', 200);
+          if (!requested.isCompleted) requested.complete();
+          return response.future;
+        }),
+        credentials: _MemoryCredentials(),
+      ),
+      selfId: 1,
+      friendId: 2,
+    );
+    final delivered = <MessageEvent>[];
+    final subscription = transport.events.listen(delivered.add);
+    addTearDown(subscription.cancel);
+    addTearDown(transport.dispose);
+
+    await transport.connect();
+    final poll = transport.pollNow();
+    await requested.future;
+    await transport.disconnect();
+    response.complete(
+      http.Response(
+        '{"messages":[{"id":1,"sender_id":2,"text":"late","created_at":"2026-11-20T09:00:00Z"}]}',
+        200,
+      ),
+    );
+    await poll;
+    expect(delivered, isEmpty);
+  });
+
   test('converts new pending event rows without losing envelope metadata', () {
     final event = ServerMessageTransport.eventFromPendingRow(
       {

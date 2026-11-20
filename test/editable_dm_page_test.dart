@@ -76,10 +76,7 @@ void main() {
     await tester.tap(find.byTooltip('安全配對'));
     await tester.pumpAndSettle();
     expect(find.text('開始新版配對'), findsOneWidget);
-    expect(
-      find.text('雙方開啟聊天頁即可自動協商；任一方都能按鎖頭重試。'),
-      findsOneWidget,
-    );
+    expect(find.text('雙方開啟聊天頁即可自動協商；任一方都能按鎖頭重試。'), findsOneWidget);
 
     await tester.tap(find.text('開始新版配對'));
     await tester.pumpAndSettle();
@@ -301,7 +298,7 @@ void main() {
   });
 
   testWidgets(
-    'automatically connects with a stable role and exposes manual P2P',
+    'automatically connects without exposing the old pairing button',
     (tester) async {
       final service = _FakeDmService();
       await tester.pumpWidget(
@@ -317,7 +314,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byTooltip('Serverless P2P'), findsOneWidget);
+      expect(find.byTooltip('Serverless P2P'), findsNothing);
       expect(service.connectCalls, [(1, 2, true)]);
     },
   );
@@ -338,7 +335,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Serverless P2P'));
+    await tester.tap(find.byTooltip('安全配對'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('進階：手動交換配對資料'));
     await tester.pumpAndSettle();
 
     expect(find.text('Role'), findsNothing);
@@ -352,15 +351,14 @@ void main() {
     expect(find.text('Copy'), findsOneWidget);
   });
 
-  testWidgets('asks before switching from P2P to server relay', (tester) async {
-    final dmService = _FakeDmService()
-      ..connectError = StateError('P2P unavailable');
-    final relayService = _FakeRelayFallbackDmService()
-      ..relayFallbackChoiceRequired = true;
+  testWidgets('switches from connected P2P to relay and back manually', (
+    tester,
+  ) async {
+    final relayService = _FakeRelayFallbackDmService();
     await tester.pumpWidget(
       MaterialApp(
         home: EditableDmPage(
-          service: dmService,
+          service: _FakeDmService(),
           relayFallbackService: relayService,
           friendId: 2,
           friendName: 'Friend',
@@ -370,26 +368,20 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Connection unavailable'), findsOneWidget);
-    expect(find.byTooltip('Waiting for connection choice'), findsOneWidget);
-    expect(
-      find.textContaining('relay can process message content'),
-      findsOneWidget,
-    );
+    final relaySwitch = find.byKey(const Key('dm-server-relay-switch'));
+    expect(tester.widget<SwitchListTile>(relaySwitch).value, isFalse);
     expect(relayService.useCalls, 0);
-    await tester.tap(find.text('Keep waiting'));
-    await tester.pumpAndSettle();
-    expect(relayService.useCalls, 0);
-
-    dmService.sendError = StateError('P2P unavailable');
-    await tester.enterText(find.byType(TextField), 'queue me');
-    await tester.tap(find.byIcon(Icons.send));
-    await tester.pumpAndSettle();
-    expect(find.text('Connection unavailable'), findsOneWidget);
-    await tester.tap(find.text('Use server relay'));
+    await tester.tap(relaySwitch);
     await tester.pumpAndSettle();
     expect(relayService.useCalls, 1);
+    expect(tester.widget<SwitchListTile>(relaySwitch).value, isTrue);
     expect(find.byTooltip('Using server relay'), findsOneWidget);
+
+    await tester.tap(relaySwitch);
+    await tester.pumpAndSettle();
+    expect(relayService.disableCalls, 1);
+    expect(tester.widget<SwitchListTile>(relaySwitch).value, isFalse);
+    expect(find.byTooltip('P2P connected'), findsOneWidget);
   });
 
   testWidgets('hides relay choice until the E2EE relay path is ready', (
@@ -413,12 +405,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(
-      find.textContaining('unavailable until end-to-end encryption is ready'),
-      findsOneWidget,
-    );
-    expect(find.text('Keep waiting'), findsOneWidget);
-    expect(find.text('Use server relay'), findsNothing);
+    expect(find.byKey(const Key('dm-server-relay-switch')), findsNothing);
+    expect(find.text('Connection unavailable'), findsNothing);
     expect(relayService.useCalls, 0);
   });
 
@@ -489,10 +477,11 @@ void main() {
     expect(devices.registeredDeviceIds, ['phone-12345678', 'phone-12345678']);
   });
 
-  testWidgets('P2P connection loss updates status and asks before relay', (
+  testWidgets('P2P connection loss retries without selecting relay', (
     tester,
   ) async {
-    final relayService = _FakeRelayFallbackDmService();
+    final relayService = _FakeRelayFallbackDmService()
+      ..p2pRetryInterval = const Duration(seconds: 1);
     final dmService = _FakeDmService();
     await tester.pumpWidget(
       MaterialApp(
@@ -515,9 +504,9 @@ void main() {
       .._connectionChanges.add(null);
     await tester.pumpAndSettle();
 
-    expect(find.text('Connection unavailable'), findsOneWidget);
-    expect(find.byTooltip('Waiting for connection choice'), findsOneWidget);
-    await tester.tap(find.text('Keep waiting'));
+    expect(find.text('Connection unavailable'), findsNothing);
+    expect(find.byTooltip('Waiting for P2P'), findsOneWidget);
+    await tester.pump(relayService.p2pRetryInterval);
     await tester.pumpAndSettle();
 
     expect(relayService.useCalls, 0);
@@ -525,13 +514,14 @@ void main() {
     expect(find.text('Connection unavailable'), findsNothing);
   });
 
-  testWidgets('keep waiting retries P2P and updates status when it recovers', (
+  testWidgets('retries P2P with backoff while the relay switch is off', (
     tester,
   ) async {
     final dmService = _FakeDmService()
       ..connectError = StateError('temporary P2P outage');
     final relayService = _FakeRelayFallbackDmService()
       ..relayFallbackChoiceRequired = true
+      ..p2pActive = false
       ..p2pRetryInterval = const Duration(seconds: 1)
       ..retryResults.addAll([false, false, true]);
     await tester.pumpWidget(
@@ -547,18 +537,18 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Keep waiting'));
+    await tester.pump(relayService.p2pRetryInterval);
     await tester.pumpAndSettle();
     expect(relayService.retryCalls, 1);
-    expect(find.byTooltip('Waiting for connection choice'), findsOneWidget);
+    expect(find.byTooltip('Waiting for P2P'), findsOneWidget);
 
-    await tester.pump(relayService.p2pRetryInterval);
+    await tester.pump(const Duration(seconds: 2));
     await tester.pump();
     await tester.pumpAndSettle();
     expect(relayService.retryCalls, 2);
-    expect(find.byTooltip('Waiting for connection choice'), findsOneWidget);
+    expect(find.byTooltip('Waiting for P2P'), findsOneWidget);
 
-    await tester.pump(const Duration(seconds: 2));
+    await tester.pump(const Duration(seconds: 4));
     await tester.pump();
     await tester.pumpAndSettle();
     expect(relayService.retryCalls, 3);
@@ -673,7 +663,10 @@ class _FakeRelayFallbackDmService implements RelayFallbackDmService {
   bool relayFallbackActive = false;
   @override
   bool p2pActive = true;
+  @override
+  bool get relayFallbackEnabled => relayFallbackActive;
   int useCalls = 0;
+  int disableCalls = 0;
   int retryCalls = 0;
   final List<bool> retryResults = <bool>[];
 
@@ -685,6 +678,14 @@ class _FakeRelayFallbackDmService implements RelayFallbackDmService {
     relayFallbackChoiceRequired = !connected;
     _connectionChanges.add(null);
     return connected;
+  }
+
+  @override
+  Future<void> disableRelayFallback() async {
+    disableCalls++;
+    relayFallbackActive = false;
+    p2pActive = true;
+    _connectionChanges.add(null);
   }
 
   @override

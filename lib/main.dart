@@ -239,6 +239,7 @@ Future<void> main() async {
     p2pEnabled: configuration.p2pChatEnabled,
     deviceId: messagingRuntime.deviceIdentity?.deviceId,
     relayEncryptionReady: true,
+    conversationKeyResolver: conversationKeyStore,
     localDeviceIdentity: messagingRuntime.deviceIdentity,
     conversationKeyOfferVerifierFactory:
         ({required selfId, required friendId, required offer}) async {

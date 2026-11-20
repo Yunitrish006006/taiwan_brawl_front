@@ -11,7 +11,11 @@ abstract interface class RelayFallbackDmService {
 
   bool get relayFallbackActive;
 
+  bool get relayFallbackEnabled;
+
   Future<bool> retryP2PConnection();
 
   Future<void> useRelayFallback();
+
+  Future<void> disableRelayFallback();
 }

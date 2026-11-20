@@ -511,6 +511,75 @@ void main() {
     },
   );
 
+  test('switches the live conversation from P2P to relay and back', () async {
+    final core = MessagingCoreService();
+    final legacy = _MemoryLegacyChatAdapters();
+    final primary = _RecordingTransport(_NoopTransport());
+    final relay = _RecordingTransport(_NoopTransport());
+    final service = ChatServiceFactory(
+      messagingCore: core,
+      legacyDeliveryStore: legacy,
+      legacyHistoryStore: legacy,
+      legacySnapshotStore: legacy,
+      legacyDeliveryRemoteSource: legacy,
+      legacyHistoryRemoteSource: legacy,
+      legacySnapshotRemoteSource: legacy,
+      transportFactory:
+          ({required selfId, required friendId, required isCaller}) =>
+              FallbackMessageTransport(primary: primary, fallback: relay),
+    ).create();
+    addTearDown(core.dispose);
+    addTearDown(service.disposeAsync);
+
+    await service.connectToDm(1, 2);
+    expect(service.p2pActive, isTrue);
+    expect(service.relayFallbackEnabled, isFalse);
+    await service.useRelayFallback();
+    expect(service.relayFallbackEnabled, isTrue);
+    expect(service.p2pActive, isFalse);
+    await service.sendText(2, 'use the selected relay');
+    expect(relay.sent.single.body, 'use the selected relay');
+
+    await service.disableRelayFallback();
+    expect(service.relayFallbackEnabled, isFalse);
+    expect(service.p2pActive, isTrue);
+    await service.sendText(2, 'use P2P again');
+    expect(primary.sent.single.body, 'use P2P again');
+    expect(relay.sent, hasLength(1));
+  });
+
+  test('an unavailable encrypted endpoint leaves the message queued', () async {
+    final core = MessagingCoreService();
+    final legacy = _MemoryLegacyChatAdapters();
+    final service = ChatServiceFactory(
+      messagingCore: core,
+      legacyDeliveryStore: legacy,
+      legacyHistoryStore: legacy,
+      legacySnapshotStore: legacy,
+      legacyDeliveryRemoteSource: legacy,
+      legacyHistoryRemoteSource: legacy,
+      legacySnapshotRemoteSource: legacy,
+      transportFactory:
+          ({required selfId, required friendId, required isCaller}) =>
+              FallbackMessageTransport(
+                primary: _NoopTransport(),
+                fallback: _MissingRelayEndpointTransport(),
+              ),
+    ).create();
+    addTearDown(core.dispose);
+    addTearDown(service.disposeAsync);
+
+    await service.connectToDm(1, 2);
+    await service.useRelayFallback();
+    await expectLater(
+      service.sendText(2, 'encrypted only'),
+      throwsA(isA<ApiException>()),
+    );
+    expect(core.repository.pendingOutbox.single.body, 'encrypted only');
+    expect(legacy.sentText, isEmpty);
+    expect(service.relayFallbackEnabled, isTrue);
+  });
+
   test('reopening a DM starts a fresh session on P2P first', () async {
     final core = MessagingCoreService();
     final legacy = _MemoryLegacyChatAdapters();
@@ -1629,6 +1698,7 @@ class _MemoryLegacyChatAdapters
 
   final List<MessageHistoryPage<LegacyChatRecord>> historyPages;
   final Completer<void>? historyPageGate;
+  final sentText = <String>[];
   final requestedHistoryCursors = <MessageHistoryCursor?>[];
 
   @override
@@ -1698,9 +1768,10 @@ class _MemoryLegacyChatAdapters
   Future<void> uploadSyncData(int friendId, Map<String, dynamic> data) async {}
 
   @override
-  Future<Map<String, dynamic>> sendMessage(int friendId, String text) async => {
-    'ok': true,
-  };
+  Future<Map<String, dynamic>> sendMessage(int friendId, String text) async {
+    sentText.add(text);
+    return {'ok': true};
+  }
 
   @override
   Future<void> recallMessage(int friendId, String messageKey) async {}
@@ -1965,6 +2036,13 @@ class _ConnectCountingTransport extends _NoopTransport {
   @override
   Future<void> connect() async {
     connectCalls++;
+  }
+}
+
+class _MissingRelayEndpointTransport extends _NoopTransport {
+  @override
+  Future<void> send(MessageEvent event) async {
+    throw ApiException('Event endpoint missing', statusCode: 404);
   }
 }
 
