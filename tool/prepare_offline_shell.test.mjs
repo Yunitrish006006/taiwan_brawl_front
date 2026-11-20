@@ -49,7 +49,7 @@ test('offline shell manifest pins app code and renderer but excludes optional da
     const manifest = await writeOfflineShellManifest(root);
     assert.equal(manifest.schemaVersion, 1);
     assert.match(manifest.version, /^[a-f0-9]{20}$/);
-    assert.ok(manifest.byteLength <= 32 * 1024 * 1024);
+    assert.ok(manifest.byteLength <= 52 * 1024 * 1024);
     assert.ok(manifest.assets.includes('/main.dart.js_5.part.js'));
     assert.ok(manifest.assets.includes('/main.dart.js_12.part.js'));
     assert.ok(manifest.assets.includes('/manifest.json'));

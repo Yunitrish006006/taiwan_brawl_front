@@ -3,7 +3,9 @@ import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const MAX_SHELL_BYTES = 32 * 1024 * 1024;
+// Keep bundled Street Scrap art available on a first offline launch. The
+// current renderer, app code, and bundled art together use about 49 MiB.
+const MAX_SHELL_BYTES = 52 * 1024 * 1024;
 const WORKER_VERSION_PATTERN = /const BUILD_VERSION = '[^']+';/;
 const WORKER_VERSION_TEMPLATE = "const BUILD_VERSION = 'development';";
 
